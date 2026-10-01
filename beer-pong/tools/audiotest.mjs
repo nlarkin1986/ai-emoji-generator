@@ -45,7 +45,11 @@ async function render(spec, seconds, key) {
       for (const ch of ["p1", "p2", "tr", "no", "dm"]) {
         const sb = await BP.Audio._renderOffline({ music: spec, mute: ["p1", "p2", "tr", "no", "dm"].filter((x) => x !== ch) }, seconds)
         const sa = T.env(sb, 0.05 + info.introSec, 0.05 + info.introSec + info.loopSec, 0.1), sc = T.env(sb, 0.05 + info.introSec + info.loopSec, 0.05 + info.introSec + 2 * info.loopSec, 0.1)
-        if (T.stats(sb).peak > 0.01) r.loopCorr = Math.min(r.loopCorr, T.corr(sa, sc))
+        if (T.stats(sb).peak > 0.01) {
+          // flat envelopes (e.g. constant 16th hats) make correlation meaningless: accept a tiny relative difference too
+          let dd = 0, aa = 0; for (let i = 0; i < Math.min(sa.length, sc.length); i++) { dd += (sa[i] - sc[i]) ** 2; aa += sa[i] ** 2 }
+          r.loopCorr = Math.min(r.loopCorr, Math.sqrt(dd / (aa + 1e-12)) < 0.05 ? 1 : T.corr(sa, sc))
+        }
       }
       // seam: audio right after the loop point must not be silent (music restarts immediately)
       r.seamRms = T.stats({ getChannelData: () => b.getChannelData(0).subarray(Math.round((0.05 + info.introSec + info.loopSec) * 44100), Math.round((0.05 + info.introSec + info.loopSec + 0.5) * 44100)), sampleRate: 44100 }).rms
@@ -211,7 +215,7 @@ console.log("== LIVE API (real gesture, realtime context)")
     for (const n of A._list().sfx) A.sfx(n)
     A.toggleMute(); out.muted = A.isMuted(); out.ls = localStorage.getItem("bp_mute"); A.toggleMute()
     A.music("clear"); out.clearTempo = A._state().tempo
-    await new Promise((r) => setTimeout(r, 4800))
+    await new Promise((r) => setTimeout(r, 5600))
     out.afterClear = A._state()
     A.music(null); out.stopped = A._state()
     // throw-proofing
