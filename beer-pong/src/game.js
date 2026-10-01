@@ -1313,7 +1313,7 @@
       var ps = isTouch() ? 'TAP TO START' : 'PUSH START'
       if (blink(frame, 30)) { box(gridX(ps) - 8, 179, ps.length * 8 + 16, 18, 'default'); T(ps, gridX(ps), 184, UC.info) }
       tab(88, 8, 'HI ' + pad(hi, 6), UC.info); T('HI', 88, 8, UC.hi)
-      msgLine('© 1989 PARTY SOFT', UC.info)
+      msgLine('© 1986 PARTIES HARD', UC.info)
     },
   }
 
@@ -1953,7 +1953,7 @@
     ['- CAST -', 'red'], ['SAL', 'white'], ['NATE', 'white'], ['TANK', 'white'], ['SKY', 'white'], ['BRO-DY', 'white'], ['THE KEGMASTER', 'white'], ['AND YOU', 'gold'], ['', ''],
     ['SPECIAL THANKS', 'gold'], ['ALL PARTY PEOPLE', 'white'], ['', ''],
     ['NO CUPS WERE HARMED', 'lgray'], ['IN THE MAKING OF', 'lgray'], ['THIS GAME.', 'lgray'], ['', ''],
-    ['PRESENTED BY', 'gold'], ['PARTY SOFT', 'white'], ['', ''],
+    ['PRESENTED BY', 'gold'], ['PARTIES HARD', 'white'], ['', ''],
     ['THANKS FOR PLAYING!', 'gold'],
   ]
   function continueGauntlet() {
