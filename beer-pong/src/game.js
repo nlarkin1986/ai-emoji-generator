@@ -19,13 +19,13 @@
   var STAGES = [
     { name: 'BACKYARD BASH', who: 'chad', cpu: 'CHAD', acc: 0.22, acc2: 0.5, aim: 12, pow: 6, bounce: 0, wind: false, band: 'dblue', stars: 1,
       taunt: ['NICE HAT, ROOKIE.', 'THIS IS MY YARD!'], taunt2: ['I PRACTICED, BRO.', 'REMATCH TIME!'] },
-    { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.33, acc2: 0.57, aim: 16, pow: 8, bounce: 0.05, wind: false, band: 'dred', stars: 2,
+    { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.33, acc2: 0.55, aim: 16, pow: 8, bounce: 0.05, wind: false, band: 'dred', stars: 2,
       taunt: ['TANK NO MISS.', 'TANK ONLY DRINK.'], taunt2: ['TANK ANGRY NOW.', 'TANK SMASH CUPS.'] },
-    { name: 'ROOFTOP', who: 'sky', cpu: 'SKY', acc: 0.42, acc2: 0.64, aim: 10, pow: 6, bounce: 0.08, wind: true, band: 'purple', stars: 3,
+    { name: 'ROOFTOP', who: 'sky', cpu: 'SKY', acc: 0.42, acc2: 0.6, aim: 10, pow: 6, bounce: 0.08, wind: true, band: 'purple', stars: 3,
       taunt: ['FEEL THAT BREEZE?', 'THE WIND IS MINE.'], taunt2: ['STORM IS COMING.', 'HOLD ON TIGHT!'] },
-    { name: 'BEACH BONFIRE', who: 'brody', cpu: 'BRO-DY', acc: 0.5, acc2: 0.7, aim: 12, pow: 6, bounce: 0.1, wind: false, band: 'dgreen', stars: 4,
+    { name: 'BEACH BONFIRE', who: 'brody', cpu: 'BRO-DY', acc: 0.5, acc2: 0.63, aim: 12, pow: 6, bounce: 0.1, wind: false, band: 'dgreen', stars: 4,
       taunt: ["SURF'S UP, BRO.", 'CUPS GOING DOWN.'], taunt2: ['SEA BREEZE, BRO.', 'GOOD LUCK, HA!'] },
-    { name: 'CHAMPIONSHIP', who: 'kegmaster', cpu: 'KEGMASTER', acc: 0.58, acc2: 0.77, aim: 16, pow: 8, bounce: 0.18, wind: false, band: 'dred', stars: 5,
+    { name: 'CHAMPIONSHIP', who: 'kegmaster', cpu: 'KEGMASTER', acc: 0.58, acc2: 0.65, aim: 16, pow: 8, bounce: 0.18, wind: false, band: 'dred', stars: 5,
       taunt: ['KNEEL BEFORE THE', 'KEGMASTER, PEON!'], taunt2: ['NO ONE BEATS ME', 'TWICE. NO ONE!'] },
   ]
 
@@ -474,7 +474,7 @@
     if (!run) return 1
     var s = (0.84 + 0.09 * m.stage) * (m.loop > 0 ? 1.18 : 1) * (1 + 0.12 * run.buzz)
     if (run.streak >= 3) s *= 0.7
-    if (m.kegP2) s *= 1.15
+    if (m.kegP2) s *= 1.06
     return s
   }
   function setupAim(side) {
@@ -500,7 +500,7 @@
   }
   function setupPow() {
     // stage 1 is forgiving (wide green zone, slower bar); it tightens every stage and again in Round 2
-    var sm = 0.92 + 0.06 * m.stage + (m.loop > 0 ? 0.2 : 0) + (m.loop > 1 ? 0.05 * (m.loop - 1) : 0) + (m.kegP2 ? 0.15 : 0)
+    var sm = 0.92 + 0.06 * m.stage + (m.loop > 0 ? 0.2 : 0) + (m.loop > 1 ? 0.05 * (m.loop - 1) : 0) + (m.kegP2 ? 0.06 : 0)
     m.pow = { period: Math.round(58 / sm), sc: 0.66, bw: Math.max(0.04, 0.088 - 0.007 * m.stage - (m.loop > 0 ? 0.012 : 0)) }
   }
   function powVal(t) {
@@ -713,12 +713,12 @@
     var cr = b.cross || { x: b.x, z: b.z }, why = 'MISS'
     var cs = aliveCups(1 - side), near = null, nd = 1e9
     cs.forEach(function (o) { var d = Math.hypot(o.x - cr.x, o.z - cr.z); if (d < nd) { nd = d; near = o } })
-    if (rim) why = 'RIM OUT!'
-    else if (near) {
+    if (near) {
       var dir = side === 0 ? 1 : -1
-      var dl = (cr.x - near.x) * dir, dlat = (cr.z - near.z) * dir
-      why = Math.abs(dl) >= Math.abs(dlat) ? (dl > 0 ? 'LONG!' : 'SHORT!') : (dlat > 0 ? 'WIDE RIGHT!' : 'WIDE LEFT!')
-    }
+      var dl = (cr.x - near.x) * dir, dlat = (cr.z - near.z) * dir, along = Math.abs(dl) >= Math.abs(dlat)
+      if (rim) why = 'RIMMED ' + (along ? (dl > 0 ? 'LONG!' : 'SHORT!') : (dlat > 0 ? 'WIDE R!' : 'WIDE L!'))
+      else why = along ? (dl > 0 ? 'LONG!' : 'SHORT!') : (dlat > 0 ? 'WIDE RIGHT!' : 'WIDE LEFT!')
+    } else if (rim) why = 'RIM OUT!'
     m.missX = m.ctrl[side] === 'human' ? { x: cr.x, z: cr.z, side: side } : null
     m.ball = null
     m.lastSank = false
@@ -1190,10 +1190,14 @@
     if (M.overtime || M.redemption) { if (blink(frame, 12)) T(M.overtime ? 'OT!' : 'RED!', 128 - 16, 8, 'gold') }
     else { var stl = (M.loop > 0 ? 'R' + (M.loop + 1) + '-' : 'ST') + (M.stage + 1); T(stl, 128 - stl.length * 4 - 4, 8, 'gold') }
     // row 2: your cups | balls | buzz mugs | fire | their cups
-    var n0 = M.sides[0].cups.length, sp0 = n0 > 6 ? 5 : 7
-    M.sides[0].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 8 + i * sp0, 16) })
-    var n1 = M.sides[1].cups.length, sp1 = n1 > 6 ? 5 : 7
-    M.sides[1].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 240 - (n1 - 1 - i) * sp1, 16) })
+    if (M.sides[0].cups.length > 6 || M.sides[1].cups.length > 6) { // 10-cup racks: icon + count (readable)
+      A.drawIcon(ctx, 'cup', 8, 16); T('\u00D7' + alive(0), 17, 16, 'white')
+      A.drawIcon(ctx, 'cup', 216, 16); T('\u00D7' + alive(1), 225, 16, 'white')
+    } else {
+      M.sides[0].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 8 + i * 7, 16) })
+      var n1 = M.sides[1].cups.length
+      M.sides[1].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 240 - (n1 - 1 - i) * 7, 16) })
+    }
     var bl = M.redemption ? 1 : M.balls
     for (var i = 0; i < Math.min(bl, 2); i++) A.drawIcon(ctx, 'ball', 62 + i * 8, 16)
     if (!M.demo) {
@@ -1305,6 +1309,25 @@
         return
       }
       var lim = S.board ? 120 : 10 // board: 2 s input lock so mashing can't fall through to a new game
+      // queued / offline submit: re-query the board every 3 s; flip to GLOBAL + real rank once it lands
+      if (S.board && S.retry && S.t % 180 === 0 && !S.polling) {
+        var me = S
+        me.polling = true
+        try {
+          Promise.resolve(BP.Scores.top(10)).then(function (r) {
+            me.polling = false
+            if (!Array.isArray(r) || scoresMode() !== 'global') return
+            for (var i = 0; i < r.length; i++) {
+              var row = r[i]
+              if (row && (row.you || (me.myId && row.id === me.myId) || (row.name === me.myName && +row.score === me.myScore))) {
+                me.rows = r; me.hlRank = i + 1; me.myRank = i + 1; me.label = 'GLOBAL RANKING'; me.retry = false
+                if (S === me) sfx('confirm')
+                return
+              }
+            }
+          }, function () { me.polling = false })
+        } catch (e) { S.polling = false }
+      }
       if (S.board && S.t === 2) { if (S.myRank === 1) { sfx('win'); music('clear', true) } else sfx('confirm') }
       if (S.t > lim && (okPr() || pr('b') || tap())) { sfx('cancel'); go('title') }
       if (S.board && S.t > 1200) go('title')
@@ -1653,7 +1676,9 @@
         S.cp = true
         try { if (BP.Scores && BP.Scores.checkpoint) Promise.resolve(BP.Scores.checkpoint({ round: run.loop + 1, stage: run.stage, score: run.score, makes: run.makes, shots: run.shots })).then(null, function () {}) } catch (e) {}
       }
+      // a stage never takes < 45 s (anti-cheat link minimum): any hold shows an NES countdown on the tally
       var minOk = FAST || run.stageT0 == null || ticks - run.stageT0 >= 45 * 60
+      if (!minOk && S.t % 60 === 0 && S.wait > 10) sfx('tick')
       if (minOk && ((skip && S.wait > 10) || S.wait > (FAST ? 30 : 200))) nextStage()
     },
     draw: function () {
@@ -1664,7 +1689,7 @@
       T('1P', 8, 8, 'red'); T(pad(run.disp, 6), 32, 8, 'white')
       T('HI', 168, 8, 'red'); T(pad(Math.max(hi, run.score), 6), 192, 8, 'white')
       TC('STAGE ' + (run.stage + 1) + ' CLEAR!', 16, 'gold')
-      box(20, 34, 216, 138, 'gold')
+      box(20, 34, 216, 148, 'gold')
       BIG('YOU WIN!', 128, 42, 'gold', 2)
       BP.Art.drawIcon(ctx, 'trophy', 30, 46); BP.Art.drawIcon(ctx, 'trophy', 218, 46)
       for (var i = 0; i < S.lines.length; i++) {
@@ -1679,14 +1704,17 @@
         T('TOTAL', 30, 70 + S.lines.length * 14 - 2, 'gold')
         TR(pad(S.total, 6), 226, 70 + S.lines.length * 14 - 2, 'gold')
         var nxt = run.stage >= 4 ? (run.loop === 1 ? 'YOU ARE THE CHAMPION!' : run.loop >= 2 ? 'GAUNTLET ROUND ' + (run.loop + 2) + '!' : 'ROUND 2: NO MERCY!') : 'NEXT: ' + STAGES[run.stage + 1].name
-        if (blink(frame, 16)) TC(nxt, 176, 'white', true)
+        if (blink(frame, 16)) TC(nxt, 152, 'white')
+        var holdT = run.stageT0 == null || FAST ? 0 : Math.ceil((45 * 60 - (ticks - run.stageT0)) / 60)
+        if (holdT > 0) TC('NEXT STAGE IN 0:' + pad(holdT, 2), 166, 'gold')
+        else if (S.wait > 10) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH A', 166, 'lgray')
       }
     },
   }
   function nextStage() {
     if (run.stage >= 4 && run.loop === 1 && !run.champion) { go('ending'); return } // beat Round 2's KEGMASTER: the ending
     // ...then the CHAMPION'S GAUNTLET: endless rounds 3, 4, ... at max CPU skill, score x round number
-    if (run.stage >= 4) { run.loop++; run.stage = 0 } else run.stage++
+    if (run.stage >= 4) { run.loop++; run.stage = 0; run.buzz = 0 } else run.stage++ // a new round starts sober
     go('vs', { stage: run.stage })
   }
 
@@ -1866,7 +1894,8 @@
       var label = !res ? 'LOCAL RANKING' : res.queued ? 'SAVED - SENDING...' : res.rejected ? 'LOCAL ONLY' : res.mode === 'global' ? 'GLOBAL RANKING' : 'LOCAL RANKING'
       if (entry.score > hi) hi = entry.score
       refreshHi()
-      go('scores', { board: true, hlRank: hl, myRank: rank, myName: entry.name, myScore: entry.score, myStage: entry.stage, myRound: entry.round, preRows: rows, label: label })
+      go('scores', { board: true, hlRank: hl, myRank: rank, myName: entry.name, myScore: entry.score, myStage: entry.stage, myRound: entry.round, preRows: rows, label: label,
+        myId: res && res.id, retry: label !== 'GLOBAL RANKING' && !(res && res.rejected) })
     }
     me.finish = show
     try { Promise.resolve(BP.Scores.submit(entry)).then(show, function () { show(null) }) } catch (e) { show(null) }
