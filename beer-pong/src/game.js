@@ -345,7 +345,7 @@
 
   function rollWind() {
     if (!m.st.wind) { m.wind = { ax: 0, az: 0, s: 0, ang: 0 }; return }
-    var s = ri(4) // 0..3
+    var s = 1 + ri(3) // 1..3 — rooftop is always breezy
     var a = ri(8) * (TWO_PI / 8)
     var k = 0.0011 * s
     m.wind = { ax: Math.cos(a) * k, az: Math.sin(a) * k, s: s, ang: a }
@@ -450,7 +450,7 @@
       for (var k = 0; k < 16; k++) {
         var along = rnd() < 0.65
         var dd = rr(minD, 12)
-        var sgn = rnd() < 0.5 ? -1 : 1
+        var sgn = along ? (rnd() < 0.72 ? 1 : -1) * dirX : rnd() < 0.5 ? -1 : 1 // misses are mostly long
         var cx = c.x + (along ? sgn * dd : gauss() * 2), cz = c.z + (along ? gauss() * 2 : sgn * dd)
         var ok = true
         for (var j = 0; j < cs.length; j++) if (Math.hypot(cs[j].x - cx, cs[j].z - cz) < minD) { ok = false; break }
@@ -472,10 +472,11 @@
     if (shotLog.length) shotLog[shotLog.length - 1].res = 'sink r' + b.rim + ' b' + b.bounces
     var island = !hasNeighbor(c, vic) && alive(vic) > 1
     var bounced = b.bounces > 0
+    var declared = bounced && b.bshot // a called BOUNCE shot (B) takes 2 cups; accidental bounces only 1
     var clean = b.rim === 0 && !bounced
     c.alive = false; c.hitT = 0
     var removed = 1, extra = null
-    if (bounced) { extra = nearestAlive(c, vic); if (extra) { extra.alive = false; extra.hitT = -8; removed = 2 } }
+    if (declared) { extra = nearestAlive(c, vic); if (extra) { extra.alive = false; extra.hitT = -8; removed = 2 } }
     var cx = c.x, cyy = sy(0, c.z)
     m.ball = null
     m.lastSank = true
@@ -495,8 +496,9 @@
       var mult = run.streak >= 3 ? 3 : run.streak === 2 ? 2 : 1
       var rm = roundMult()
       var pts = 100 * mult * removed
-      if (clean) { pts += 50; calls.push(['SWISH!', 'white']) }
-      else if (bounced) { pts += 200; calls.push(['BOUNCE!', 'gold']) }
+      if (clean) { pts += 50; calls.push(['SWISH!', 'white']); sfx('swish') }
+      else if (declared) { pts += 200; calls.push(['BOUNCE!', 'gold']); if (removed > 1) calls.push(['2 CUPS!', 'gold']) }
+      else if (bounced) { pts += 25; calls.push(['LUCKY BOUNCE!', 'yellow']) }
       else { pts += 25; calls.push(['RATTLED IN!', 'yellow']) }
       if (island) { pts += 250; calls.push(['ISLAND!', 'cyan']) }
       pts *= rm
@@ -511,7 +513,8 @@
       void before
     } else {
       if (clean) calls.push(['SWISH!', 'white'])
-      else if (bounced) calls.push(['BOUNCE!', 'gold'])
+      else if (declared) calls.push(['BOUNCE!', 'gold'])
+      else if (bounced) calls.push(['LUCKY BOUNCE!', 'yellow'])
       else calls.push(['RATTLED IN!', 'yellow'])
       if (vic === 0 && !m.demo) {
         run.cpuMakes++
@@ -663,6 +666,7 @@
       case 'ready':
         // match start: brief READY / GO overlay
         if (M.pt === 1) { M.banner = 'READY?'; M.bannerC = 'white' }
+        if (M.pt === 31 && !FAST) sfx('go')
         if (M.pt >= (FAST ? 10 : 50)) { startTurn(0) }
         break
       case 'banner':
@@ -777,7 +781,6 @@
     // trail
     var fire = b && b.fire
     for (var i = 0; i < M.trail.length; i++) {
-      if (i % 2 === 1 && !fire) continue
       A.drawTrailDot(ctx, R(M.trail[i].x), R(M.trail[i].y), !!fire)
     }
     // painter: cups + ball by z
@@ -815,22 +818,22 @@
     var ph = M.phase
     if (ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight') drawInset()
     // callouts
-    drawCallouts()
+    if (!paused) drawCallouts()
     // banner
-    if ((ph === 'banner' || ph === 'ready') && M.banner) {
+    if ((ph === 'banner' || ph === 'ready') && M.banner && !paused) {
       var txt = M.banner
       if (ph === 'ready' && M.pt > 30) txt = 'GO!'
       var w = Math.max(96, txt.length * 16 + 24)
-      box(128 - w / 2, 112, w, 32, M.redemption ? 'gold' : 'default')
-      BIG(txt, 128, 120, ph === 'ready' && M.pt > 30 ? 'gold' : M.bannerC, 2)
-      if (ph === 'banner' && !M.redemption && (M.turn === 1 || M.demo || true)) {
-        for (var bi = 0; bi < M.balls; bi++) A.drawIcon(ctx, 'ball', 128 - M.balls * 5 + bi * 10, 148)
-      }
+      var withBalls = ph === 'banner' && !M.redemption
+      box(128 - w / 2, 108, w, withBalls ? 40 : 30, M.redemption ? 'gold' : M.turn === 1 && ph === 'banner' ? 'red' : 'default')
+      BIG(txt, 128, 115, ph === 'ready' && M.pt > 30 ? 'gold' : M.bannerC, 2)
+      if (withBalls) for (var bi = 0; bi < M.balls; bi++) A.drawIcon(ctx, 'ball', 128 - M.balls * 5 + bi * 10 + 1, 135)
     }
     if (showHud !== false) drawHUD()
     if (M.demo) {
-      if (blink(frame, 24)) { box(84, 108, 88, 20, 'dim'); TC('DEMO PLAY', 114, 'gold') }
-      if (blink(frame, 30)) TC('PUSH START', 220, 'white', true)
+      box(84, 202, 88, 18, 'dim')
+      if (blink(frame, 24)) TC('DEMO PLAY', 207, 'gold')
+      if (blink(frame, 30)) TC('PUSH START', 228, 'white', true)
     }
   }
 
@@ -893,7 +896,12 @@
     } else if (M.phase === 'power' || M.phase === 'throw') ch = M.lockAim
     if (ch) {
       var q = insetXY(side, ch.x, ch.z)
-      if (M.phase === 'aim' || blink(frame, 4)) A.drawCrosshair(ctx, R(q.x), R(q.y), frame)
+      var onT = false
+      for (var ci = 0; ci < cs.length; ci++) if (cs[ci].alive && Math.hypot(cs[ci].x - ch.x, cs[ci].z - ch.z) < 2.2) onT = true
+      if (M.phase === 'aim' || blink(frame, 4)) {
+        A.drawCrosshair(ctx, R(q.x), R(q.y), frame)
+        reticle(R(q.x), R(q.y), M.phase !== 'aim' ? 'white' : onT ? 'lgreen' : 'yellow')
+      }
     }
     if (M.phase === 'flight' && M.ball) {
       var b = M.ball, bp = insetXY(side, b.x, b.z)
@@ -904,7 +912,7 @@
     }
     ctx.restore()
     // shooter tag
-    if (!human) T(M.sides[side].name.slice(0, 9), IX + 4, IY + IH - 11, 'red', true)
+    if (!human) T(M.demo && side === 0 ? 'HERO' : M.sides[side].name.slice(0, 9), IX + 4, IY + IH - 11, side === 0 ? 'white' : 'red', true)
     // bounce toggle button
     if (human && (M.phase === 'aim')) {
       box(IX, IY + IH + 1, IW, 12, M.bounce ? 'gold' : 'dim')
@@ -942,6 +950,13 @@
       }
     }
   }
+  function reticle(x, y, c) {
+    var o = 8, l = 3
+    rect(x - o, y - o, l, 1, c); rect(x - o, y - o, 1, l, c)
+    rect(x + o - l + 1, y - o, l, 1, c); rect(x + o, y - o, 1, l, c)
+    rect(x - o, y + o, l, 1, c); rect(x - o, y + o - l + 1, 1, l, c)
+    rect(x + o - l + 1, y + o, l, 1, c); rect(x + o, y + o - l + 1, 1, l, c)
+  }
   function drawWindArrow(side) {
     var M = m
     var dx = Math.cos(M.wind.ang), dz = Math.sin(M.wind.ang)
@@ -964,7 +979,7 @@
     T('1P', 8, 0, 'red')
     T(pad(score, 6), 32, 0, 'white')
     T('HI', 168, 0, 'red')
-    T(pad(Math.max(hi, run ? run.score : 0), 6), 192, 0, 'white')
+    T(pad(Math.max(hi, run && !M.demo ? run.disp : 0), 6), 192, 0, 'white')
     var stl = (M.loop > 0 ? 'R' + (M.loop + 1) + ' ' : '') + 'ST' + (M.stage + 1)
     T(stl, 128 - stl.length * 4, 0, 'gold')
     // cups rows
@@ -1072,6 +1087,7 @@
 
   function startRun() {
     newRun()
+    sfx('start')
     go('vs', { stage: 0 })
   }
 
@@ -1240,7 +1256,7 @@
     },
     update: function () {
       if (S.t > 8 && (okPr() || tap())) { if (S.t < S.dur - 50) { S.t = S.dur - 50; sfx('confirm') } else S.t = S.dur }
-      if (S.t === S.dur - 50 && !FAST) sfx('confirm')
+      if (S.t === S.dur - 50 && !FAST) sfx('go')
       if (S.t >= S.dur) startStage()
     },
     draw: function () {
@@ -1265,11 +1281,11 @@
       T('BUZZ', 20, 140, 'beer')
       for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 20 + k * 9, 150)
       if (t > 50) {
-        box(16, 164, 224, 34, 'dim')
+        box(16, 162, 224, 38, 'dim')
         var shown = Math.min(st.taunt[0].length + st.taunt[1].length, ((t - 50) / 2) | 0)
-        T(st.cpu + ':', 24, 170, 'red')
-        T(st.taunt[0].slice(0, shown), 24 + 0, 180, 'white')
-        if (shown > st.taunt[0].length) T(st.taunt[1].slice(0, shown - st.taunt[0].length), 24, 189, 'white')
+        T(st.cpu + ':', 24, 168, 'red')
+        T(st.taunt[0].slice(0, shown), 24, 178, 'white')
+        if (shown > st.taunt[0].length) T(st.taunt[1].slice(0, shown - st.taunt[0].length), 24, 187, 'white')
         if (t % 2 === 0 && shown < st.taunt[0].length + st.taunt[1].length && !FAST) sfx('letter')
       }
       if (t > S.dur - 50) BIG('GO!', 128, 208, 'gold', 2)
@@ -1776,6 +1792,10 @@
     get ball() { return m && m.ball ? { x: +m.ball.x.toFixed(1), y: +m.ball.y.toFixed(1), z: +m.ball.z.toFixed(1) } : null },
     step: function (n) { for (var i = 0; i < (n || 1); i++) tick() },
     press: function (b) { virt[b] = true },
+    render: function () { render() },
+    // QA: leave only n cups alive on a side (0 = hero, 1 = cpu)
+    setCups: function (side, n) { if (!m) return; m.sides[side].cups.forEach(function (c, i) { c.alive = i < n; c.hitT = 99 }) },
+    go: function (name, data) { fade = null; setState(name, data || {}) },
     // QA: jump straight into a match (stage 0-4, loop 0+, starting buzz)
     startAt: function (stg, loop, buzz) {
       fade = null; newRun(); run.stage = stg || 0; run.loop = loop || 0; run.buzz = buzz || 0

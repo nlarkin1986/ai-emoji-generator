@@ -62,7 +62,21 @@ function misc(ctx) {
   for (var s = 0; s < 6; s++) { A.drawCup(ctx, 190 + s * 10, 216, s ? 'hit' : 'full', s * 3); A.drawSplash(ctx, 190 + s * 12, 210, s * 4 + 2); }
   A.drawBall(ctx, 120, 230, false, 0); A.drawBall(ctx, 132, 230, true, 0); A.drawBall(ctx, 144, 230, true, 4); A.drawShadow(ctx, 156, 232);
 }
-if (/^s\d$/.test(panel)) { var s = +panel[1]; scene(c, s, T, EX, q.get('pl'), q.get('pr')); }
+function fx(ctx) {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 256, 240); A.drawTable(ctx, 0);
+  ctx.fillStyle = '#A40000'; ctx.fillRect(0, 0, 256, 60);
+  for (var i = 0; i < 9; i++) { A.drawCup(ctx, 14 + i * 28, 40, 'full'); A.drawSplash(ctx, 14 + i * 28, 30, i * 3); A.text(ctx, String(i * 3), 8 + i * 28, 46, 'white'); }
+  for (i = 0; i < 9; i++) A.drawCup(ctx, 14 + i * 28, 80, 'hit', i * 2);
+  A.drawBall(ctx, 20, 100, false, 0); A.drawBall(ctx, 40, 100, true, 0); A.drawBall(ctx, 60, 100, true, 4); A.drawShadow(ctx, 80, 100);
+  for (i = 0; i < 8; i++) { A.drawTrailDot(ctx, 100 + i * 6, 100 - i, false); A.drawTrailDot(ctx, 160 + i * 6, 100 - i, true); }
+  A.drawBox(ctx, 4, 112, 80, 72, 'default'); ctx.fillStyle = '#A40000'; ctx.fillRect(8, 116, 72, 64);
+  [[30, 130], [46, 130], [62, 130], [38, 144], [54, 144], [46, 158]].forEach(function (p, i) { A.drawCupTop(ctx, p[0], p[1], i === 2 ? 'gone' : 'full'); });
+  A.drawCrosshair(ctx, 46, 145, 0); A.drawCrosshair(ctx, 70, 170, 8);
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(ctx.canvas, 4, 112, 80, 72, 96, 112, 160, 144); ctx.restore();
+  A.drawLogo(ctx, 128, 182, 0);
+}
+if (panel === 'por') { cv.width = 200; cv.height = 76; c.fillStyle = '#000'; c.fillRect(0, 0, 200, 76); ['hero', 'chad', 'tank', 'sky', 'brody', 'kegmaster'].forEach(function (w, i) { A.drawPortrait(c, w, 2 + (i % 3) * 66, 2 + (i / 3 | 0) * 38); A.drawPlayer(c, w, 'idle', 50 + (i % 3) * 66, 36 + (i / 3 | 0) * 38, 0); }); }
+else if (panel === 'fx') fx(c); else if (/^s\d$/.test(panel)) { var s = +panel[1]; scene(c, s, T, EX, q.get('pl'), q.get('pr')); }
 else if (panel === 'chars') { cv.width = 440; cv.height = 360; c.imageSmoothingEnabled = false; chars(c); }
 else if (panel === 'misc') { misc(c); }
 else { cv.width = 768; cv.height = 480; c.imageSmoothingEnabled = false;

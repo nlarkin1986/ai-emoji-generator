@@ -35,7 +35,7 @@
   var DARK = { white: 'lgray', lgray: 'gray', xlgray: 'lgray', yellow: 'orange', gold: 'orange', cream: 'yellow',
     orange: 'red', beer: 'red', red: 'dred', pink: 'rose', salmon: 'red', green: 'dgreen', lgreen: 'green',
     sky: 'blue', cyan: 'teal', aqua: 'cyan', blue: 'dblue', purple: 'dpurple', lpurple: 'purple',
-    magenta: 'dmagenta', tan: 'orange', skin: 'salmon', gray: 'dgray', lblue: 'blue', lime: 'green', mint: 'emerald' };
+    magenta: 'dmagenta', dmagenta: 'dpurple', rose: 'crimson', teal: 'slate', tan: 'orange', skin: 'salmon', gray: 'dgray', lblue: 'blue', lime: 'green', mint: 'emerald' };
 
   var W = 256, H = 240;
   var G = { TABLE_BACK: 182, TABLE_FRONT: 196, TABLE_X0: 32, TABLE_X1: 224, TABLE_MID: 189, FLOOR_Y: 222,
@@ -477,9 +477,9 @@
     cheer1: { h: [5, -2, 'h'], t: [[8, 11], [18, 11], [18, 15], [17, 24], [9, 24], [8, 15]], s: [[8, 23], [18, 23], [18, 29], [8, 29]],
       ab: [[8, 13], [3, 11], [3, 4]], af: [[17, 13], [22, 11], [22, 4]],
       lb: [[10, 28], [8, 34], [9, 40]], lf: [[15, 28], [17, 34], [16, 40]], lg: [11, 15] },
-    drink: { h: [9, 8, 'c'], t: [[9, 20], [19, 18], [20, 22], [17, 30], [9, 30], [8, 24]], s: [[8, 29], [17, 29], [18, 34], [8, 34]],
-      ab: [[11, 21], [10, 27], [12, 32]], af: [[18, 21], [22, 26], [21, 19]], item: 'cup',
-      lb: [[10, 33], [8, 38], [9, 43]], lf: [[15, 33], [17, 38], [16, 43]], lg: null },
+    drink: { h: [10, 5, 'c'], t: [[8, 29], [17, 29], [22, 20], [20, 16], [12, 16], [8, 22]], s: [[8, 27], [18, 27], [18, 33], [8, 33]],
+      ab: [[12, 19], [11, 25], [12, 30]], af: [[19, 19], [23, 24], [22, 17]], item: 'cup',
+      lb: [[10, 31], [10, 37], [10, 43]], lf: [[15, 31], [16, 37], [16, 43]], lg: null },
     sad: { h: [5, 3, 's'], t: [[8, 15], [17, 15], [18, 18], [17, 27], [9, 27], [8, 18]], s: [[8, 26], [18, 26], [18, 32], [8, 32]],
       ab: [[8, 17], [7, 23], [7, 28]], af: [[17, 17], [21, 21], [18, 13]],
       lb: [[10, 31], [10, 37], [10, 43]], lf: [[15, 31], [15, 37], [15, 43]], lg: [11, 19] },
@@ -599,6 +599,8 @@
     for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) { var dx = (x + 0.5 - 16) / rx, dy = (y + 0.5 - 15.5) / ry; if (dx * dx + dy * dy <= 1) gs(f, x, y, 'S'); }
     // ears
     gCaps(f, 8 - wide, 16, 8 - wide, 17, 1.3, 'S'); gCaps(f, 23 + wide, 16, 23 + wide, 17, 1.3, 'S');
+    for (y = 0; y < 32; y++) { for (x = 0; x < 32; x++) if (gg(f, x, y) === 'S') { gs(f, x, y, 's'); if (y > 12) gs(f, x + 1, y, 's'); break; } }
+    for (x = 0; x < 32; x++) for (y = 31; y >= 0; y--) if (gg(f, x, y) === 'S') { gs(f, x, y, 's'); break; }
     // hair / hats
     var hd = ch.head;
     if (hd === 'hero' || hd === 'chad') {
@@ -644,10 +646,11 @@
       for (x = 10; x < 15; x++) gs(f, x, eyeY + 2, 'G'); for (x = 18; x < 23; x++) gs(f, x, eyeY + 2, 'G');
       gs(f, 11, eyeY, 'g'); gs(f, 19, eyeY, 'g');
     } else {
-      [[11, 'L'], [19, 'R']].forEach(function (e) {
-        var ex2 = e[0]; gs(f, ex2, eyeY, 'w'); gs(f, ex2 + 1, eyeY, 'w'); gs(f, ex2 + 2, eyeY, 'w');
-        gs(f, ex2, eyeY + 1, 'w'); gs(f, ex2 + 1, eyeY + 1, 'E'); gs(f, ex2 + 2, eyeY + 1, 'E');
-        for (var bx2 = ex2 - 1; bx2 < ex2 + 3; bx2++) gs(f, bx2, eyeY - 2, hd === 'kegmaster' ? 'D' : 'K');
+      [[11, -1], [19, 1]].forEach(function (e) {
+        var ex2 = e[0];
+        for (var q = 0; q < 3; q++) { gs(f, ex2 + q, eyeY - 1, 'K'); gs(f, ex2 + q, eyeY, q === 1 ? 'E' : 'w'); gs(f, ex2 + q, eyeY + 1, q === 1 ? 'E' : 'w'); }
+        var bc = hd === 'kegmaster' ? 'D' : hd === 'chad' || hd === 'brody' ? 'h' : 'K';
+        for (var bx2 = ex2 - 1; bx2 < ex2 + 4; bx2++) gs(f, bx2, eyeY - 3 + ((e[1] < 0 ? bx2 - ex2 : ex2 + 2 - bx2) > 1 ? 1 : 0), bc);
       });
     }
     // nose + mouth
@@ -662,8 +665,9 @@
     gComp(g, f);
     var cv = mk(32, 32), c = cv._x;
     R(c, 0, 0, 32, 32, ch.bg);
-    dith4(c, 0, 0, 32, 32, 'black', 1);
-    var map = { K: 'black', E: 'black', M: 'dred', w: 'white', G: 'black', g: 'white', h: 'dgray' };
+    c.fillStyle = C(DARK[ch.bg] || 'black');
+    for (y = 0; y < 32; y++) for (x = 0; x < 32; x++) if (((x + y) % 6) < 2) c.fillRect(x, y, 1, 1);
+    var map = { K: 'black', E: 'black', M: 'dred', w: 'white', G: 'black', g: 'white', h: ch.pal.H === 'yellow' || ch.pal.H === 'cream' ? 'olive' : 'dgray' };
     for (var key in ch.pal) map[key] = ch.pal[key];
     map.w = 'white'; map.c = ch.pal.c || 'dred'; map.D = ch.pal.D || 'brown';
     c.drawImage(gCanvas(g, map), 0, 0);
@@ -837,7 +841,7 @@
     var cv = mk(W, H), c = cv._x, i;
     R(c, 0, 0, W, H, 'navy');
     dith(c, 0, 0, W, 34, 'black'); R(c, 0, 0, W, 26, 'black'); dith4(c, 0, 34, W, 10, 'black');
-    STAR_SETS[0] = stars(c, 11, 120, 26, 120, function (x, y) { return (x > 56 && x < 200 && y > 26) || (x < 60 && y > 50); });
+    STAR_SETS[0] = stars(c, 11, 120, 26, 120, function (x, y) { return (x > 52 && x < 204 && y > 24) || (x < 66 && y > 30) || (x > 196 && y > 52); });
     moonCrescent(c, 226, 40, 8, 'navy');
     // far trees right
     treeBlob(c, 214, 82, 16, 'forest', 'dgreen', 'black'); treeBlob(c, 244, 70, 16, 'forest', 'dgreen', 'black'); treeBlob(c, 232, 100, 18, 'forest', 'dgreen');
@@ -926,11 +930,14 @@
       var off = ((y / 5) | 0) % 2 ? 6 : 0;
       for (x = -off; x < W; x += 12) {
         R(c, x, y, 11, 4, 'maroon');
-        R(c, x, y, 11, 1, 'brown');
-        if (((x * 7 + y * 3) & 15) === 3) dith(c, x + 1, y + 1, 9, 3, 'dred');
+        var hsh = (x * 7 + y * 13) & 15;
+        if (hsh === 3) R(c, x, y, 10, 1, 'dred');
+        else if (hsh === 9 || hsh === 12) R(c, x, y, 11, 4, 'dbrown');
+        else if (hsh === 5) dith(c, x, y, 11, 4, 'dbrown');
       }
     }
-    dith4(c, 0, 39, W, 131, 'black', 1);
+    dith(c, 0, 39, W, 22, 'black'); dith4(c, 0, 61, W, 109, 'black', 1);
+    dith(c, 0, 39, 16, 131, 'black'); dith(c, 240, 39, 16, 131, 'black');
     // small high window showing night + moon
     R(c, 108, 44, 40, 20, 'lgray'); R(c, 110, 46, 36, 16, 'navy'); dith(c, 110, 46, 36, 4, 'black');
     P1(c, 116, 50, 'white'); P1(c, 132, 48, 'lgray'); P1(c, 140, 53, 'white');
@@ -941,14 +948,19 @@
     R(c, 21, 70, 19, 1, 'black'); R(c, 30, 61, 1, 19, 'black');
     // pennant flag "PONG"
     c.fillStyle = C('blue');
-    for (i = 0; i < 18; i++) c.fillRect(176 + i * 3, 52 + (i >> 1), 60 - i * 3, 1);
-    R(c, 176, 52, 60, 2, 'blue'); R(c, 174, 50, 2, 24, 'lgray');
-    text(c, 'PONG', 182, 54, 'white');
+    for (i = 0; i < 18; i++) c.fillRect(176 + i * 3, 64 + (i >> 1), 60 - i * 3, 1);
+    for (i = 0; i < 18; i++) P1(c, 236 - i * 3, 64 + (i >> 1), 'black');
+    R(c, 176, 64, 2, 18, 'sky'); R(c, 174, 60, 2, 28, 'lgray'); P1(c, 174, 59, 'gold');
+    text(c, 'PONG', 182, 66, 'white');
     // poster
     R(c, 64, 60, 26, 34, 'cream'); R(c, 66, 62, 22, 30, 'magenta'); disc(c, 77, 74, 6, 'yellow'); R(c, 68, 84, 18, 2, 'white'); R(c, 70, 88, 14, 1, 'white');
-    // couch back (behind crowd)
-    R(c, 36, 140, 86, 30, 'olive'); R(c, 36, 140, 86, 3, 'gold'); R(c, 34, 146, 6, 26, 'olive'); R(c, 118, 146, 6, 26, 'olive');
-    dith4(c, 36, 144, 86, 26, 'dbrown');
+    // couch (behind crowd)
+    R(c, 39, 137, 80, 1, 'black'); R(c, 38, 138, 82, 34, 'black'); R(c, 39, 138, 80, 22, 'olive'); R(c, 40, 138, 78, 1, 'gold');
+    for (x = 65; x < 119; x += 26) R(c, x, 139, 1, 20, 'dbrown');
+    dith4(c, 39, 141, 80, 18, 'dbrown');
+    R(c, 39, 160, 80, 10, 'olive'); R(c, 39, 160, 80, 1, 'gold'); R(c, 65, 160, 1, 10, 'dbrown'); R(c, 92, 160, 1, 10, 'dbrown');
+    R(c, 31, 148, 11, 24, 'black'); R(c, 32, 149, 9, 22, 'olive'); R(c, 32, 149, 9, 1, 'gold'); R(c, 40, 150, 1, 21, 'dbrown');
+    R(c, 116, 148, 11, 24, 'black'); R(c, 117, 149, 9, 22, 'olive'); R(c, 117, 149, 9, 1, 'gold'); R(c, 117, 150, 1, 21, 'dbrown');
     // kegs stacked (right)
     function keg(kx, ky) {
       R(c, kx, ky, 20, 22, 'lgray'); R(c, kx + 14, ky, 6, 22, 'gray'); R(c, kx + 2, ky, 2, 22, 'white');
@@ -1037,7 +1049,7 @@
     for (y = 112; y < 156; y += 4) for (x = (y * 7) % 16; x < W; x += 16) R(c, x, y, 6, 1, 'blue');
     // sand
     R(c, 0, 154, W, 86, 'olive'); R(c, 0, 154, W, 2, 'white'); dith(c, 0, 156, W, 2, 'lgray');
-    dith4(c, 0, 158, W, 82, 'orange', 0); dith4(c, 0, 159, W, 80, 'dbrown', 2);
+    dith4(c, 0, 158, W, 82, 'orange', 0);
     // fire glow on sand around bonfire (left)
     for (y = 160; y < 240; y++) for (x = 0; x < 120; x++) { var dx = (x - 48) / 60, dy = (y - 186) / 34; var d = dx * dx + dy * dy; if (d < 1 && ((x + y) & 1)) P1(c, x, y, d < 0.35 ? 'gold' : 'orange'); }
     // palms
@@ -1054,7 +1066,8 @@
     // tiki torches
     R(c, 196, 140, 2, 40, 'brown'); R(c, 194, 136, 6, 5, 'olive'); R(c, 120, 146, 2, 34, 'brown'); R(c, 118, 142, 6, 5, 'olive');
     // logs of bonfire
-    R(c, 34, 176, 28, 4, 'dbrown'); R(c, 36, 174, 24, 2, 'brown'); R(c, 38, 180, 22, 2, 'black');
+    R(c, 36, 171, 26, 3, 'brown'); R(c, 34, 174, 30, 3, 'dbrown'); R(c, 37, 172, 2, 2, 'orange'); R(c, 58, 172, 2, 2, 'orange');
+    for (i = 0; i < 7; i++) { R(c, 32 + i * 5, 177, 4, 3, 'gray'); R(c, 32 + i * 5, 177, 4, 1, 'lgray'); }
     // cooler
     R(c, 146, 160, 22, 14, 'blue'); R(c, 146, 160, 22, 3, 'white'); R(c, 154, 158, 6, 2, 'lgray');
     lyingCup(c, 92, 212); lyingCup(c, 182, 218);
@@ -1169,8 +1182,8 @@
       // wave foam
       for (x = 0; x < W; x += 8) { var wv = ((x >> 3) + (t >> 4)) % 4; if (wv === 0) R(ctx, x, 152, 6, 1, 'white'); else if (wv === 1) R(ctx, x + 2, 150, 4, 1, 'pblue'); }
       // bonfire
-      flame(ctx, 40, 175, t, 3); flame(ctx, 48, 174, t + 5, 5); flame(ctx, 56, 175, t + 11, 3);
-      for (i = 0; i < 5; i++) { var sp = (t * 2 + i * 37) % 80; P1(ctx, 48 + Math.round(Math.sin((t + i * 30) / 9) * 4) + (i - 2) * 3, 166 - sp, sp < 40 ? 'yellow' : 'orange'); }
+      flame(ctx, 41, 171, t, 5); flame(ctx, 56, 171, t + 11, 5); flame(ctx, 48, 171, t + 5, 9);
+      for (i = 0; i < 6; i++) { var sp = (t + i * 29) % 60; P1(ctx, 48 + Math.round(Math.sin((t + i * 30) / 9) * 3) + (i - 3) * 3, 156 - sp, sp < 25 ? 'yellow' : sp < 45 ? 'orange' : 'red'); }
       flame(ctx, 197, 136, t + 3, 0); flame(ctx, 121, 142, t + 8, 0);
     } else if (stage === 4) {
       // banner
@@ -1203,7 +1216,7 @@
     { top: 'red', top2: 'dred', trim: 'white', stripe: 'white', apron: 'red', apron2: 'dred', leg: 'dgray', leg2: 'black' },
     { top: 'orange', top2: 'brown', trim: 'tan', stripe: 'brown', apron: 'brown', apron2: 'maroon', leg: 'dgray', leg2: 'black', wood: 1 },
     { top: 'dgray', top2: 'black', trim: 'lgray', stripe: 'cyan', apron: 'gray', apron2: 'dgray', leg: 'lgray', leg2: 'gray' },
-    { top: 'tan', top2: 'orange', trim: 'cream', stripe: 'olive', apron: 'olive', apron2: 'dbrown', leg: 'olive', leg2: 'dbrown', wood: 2 },
+    { top: 'gold', top2: 'orange', trim: 'cream', stripe: 'olive', apron: 'olive', apron2: 'dbrown', leg: 'olive', leg2: 'dbrown', wood: 2 },
     { top: 'dblue', top2: 'navy', trim: 'gold', stripe: 'white', apron: 'blue', apron2: 'dblue', leg: 'gold', leg2: 'orange', star: 1 }
   ];
   var tableCache = [];
@@ -1283,19 +1296,19 @@
   function drawSplash(ctx, x, y, t) {
     if (!ctx) return; t = t | 0; if (t < 0 || t > 24) return; x = Math.round(x); y = Math.round(y);
     var i;
-    if (t < 14) { // starburst lines (white inner, amber outer)
-      var d0 = 2 + (t >> 1), len = t < 8 ? 3 : 2;
+    if (t < 16) { // starburst lines (white core, amber tips) like a comic "plink"
+      var d0 = 2 + Math.round(t * 0.6), len = t < 10 ? 4 : 2;
       for (i = 0; i < SPL_DIRS.length; i++) {
         var dx = SPL_DIRS[i][0], dy = SPL_DIRS[i][1];
-        for (var s = 0; s < len; s++) P1(ctx, x + Math.round(dx * (d0 + s)), y + Math.round(dy * (d0 + s)), s === 0 && t < 8 ? 'white' : (t & 2 ? 'beer' : 'white'));
+        for (var s = 0; s < len; s++) P1(ctx, x + Math.round(dx * (d0 + s)), y + Math.round(dy * (d0 + s)), t < 6 || s < len - 1 ? 'white' : 'beer');
       }
-      if (t < 4) { R(ctx, x - 1, y - 1, 3, 2, 'white'); }
+      if (t < 5) { R(ctx, x - 2, y - 1, 5, 2, 'white'); R(ctx, x - 1, y - 3, 3, 2, 'beer'); P1(ctx, x, y - 4, 'white'); }
     }
     // droplets arcing out and falling
     for (i = 0; i < 6; i++) {
       var vx = [-1.1, 1.1, -0.6, 0.6, -1.6, 1.6][i], vy = [-2.2, -2.2, -2.8, -2.8, -1.6, -1.6][i];
-      var px = x + vx * t * 0.7, py = y + vy * t * 0.7 + 0.09 * t * t;
-      if (t > 3) P1(ctx, px, py, i & 1 ? 'beer' : 'yellow');
+      var px = Math.round(x + vx * t * 0.7), py = Math.round(y + vy * t * 0.7 + 0.09 * t * t);
+      if (t > 3) { R(ctx, px, py, i < 2 && t < 14 ? 2 : 1, 1, i & 1 ? 'beer' : 'yellow'); if (t < 12) P1(ctx, px, py - 1, 'white'); }
     }
   }
   function drawCrosshair(ctx, x, y, t) {
@@ -1312,13 +1325,13 @@
   // ------------------------------------------------------------------ title logo
   var logo = null;
   function buildLogo() {
-    var LW = 204, LH = 58, g = new Uint8Array(LW * LH), band = new Uint8Array(LW * LH), i, x, y;
+    var LW = 212, LH = 58, g = new Uint8Array(LW * LH), band = new Uint8Array(LW * LH), i, x, y;
     // "BEER PONG" 3x glyphs, italic shear, with ping-pong-ball 'O'
-    var str = 'BEER PONG', sc = 3, ox = 6, oy = 22;
+    var str = 'BEER PONG', sc = 3, ox = 4, oy = 22;
     var cx = ox, ballAt = null;
     for (i = 0; i < str.length; i++) {
       var ch = str.charAt(i);
-      if (ch === ' ') { cx += 8; continue; }
+      if (ch === ' ') { cx += 12; continue; }
       if (ch === 'O') { ballAt = [cx + 10, oy + 10]; cx += 23; continue; }
       var gl = GL[ch];
       for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl[y] && gl[y].charAt(x) === '#') {
@@ -1330,7 +1343,7 @@
       cx += 23;
     }
     // "SUPER" 2x small caps at top-left with bars
-    var str2 = 'SUPER', sc2 = 2, ox2 = 40, oy2 = 3; cx = ox2;
+    var str2 = 'SUPER', sc2 = 2, ox2 = 44, oy2 = 3; cx = ox2;
     for (i = 0; i < str2.length; i++) {
       var gl2 = GL[str2.charAt(i)];
       for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl2[y].charAt(x) === '#') {
@@ -1365,15 +1378,15 @@
       disc(c, bx, by, 10, 'lgray'); disc(c, bx - 1, by - 1, 9, 'white'); disc(fc, bx - 1, by - 1, 9, 'white');
       R(c, bx - 5, by - 6, 3, 2, 'xlgray'); P1(c, bx - 6, by - 4, 'xlgray');
       // seam arc
-      for (x = -8; x <= 8; x++) P1(c, bx + x, by + 2 + Math.round((x * x) / 18), 'lgray');
+      P1(c, bx + 6, by + 5, 'lgray'); P1(c, bx + 7, by + 4, 'lgray'); P1(c, bx + 4, by + 7, 'lgray');
       // little red cup to the right of SUPER, ball hopping into it
     }
     // red cup emblem next to SUPER
-    var cupx = 130, cupy = 2;
+    var cupx = 184, cupy = 0;
     paint(c, ['KKKKKKKKKK', 'KWWWWWWWWK', 'KgWWWWWWgK', 'KRLRRRRRDK', '.KRLRRRDK.', '.KRLRRRDK.', '.KDDDDDDK.', '.KRLRRRDK.', '.KRLRRDDK.', '.KDDDDDDK.', '..KKKKKK..'],
       { K: 'black', W: 'white', g: 'lgray', R: 'red', L: 'salmon', D: 'dred' }, cupx, cupy);
     // dotted arc from SUPER to the cup
-    for (i = 0; i < 6; i++) { var ax = 128 - 10 + i * 2, ay = 6 - Math.round(Math.sin(i / 5 * Math.PI) * 3); }
+    for (i = 0; i < 6; i++) { var ax = 156 + i * 5, ay = 16 - Math.round(Math.sin((i + 1) / 7 * Math.PI) * 14); if (!o2[ay * LW + ax]) { R(c, ax, ay, 2, 2, 'white'); P1(c, ax + 1, ay + 1, 'lgray'); } }
     // underline bar with stars
     logo = { cv: cv, face: face, w: LW, h: LH };
     return logo;
@@ -1391,7 +1404,7 @@
       }
     }
     // sparkle star on the ball
-    var tw = (t >> 3) % 8; if (tw < 3) { var sx2 = lx + 102, sy2 = ly + 26; R(ctx, sx2 - tw, sy2, tw * 2 + 1, 1, 'white'); R(ctx, sx2, sy2 - tw, 1, tw * 2 + 1, 'white'); }
+    var tw = (t >> 3) % 8; if (tw < 3) { var sx2 = lx + 136, sy2 = ly + 26; R(ctx, sx2 - tw, sy2, tw * 2 + 1, 1, 'white'); R(ctx, sx2, sy2 - tw, 1, tw * 2 + 1, 'white'); }
   }
 
   // ------------------------------------------------------------------ init
@@ -1412,8 +1425,7 @@
         for (var y = 0; y < 12; y++) for (var x = 0; x < 12; x++) {
           var dx = x - 5.5, dy = y - 5.5, d = Math.sqrt(dx * dx + dy * dy), col = null;
           if (mode === 'gone') { if (d <= 6 && d > 4.6) col = (x + y) & 1 ? 'dgray' : null; }
-          else if (d <= 6.1) col = d > 5 ? 'red' : d > 4 ? 'white' : (mode === 'hit' ? ((x + y) & 1 ? 'white' : 'beer') : (dx + dy < -2.5 ? 'yellow' : 'beer'));
-          if (d <= 6.1 && d > 5 && dx + dy > 3 && mode !== 'gone') col = 'dred';
+          else if (d <= 6.1) col = d > 5.3 ? 'black' : d > 4.2 ? (dx + dy > 2.5 ? 'dred' : 'red') : d > 3.1 ? 'white' : (mode === 'hit' ? ((x + y) & 1 ? 'white' : 'beer') : (dx + dy < -1.5 ? 'yellow' : 'beer'));
           if (col) P1(c, x, y, col);
         }
         if (mode !== 'gone') { P1(c, 4, 4, 'cream'); P1(c, 5, 4, 'cream'); }
