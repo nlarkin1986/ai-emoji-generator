@@ -6,6 +6,8 @@
  *   triangle          : 32-step 4-bit stepped triangle (PeriodicWave), linear-counter style gate (no volume).
  *   noise             : real 15-bit LFSR, long (32767) + short "metallic" (93) modes, the 16 NTSC period rates
  *                       pre-generated as buffers, per-frame period changes via playbackRate.
+ *   DMC (DPCM)        : 1-bit delta samples (7-bit counter +-2 per bit, NTSC DMC rate table), synthesised
+ *                       procedurally then DPCM-encoded: kick, snare, crowd "OHH!" / "YEAH!" voice stingers.
  *   mixer             : 2A03-ish channel weights -> master -> 90 Hz 1st-order HP -> ~13 kHz LP -> out.
  * SFX steal a music channel (usually pulse 2 / noise) and hand it back afterwards, like NES drivers.
  * Music: tracker-style note strings, lookahead scheduler (25 ms tick, 120 ms horizon) on AudioContext time.
@@ -15,10 +17,12 @@
   var BP = (window.BP = window.BP || {})
   var CPU = 1789773
   var NPER = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068]
-  var CHS = ['p1', 'p2', 'tr', 'no']
+  var CHS = ['p1', 'p2', 'tr', 'no', 'dm']
   var K = 2.3 // overall headroom factor on top of the 2A03 linear DAC weights
-  var LEVEL = { p1: 0.113 * K, p2: 0.113 * K, tr: 0.128 * K, no: 0.074 * K }
+  var LEVEL = { p1: 0.113 * K, p2: 0.113 * K, tr: 0.128 * K, no: 0.074 * K, dm: 0.42 * K }
   var LOOK = 0.12
+  var MUSIC_BUS = 0.72 // music sits a little under the SFX so event sounds always read clearly
+  var VIB = [0, 0.59, 0.95, 0.95, 0.59, 0, -0.59, -0.95, -0.95, -0.59]
 
   // ------------------------------------------------------------------ pitch helpers
   var NI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
@@ -60,6 +64,68 @@
     var P = b.length, c = new Float64Array(P + 1)
     for (var i = 0; i < P; i++) c[i + 1] = c[i] + b[i]
     return (LFSR[mode] = { b: b, c: c, P: P })
+  }
+
+  // ------------------------------------------------------------------ DMC / DPCM
+  var DMC_RATE = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54] // CPU cycles per bit (NTSC)
+  // r: rate index, d: seconds. Sources are synthesised at the DMC bit rate, encoded to 1-bit deltas, then decoded.
+  var DMS = { K: { r: 15, d: 0.17 }, S: { r: 15, d: 0.16 }, oh: { r: 14, d: 0.56 }, yeah: { r: 14, d: 0.64 } }
+  var DMCL = {}
+  function dpcmEncode(x) { // x: -1..1 at bit rate -> sample bytes (LSB first), like a .dmc file
+    var c = 64, bytes = new Uint8Array(Math.ceil(x.length / 8))
+    for (var i = 0; i < x.length; i++) {
+      var bit = 64 + x[i] * 63 > c ? 1 : 0
+      if (bit) { if (c <= 125) c += 2 } else if (c >= 2) c -= 2
+      if (bit) bytes[i >> 3] |= 1 << (i & 7)
+    }
+    return bytes
+  }
+  function dpcmDecode(bytes, n) { // the 2A03 DMC output unit: 7-bit counter, +2 / -2 per bit, clamped
+    var c = 64, lv = new Uint8Array(n)
+    for (var i = 0; i < n; i++) {
+      if ((bytes[i >> 3] >> (i & 7)) & 1) { if (c <= 125) c += 2 } else if (c >= 2) c -= 2
+      lv[i] = c
+    }
+    return lv
+  }
+  function dmcSample(name) {
+    if (DMCL[name]) return DMCL[name]
+    var D = DMS[name], fs = CPU / DMC_RATE[D.r], n = Math.round(D.d * fs), tail = Math.round(0.03 * fs), x = new Float32Array(n + tail)
+    var s = 0x1234567, rnd = function () { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x3fffffff - 1 }
+    var i, t, ph = 0
+    if (name === 'K') for (i = 0; i < n; i++) { // pitch-dropping sine thump + click
+      t = i / fs; ph += (2 * Math.PI * (48 + 120 * Math.exp(-t / 0.028))) / fs
+      x[i] = Math.sin(ph) * Math.exp(-t / 0.07) * 0.95 + (t < 0.003 ? rnd() * 0.6 : 0)
+    }
+    else if (name === 'S') for (i = 0; i < n; i++) { // body tone + noise burst (slope overload makes it crunchy)
+      t = i / fs; ph += (2 * Math.PI * (185 - 40 * t)) / fs
+      x[i] = Math.sin(ph) * 0.85 * Math.exp(-t / 0.05) + rnd() * 0.9 * Math.exp(-t / 0.06)
+    }
+    else { // crowd vowel: 4 detuned glottal saws -> 3 time-varying formant resonators
+      var yeah = name === 'yeah', mul = [1, 1.13, 0.88, 1.27], vph = [0, 0.3, 0.6, 0.15], st = [0, 0.012, 0.025, 0.006]
+      var y = new Float32Array(n), F = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], peak = 1e-6, j
+      for (i = 0; i < n; i++) {
+        t = i / fs
+        var u = t / D.d, f0 = yeah ? 150 + 60 * Math.sin(Math.PI * Math.min(1, u * 1.6)) : 170 - 55 * u, src = 0
+        for (j = 0; j < 4; j++) {
+          vph[j] = (vph[j] + (f0 * mul[j] * (1 + 0.01 * Math.sin(t * 37 + j))) / fs) % 1
+          if (t >= st[j]) src += vph[j] * 2 - 1
+        }
+        src = src / 4 + rnd() * 0.12
+        var fm = yeah ? (u < 0.2 ? [300, 2200, 2900] : u < 0.38 ? [540, 1800, 2500] : [760, 1220, 2500]) : [520, 880, 2450]
+        var out = 0
+        for (j = 0; j < 3; j++) {
+          var bw = [90, 110, 160][j], r = Math.exp((-Math.PI * bw) / fs), a1 = 2 * r * Math.cos((2 * Math.PI * fm[j]) / fs), a2 = -r * r
+          var o = (1 - r) * src + a1 * F[j][0] + a2 * F[j][1]
+          F[j][1] = F[j][0]; F[j][0] = o; out += o * [1, 0.45, 0.2][j]
+        }
+        var env = Math.min(1, t / 0.03) * (u < 0.55 ? 1 : Math.max(0, (1 - u) / 0.45))
+        y[i] = out * env; if (Math.abs(y[i]) > peak) peak = Math.abs(y[i])
+      }
+      for (i = 0; i < n; i++) x[i] = Math.tanh((y[i] / peak) * 2.2) * 0.95 // hot, soft-clipped: loud & crunchy once 1-bit encoded
+    }
+    var bytes = dpcmEncode(x)
+    return (DMCL[name] = { lv: dpcmDecode(bytes, x.length), fs: fs, bytes: bytes })
   }
 
   // ------------------------------------------------------------------ instruments & drums
@@ -108,30 +174,32 @@
         I: ['C6:2 r:2 C6:2 r:2 C6:1 r:1 C6:2 D6:2 E6:2 D6:2 r:2 D6:2 r:2 D6:1 r:1 G6:6',
           'E5:2 r:2 E5:2 r:2 E5:1 r:1 E5:2 F5:2 G5:2 B5:2 r:2 B5:2 r:2 B5:1 r:1 D6:6',
           'C3:2 r:2 C3:2 r:2 C3:1 r:1 C3:2 D3:2 E3:2 G2:2 r:2 G2:2 r:2 G2:1 r:1 G2:2 A2:2 B2:2',
-          's:2 r:2 s:2 r:2 s:1 r:1 k:2 k:2 k:2 s:2 r:2 s:2 r:2 s:1 r:1 s:1 s:1 s:1 s:1 s:1 s:1'],
+          's:2 r:2 s:2 r:2 s:1 r:1 k:2 k:2 k:2 s:2 r:2 s:2 r:2 s:1 r:1 s:1 s:1 s:1 s:1 s:1 s:1',
+          'S:4 S:4 S:2 K:2 K:2 K:2 S:4 S:4 S:2 S:1 S:1 S:1 S:1 S:1 S:1'],
         A: ['E5:2 G5:2 C6:3 B5:1 C6:2 G5:2 E5:4 A5:2 C6:2 E6:3 D6:1 C6:2 A5:2 E5:4 F5:2 A5:2 C6:2 F6:4 E6:2 D6:2 C6:2 D6:6 B5:2 G5:4 r:2 G5:1 B5:1 C6:2 G5:2 E6:3 D6:1 C6:2 E6:2 G6:4 A6:4 G6:2 E6:2 C6:4 A5:4 F6:2 E6:2 D6:2 C6:2 D6:2 E6:2 F6:2 B5:2 C6:12 r:4',
           '@stab %047 [C5:3 C5:3 C5:2]2 %037 [A4:3 A4:3 A4:2]2 %047 [F4:3 F4:3 F4:2]2 [G4:3 G4:3 G4:2]2 [C5:3 C5:3 C5:2]2 %037 [A4:3 A4:3 A4:2]2 %047 F4:3 F4:3 F4:2 G4:3 G4:3 G4:2 C5:3 C5:3 C5:2 C5:8',
           '2 [C3 C4]4 [A2 A3]4 [F2 F3]4 [G2 G3]4 [C3 C4]4 [A2 A3]4 [F2 F3]2 [G2 G3]2 C3 C4 C3 G2 C3:8',
-          '2 c h s h k k s h [k h s h k k s h]6 k h s h s:1 s:1 s:1 s:1 s s'],
+          '2 c h s h k k s h [k h s h k k s h]6 k h s h s:1 s:1 s:1 s:1 s s', '[K:4 S:4 K:2 K:2 S:4]7 K:4 S:4 S:1 S:1 S:1 S:1 S:2 S:2'],
         B: ['r:2 A5:2 B5:2 C6:2 E6:4 D6:2 C6:2 B5:4 G5:2 B5:2 E6:6 r:2 r:2 F5:2 A5:2 C6:2 F6:4 E6:2 C6:2 E6:6 D6:2 C6:2 G5:2 E5:4 F5:2 A5:2 D6:3 C6:1 D6:2 F6:2 A6:4 G6:4 F6:2 D6:2 B5:4 G5:4 E6:4 G6:4 A6:4 E6:4 F6:4 E6:2 D6:2 D6:2 B5:2 G5:2 B5:2',
           '<h-2 @harm',
           '2 [A2 A3]4 [E2 E3]4 [F2 F3]4 [C3 C4]4 [D3 D4]4 [G2 G3]4 [E2 E3]2 [A2 A3]2 [D3 D4]2 G2 G3 G2 B2',
-          '2 c o s o k k s o [k o s o k k s o]6 k k s s s:1 s:1 s:1 s:1 s s'],
+          '2 c o s o k k s o [k o s o k k s o]6 k k s s s:1 s:1 s:1 s:1 s s', '[K:4 S:4 K:2 K:2 S:4]7 K:2 K:2 S:2 S:2 S:1 S:1 S:1 S:1 S:2 S:2'],
       },
     },
     stage0: { // BACKYARD BASH — party rock, G (mixolydian b7 flavour)
       bpm: 160, k: 'G', sc: 'maj', x: 'F', ins: ['lead', 'chug', 'bass'], loop: 0, ord: 'A A2 B C',
       mac: { h: 'G4:3 G4:3 G4:2 G4:2 G4:2 G4:2 G4:2', q: 'G2:2 G2:2 G3:2 G2:2 G2:2 G3:2 D3:2 G2:2',
-        d: 'k:2 h:2 s:2 h:2 k:2 k:2 s:2 h:2', f: 'k:2 h:2 s:2 h:2 s:1 s:1 s:1 s:1 s:2 s:2' },
+        d: 'k:2 h:2 s:2 h:2 k:2 k:2 s:2 h:2', f: 'k:2 h:2 s:2 h:2 s:1 s:1 s:1 s:1 s:2 s:2',
+        D: '[K:4 S:4 K:2 K:2 S:4]3 K:4 S:4 S:1 S:1 S:1 S:1 S:2 S:2' },
       pat: {
         A: ['G5:2 G5:1 G5:1 B5:2 D6:2 r:2 D6:2 B5:2 G5:2 A5:2 B5:2 A5:2 G5:2 F5:2 G5:6 E5:2 G5:2 C6:2 E6:4 D6:2 C6:2 A5:2 B5:4 A5:2 G5:2 D5:4 r:4',
-          '%07c $h $h t-7 $h t0 $h', '$q $q t5 $q t0 $q', 'c:2 h:2 s:2 h:2 k:2 k:2 s:2 h:2 $d $d $f'],
+          '%07c $h $h t-7 $h t0 $h', '$q $q t5 $q t0 $q', 'c:2 h:2 s:2 h:2 k:2 k:2 s:2 h:2 $d $d $f', '$D'],
         A2: ['A5:2 A5:1 A5:1 D6:2 F#6:2 r:2 F#6:2 E6:2 D6:2 E6:2 D6:2 C6:2 B5:2 A5:2 G5:2 E5:4 D5:2 G5:2 B5:2 D6:2 G6:4 F6:2 D6:2 E6:2 D6:2 C6:2 A5:2 F#5:4 D5:4',
-          '%07c t-5 $h t-7 $h t0 $h t-5 $h', 't7 $q t5 $q t0 $q t7 $q', '$d $d $d $f'],
+          '%07c t-5 $h t-7 $h t0 $h t-5 $h', 't7 $q t5 $q t0 $q t7 $q', '$d $d $d $f', '$D'],
         B: ['E6:3 E6:3 E6:2 D6:2 B5:2 G5:4 C6:3 C6:3 C6:2 D6:2 E6:2 G6:4 G6:2 F6:2 D6:2 B5:2 D6:2 B5:2 G5:4 A5:4 B5:2 C6:2 D6:8',
-          '%07c t-3 $h t-7 $h t0 $h t-5 $h', 't-3 $q t5 $q t0 $q t7 $q', '[k:2 o:2 s:2 o:2 k:2 k:2 s:2 o:2]3 $f'],
+          '%07c t-3 $h t-7 $h t0 $h t-5 $h', 't-3 $q t5 $q t0 $q t7 $q', '[k:2 o:2 s:2 o:2 k:2 k:2 s:2 o:2]3 $f', '$D'],
         C: ['C6:2 r:2 C6:2 r:2 E6:2 D6:2 C6:4 D6:2 r:2 D6:2 r:2 F#6:2 E6:2 D6:4 G6:6 D6:2 B5:4 G5:4 A5:2 B5:2 D6:2 B5:2 A5:2 G5:2 F5:2 D5:2',
-          '%07c t-7 $h t-5 $h t0 $h G4:2 r:6 G4:2 G4:2 r:4', 't5 $q t7 $q t0 $q G2:2 A2:2 B2:2 D3:2 F3:2 E3:2 D3:2 B2:2', '$d $d $d $f'],
+          '%07c t-7 $h t-5 $h t0 $h G4:2 r:6 G4:2 G4:2 r:4', 't5 $q t7 $q t0 $q G2:2 A2:2 B2:2 D3:2 F3:2 E3:2 D3:2 B2:2', '$d $d $d $f', '$D'],
       },
     },
     stage1: { // FRAT BASEMENT — funk, E dorian, triangle slap-bass riff
@@ -177,12 +245,13 @@
     stage4: { // CHAMPIONSHIP — heroic march, D major, brass in 3rds
       bpm: 116, k: 'D', sc: 'maj', ins: ['brass', 'brass2', 'bass'], loop: 0, ord: 'A B',
       mac: { mb: 'D3:4 A2:4 D3:4 A2:4', d: 'k:2 s:1 s:1 s:2 s:2 k:2 s:1 s:1 s:2 s:2', r: 's:1 s:1 s:1 s:1 s:1 s:1 s:1 s:1 k:2 s:2 k:2 c:2',
-        n: 'c:2 s:1 s:1 s:2 s:2 k:2 s:1 s:1 s:2 s:2 [$d]2 $r [$d]3 $r' },
+        n: 'c:2 s:1 s:1 s:2 s:2 k:2 s:1 s:1 s:2 s:2 [$d]2 $r [$d]3 $r',
+        D: '[K:4 S:4 K:4 S:4]3 S:1 S:1 S:1 S:1 S:1 S:1 S:1 S:1 K:2 S:2 K:2 S:2 [K:4 S:4 K:4 S:4]3 S:2 S:2 S:2 S:2 K:2 S:2 K:2 S:2' },
       pat: {
         A: ['A5:3 A5:1 D6:4 F#6:3 E6:1 D6:4 B5:3 B5:1 D6:4 G6:6 F#6:2 F#6:3 E6:1 D6:2 A5:2 F#5:4 A5:4 E6:3 F#6:1 E6:2 C#6:2 A5:8 A5:3 A5:1 D6:4 F#6:3 G6:1 A6:4 B6:6 A6:2 G6:4 B5:4 G6:4 E6:4 E6:2 F#6:2 G6:2 C#6:2 D6:12 r:4',
-          '<h-2 @brass2', '$mb t5 $mb t0 $mb t-5 $mb t0 $mb t5 $mb t0 E3:4 B2:4 A2:4 E2:4 D3:4 A2:4 D3:8', '$n'],
+          '<h-2 @brass2', '$mb t5 $mb t0 $mb t-5 $mb t0 $mb t5 $mb t0 E3:4 B2:4 A2:4 E2:4 D3:4 A2:4 D3:8', '$n', '$D'],
         B: ['F#6:3 F#6:1 D6:2 B5:2 F#5:4 B5:4 C#6:3 C#6:1 A5:2 F#5:2 C#5:4 F#5:4 D6:3 D6:1 B5:2 G5:2 D6:3 E6:1 G6:4 F#6:6 E6:2 D6:4 A5:4 B5:3 C#6:1 D6:4 B5:3 D6:1 G6:4 C#6:3 D6:1 E6:4 C#6:3 E6:1 A6:4 B6:4 A6:2 F#6:2 G6:4 F#6:2 E6:2 E6:4 F#6:2 G6:2 A6:8',
-          '<h-2 @brass2', 't-3 $mb t4 $mb t5 $mb t0 $mb t5 $mb t-5 $mb t0 B2:4 F#2:4 G2:4 D3:4 t-5 $mb', '$n'],
+          '<h-2 @brass2', 't-3 $mb t4 $mb t5 $mb t0 $mb t5 $mb t-5 $mb t0 B2:4 F#2:4 G2:4 D3:4 t-5 $mb', '$n', '$D'],
       },
     },
     fire: { // ON FIRE — hype loop, D harmonic minor, 172 bpm
@@ -190,12 +259,13 @@
       mac: { d: 'k:2 h:1 h:1 s:2 h:1 h:1 k:1 h:1 k:1 h:1 s:2 h:1 h:1', f: 'k:2 h:1 h:1 s:2 h:1 h:1 s:1 s:1 s:1 s:1 s:1 s:1 c:2',
         x: 'D6:2 D6:1 D6:1 F6:2 A6:2 G6:2 F6:2 E6:2 F6:2 D6:2 D6:1 D6:1 F6:2 Bb6:2 A6:2 G6:2 F6:2 D6:2 E6:2 E6:1 E6:1 G6:2 C7:2 Bb6:2 G6:2 E6:2 C6:2',
         p: '%037 [D5:2]8 %047 [Bb4:2]8 [C5:2]8 [A4:2]8', q: '%037 [G4:2]8 [D5:2]8 %047 [Bb4:2]4 [C5:2]4 [A4:2]8',
+        D: '[K:4 S:4 K:2 K:2 S:4]3 K:4 S:4 S:1 S:1 S:1 S:1 S:1 S:1 S:2',
         b: '2 [D2 D3]4 [Bb1 Bb2]4 [C2 C3]4 [A1 A2]4', c: '2 [G2 G3]4 [D2 D3]4 [Bb1 Bb2]2 [C2 C3]2 [A1 A2]4' },
       pat: {
-        A: ['$x C#6:4 E6:4 A6:6 r:2', '$p', '$b', '[$d]3 $f'],
-        A2: ['$x A6:2 G6:2 F6:2 E6:2 C#6:2 E6:2 A5:4', '$p', '$b', '[$d]3 $f'],
-        B: ['Bb6:6 A6:2 G6:4 D6:4 F6:6 E6:2 D6:4 A5:4 Bb5:2 D6:2 F6:4 C6:2 E6:2 G6:4 A6:2 r:2 A6:2 r:2 C#7:2 r:2 E7:4', '$q', '$c', '[$d]3 $f'],
-        B2: ['Bb6:2 A6:2 G6:2 F6:2 G6:2 F6:2 E6:2 D6:2 F6:2 E6:2 D6:2 C#6:2 D6:2 E6:2 F6:2 A6:2 Bb6:4 A6:4 G6:4 E6:4 C#6:4 E6:4 A6:8', '$q', '$c', '[$d]3 $f'],
+        A: ['$x C#6:4 E6:4 A6:6 r:2', '$p', '$b', '[$d]3 $f', '$D'],
+        A2: ['$x A6:2 G6:2 F6:2 E6:2 C#6:2 E6:2 A5:4', '$p', '$b', '[$d]3 $f', '$D'],
+        B: ['Bb6:6 A6:2 G6:4 D6:4 F6:6 E6:2 D6:4 A5:4 Bb5:2 D6:2 F6:4 C6:2 E6:2 G6:4 A6:2 r:2 A6:2 r:2 C#7:2 r:2 E7:4', '$q', '$c', '[$d]3 $f', '$D'],
+        B2: ['Bb6:2 A6:2 G6:2 F6:2 G6:2 F6:2 E6:2 D6:2 F6:2 E6:2 D6:2 C#6:2 D6:2 E6:2 F6:2 A6:2 Bb6:4 A6:4 G6:4 E6:4 C#6:4 E6:4 A6:8', '$q', '$c', '[$d]3 $f', '$D'],
       },
     },
     vs: {
@@ -268,15 +338,15 @@
       if (!m) return
       var n = m[2] ? +m[2] : st.l, x = m[1], mi
       if (x === '^') { if (last) last.n += n } else if (x === 'r') {
-        if (ch !== 'no') out.push((last = { r: r, n: n, m: -1 })); else last = null
+        if (ch !== 'no' && ch !== 'dm') out.push((last = { r: r, n: n, m: -1 })); else last = null
       } else if ((mi = midiOf(x)) != null) out.push((last = { r: r, n: n, m: mi + st.t, i: st.i, v: st.v, a: st.a }))
-      else if (ch === 'no') out.push((last = { r: r, n: n, m: x, v: st.v }))
+      else if (ch === 'no' || ch === 'dm') out.push((last = { r: r, n: n, m: x, v: st.v }))
       r += n
     })
     return { ev: out, len: r }
   }
   function compile(S) {
-    var ev = { p1: [], p2: [], tr: [], no: [] }, row = 0, loopRow = 0, dirs = [], warn = [], ins = S.ins || []
+    var ev = { p1: [], p2: [], tr: [], no: [], dm: [] }, row = 0, loopRow = 0, dirs = [], warn = [], ins = S.ins || []
     S.ord.split(' ').forEach(function (pn, oi) {
       if (oi === S.loop) loopRow = row
       var P = S.pat[pn], res = {}, len = 0
@@ -364,21 +434,35 @@
     return (this.nb[key] = buf)
   }
 
+  // decoded DMC levels -> AudioBuffer (sample-and-hold at the DMC bit rate, like the DAC)
+  Engine.prototype.dmc = function (name) {
+    var key = 'd' + name
+    if (this.nb[key]) return this.nb[key]
+    var S = dmcSample(name), sr = this.ctx.sampleRate, n = Math.ceil((S.lv.length * sr) / S.fs), buf = this.ctx.createBuffer(1, n, sr), d = buf.getChannelData(0)
+    for (var i = 0; i < n; i++) d[i] = (S.lv[Math.min(S.lv.length - 1, Math.floor((i * S.fs) / sr))] - 64) / 127
+    return (this.nb[key] = buf)
+  }
+  function dmcHit(E, out, t, name) {
+    if (!DMS[name]) return null
+    var c = E.ctx, src = c.createBufferSource(), g = c.createGain(), buf = E.dmc(name)
+    src.buffer = buf; src.connect(g); g.connect(out); src.start(t); src.stop(t + buf.duration + 0.01)
+    drop(E, g, t + buf.duration)
+    return [g]
+  }
+
   // pulse voice: three phase-locked oscillators (12.5/25/50%), duty select gains, 4-bit volume gain
-  function PV(E, out, vib) {
+  function PV(E, out) {
     var c = E.ctx, me = this
     this.env = c.createGain(); this.env.gain.value = 0; this.env.connect(out)
-    this.o = []; this.g = []; this.f = -1; this.v = -1; this.d = -1; this.vb = 0
-    if (vib) { this.vg = c.createGain(); this.vg.gain.value = 0; this.lfo = c.createOscillator(); this.lfo.frequency.value = 5.6; this.lfo.connect(this.vg) }
+    this.o = []; this.g = []; this.f = -1; this.v = -1; this.d = -1
     for (var i = 0; i < 3; i++) {
       var o = c.createOscillator(), g = c.createGain()
       o.setPeriodicWave(E.pw[i]); g.gain.value = 0; o.connect(g); g.connect(me.env)
-      if (vib) this.vg.connect(o.detune)
       this.o.push(o); this.g.push(g)
     }
   }
-  PV.prototype.start = function (t) { this.o.forEach(function (o) { o.start(t) }); if (this.lfo) this.lfo.start(t) }
-  PV.prototype.stop = function (t) { try { this.o.forEach(function (o) { o.stop(t) }); if (this.lfo) this.lfo.stop(t) } catch (e) {} }
+  PV.prototype.start = function (t) { this.o.forEach(function (o) { o.start(t) }) }
+  PV.prototype.stop = function (t) { try { this.o.forEach(function (o) { o.stop(t) }) } catch (e) {} }
   PV.prototype.set = function (t, f, v, d) {
     if (v > 0 && f > 0) {
       if (d !== this.d) {
@@ -391,7 +475,6 @@
     } else v = 0
     if (v !== this.v) { this.env.gain.setValueAtTime(v / 15, t); this.v = v }
   }
-  PV.prototype.vibr = function (t, cents) { if (this.vg && cents !== this.vb) { this.vg.gain.setValueAtTime(cents, t); this.vb = cents } }
   // triangle voice: no volume control on the 2A03 — only on/off (tiny ramp to avoid DC clicks)
   function TV(E, out) {
     var c = E.ctx
@@ -442,7 +525,7 @@
     if (!fn) return false
     var d = typeof fn === 'function' ? fn(arg == null ? null : +arg, this.rnd) : fn, c = this.ctx, E = this
     var now = at != null ? at : c.currentTime + 0.01, st = now, chs = [], i, ch, b
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < CHS.length; i++) {
       ch = CHS[i]
       if (!d[ch] || !d[ch].length) continue
       chs.push(ch); b = this.busy[ch]
@@ -455,6 +538,7 @@
       gg.cancelScheduledValues(st); gg.setValueAtTime(0, st); gg.setValueAtTime(1, end)
       var out = c.createGain(); out.connect(E.lvl[ch])
       if (ch === 'no') noiseHit(E, out, st, fr)
+      else if (ch === 'dm') { var dh = null; for (k = 0; k < fr.length; k++) if (typeof fr[k] === 'string') { cut(dh, st + k / 60); dh = dmcHit(E, out, st + k / 60, fr[k]) } }
       else if (ch === 'tr') {
         var tv = new TV(E, out); tv.start(st)
         for (k = 0; k < fr.length; k++) tv.set(st + k / 60, fr[k][0], fr[k][1] > 0 ? 1 : 0)
@@ -474,8 +558,8 @@
   function Player(E, name, startRow, t0) {
     var C = song(name), c = E.ctx, me = this
     this.E = E; this.C = C; this.name = name; this.row = startRow || 0; this.t = t0; this.done = false; this.hist = []; this.out = {}
-    CHS.forEach(function (ch) { var g = c.createGain(); g.connect(E.gate[ch]); me.out[ch] = g })
-    this.vp = { p1: new PV(E, this.out.p1, 1), p2: new PV(E, this.out.p2, 1) }
+    CHS.forEach(function (ch) { var g = c.createGain(); g.gain.value = MUSIC_BUS; g.connect(E.gate[ch]); me.out[ch] = g })
+    this.vp = { p1: new PV(E, this.out.p1), p2: new PV(E, this.out.p2) }
     this.vt = new TV(E, this.out.tr)
     this.vp.p1.start(t0); this.vp.p2.start(t0); this.vt.start(t0)
     this.idx = {}
@@ -513,6 +597,8 @@
       var fr = []
       for (k = 0; k < D.E.length; k++) fr.push([D.N[Math.min(k, D.N.length - 1)], Math.round((D.E[k] * e.v) / 15), D.m])
       cut(this.nh, t); this.nh = noiseHit(this.E, this.out.no, t, fr)
+    } else if (ch === 'dm') {
+      if (DMS[e.m]) { cut(this.dh, t); this.dh = dmcHit(this.E, this.out.dm, t, e.m) } // DMC has no volume control
     } else if (ch === 'tr') {
       if (e.m < 0) return this.vt.set(t, 0, 0)
       I = INS[e.i] || INS.bass
@@ -522,13 +608,15 @@
       if (e.m < 0) return v.set(t, 0, 0, 0)
       I = INS[e.i] || INS.lead
       var A = e.a, tOff = Q(t0 + dur * (I.g || 0.94)), f0 = mf(e.m)
-      v.vibr(t, 0)
-      if (I.v && dur * 60 > I.v[0] + 6) v.vibr(t + I.v[0] / 60, I.v[1])
+      // vibrato is applied per 60 Hz frame from a 10-step sine table (~6 Hz), like NES sound drivers
+      var V = I.v && dur * 60 > I.v[0] + 6 ? I.v : null
       for (k = 0; ; k++) {
         var tk = t + k / 60
         if (k > 0 && tk >= tOff - 1e-4) break
-        v.set(tk, A ? mf(e.m + A[k % A.length]) : f0, Math.round((I.E[Math.min(k, I.E.length - 1)] * e.v) / 15), I.D[Math.min(k, I.D.length - 1)])
-        if (!A && k >= I.E.length && k >= I.D.length) break
+        var f = A ? mf(e.m + A[k % A.length]) : f0
+        if (V && k >= V[0]) f *= Math.pow(2, (V[1] / 1200) * VIB[(k - V[0]) % 10])
+        v.set(tk, f, Math.round((I.E[Math.min(k, I.E.length - 1)] * e.v) / 15), I.D[Math.min(k, I.D.length - 1)])
+        if (!A && !V && k >= I.E.length && k >= I.D.length) break
       }
       v.set(tOff, 0, 0, 0)
     }
@@ -540,7 +628,7 @@
   Player.prototype.kill = function (t) {
     var me = this
     CHS.forEach(function (ch) { var g = me.out[ch].gain; g.cancelScheduledValues(t); g.setValueAtTime(0, t) })
-    cut(this.nh, t); this.stopAll(t + 0.05)
+    cut(this.nh, t); cut(this.dh, t); this.stopAll(t + 0.05)
     setTimeout(function () { try { CHS.forEach(function (ch) { me.out[ch].disconnect() }) } catch (e) {} }, 400)
   }
   Player.prototype.rowAt = function (now) {
@@ -566,7 +654,9 @@
     })
     return vib ? VB(a, vib, 5) : a
   }
-  function splash(R) { var a = []; for (var k = 0; k < 28; k++) a.push([4 + Math.round(k / 8) + (R() < 0.3 ? 1 : 0), Math.max(0, Math.round(13 - k * 0.5 + R() * 3 - 1.5)), 0]); return a }
+  function splash(R, v0, n) { var a = []; n = n || 28; v0 = v0 || 13; for (var k = 0; k < n; k++) a.push([4 + Math.round((k * 4) / n) + (R() < 0.3 ? 1 : 0), Math.max(0, Math.round(v0 - (k * v0) / n + R() * 3 - 1.5)), 0]); return a }
+  // DMC channel frames: the sample name on its trigger frame, padding so the channel stays reserved while it plays
+  function DM(name, at) { var a = []; for (var k = 0; k < (at || 0) + Math.ceil(DMS[name].d * 60) + 3; k++) a.push(k === (at || 0) ? name : 0); return a }
   var CRASH = 'edccbbaa99887766554433221100'
   var SFX = {
     select: { p: 1, p2: J(T(nf('A6'), 'aa', 2), T(nf('E7'), 'a8642', 2)) },
@@ -574,25 +664,27 @@
     cancel: { p: 2, p2: J(T(nf('E5'), 'bbba', 2), T(nf('A4'), 'bba9876543210', 2)) },
     aimLock: { p: 2, p2: J(T(nf('B6'), 'ee', 0), T(nf('E6'), 'ca86420', 0)), no: NE(2, 'c840', 1) },
     powerLock: { p: 2, p2: J(P(8, 300, 1400, 13, 9, 1), T(1400, '87654321', 1)), no: NE(5, 'eb8530') },
-    throw: { p: 3, no: J(NS(6, 9, 4, 3, 11), NS(14, 4, 8, 11, 0)), p2: P(10, 220, 880, 7, 1, 0) },
+    throw: { p: 3, no: J(NS(6, 9, 3, 8, 15), NS(18, 3, 8, 15, 0)), p2: J(P(12, 200, 1050, 15, 11, 2), P(8, 1050, 1250, 11, 0, 1)) },
     bounce: function (i) {
       i = i == null || isNaN(i) ? 0.6 : Math.max(0, Math.min(1, i))
       var f = 900 + 800 * i, v = Math.round(5 + 9 * i)
       return { p: 1, p2: [[f, v, 2], [f * 0.8, v - 2, 2], [f * 0.8, Math.max(1, v - 5), 2]], no: [[1, Math.round(3 + 8 * i), 1], [1, 2, 1]] }
     },
-    rim: { p: 3, no: NE(2, 'dca98765443322110', 1), p2: VB(T(nf('E7'), 'fecba98877665544332211', 0), 25, 4) },
-    sink: function (_, R) {
+    rim: { p: 3, no: NE(2, 'fdca98765443322110', 1), p2: VB(T(nf('E7'), 'ffeedcba98877665544332211', 1), 25, 4), p1: T(nf('B6') * 1.01, 'ffdb975310', 0) },
+    sink: function (_, R) { // plink+plunk on pulse 1 (steals the lead ~12 frames), bubbles on pulse 2, splash on noise, crowd on DMC
       var b = []
-      for (var j = 0; j < 6; j++) { var f = 500 + j * 160 + R() * 120; b = b.concat([[f, 10 - j, 2], [f * 1.25, 9 - j, 2]], Z(2)) }
-      return { p: 5, p2: J(P(8, 560, 110, 15, 9, 2), Z(3), b), no: J(Z(4), splash(R)) }
+      for (var j = 0; j < 6; j++) { var f = 520 + j * 170 + R() * 120; b = b.concat([[f, 14 - j, 2], [f * 1.25, 13 - j, 2]], Z(2)) }
+      return { p: 5, p1: J(P(3, 1900, 1400, 15, 15, 1), P(9, 640, 105, 15, 11, 2)), p2: J(Z(8), b), no: J(Z(2), splash(R, 15, 34)), dm: DM('oh', 12) }
     },
-    splash: function (_, R) { return { p: 3, no: splash(R) } },
+    crowdOh: { p: 3, dm: DM('oh', 0) },
+    crowdYeah: { p: 3, dm: DM('yeah', 0) },
+    splash: function (_, R) { var b = []; for (var j = 0; j < 5; j++) b = b.concat([[700 + R() * 900, 13 - 2 * j, 2], [0, 0, 0], [0, 0, 0]], Z(j)); return { p: 3, no: splash(R, 15, 30), p2: J(Z(3), b) } },
     miss: { p: 2, p2: VB(J(P(12, 440, 392, 12, 10, 2), P(26, 392, 175, 10, 0, 2)), 35, 6) },
     floor: { p: 2, p2: J(T(240, 'b6', 2), Z(10), T(220, '85', 2), Z(7), T(210, '53', 2), Z(4), T(200, '31', 2)),
       no: J(NE(10, 'b6'), Z(10), NE(10, '84'), Z(7), NE(10, '52'), Z(4), NE(10, '31')) },
     cheer: function (_, R) {
       var no = [], n = 96
-      for (var k = 0; k < n; k++) { var e = k < 16 ? 3 + k * 0.55 : k < 60 ? 11.5 : (11.5 * (n - k)) / (n - 60); no.push([R() < 0.5 ? 5 : 6, Math.max(0, Math.round(e + R() * 2 - 1)), 0]) }
+      for (var k = 0; k < n; k++) { var e = k < 16 ? 4 + k * 0.6 : k < 60 ? 13.5 : (13.5 * (n - k)) / (n - 60); no.push([R() < 0.5 ? 5 : 6, Math.max(0, Math.round(e + R() * 2 - 1)), 0]) }
       return { p: 2, q: 1, no: no, p2: J(Z(18), P(10, 1400, 2600, 3, 7, 2), Z(5), P(7, 1500, 2700, 6, 7, 2), P(18, 2700, 1300, 7, 0, 2)) }
     },
     boo: function (_, R) {
@@ -603,11 +695,11 @@
     heatingUp: { p: 4, p2: J(M('E5:3 G#5:3 B5:3 F5:3 A5:3 C6:3 F#5:3 A#5:3 C#6:3 G5:3 B5:3 D6:3', 'cb', 1), T(nf('G6'), 'dcba98765432', 1)), no: J(Z(24), NS(20, 1, 2, 7, 0)) },
     onFire: function () {
       var tr = []
-      for (var j = 0; j < 12; j++) tr = tr.concat(T(nf(j % 2 ? 'G6' : 'C7'), 'ff'.replace(/f/g, (13 - j).toString(16)), 0))
-      return { p: 5, p2: J(M('C5:3 E5:3 G5:3 C6:3 E6:3 G6:3', 'dc', 1), tr), no: J(NS(30, 13, 2, 2, 13), NS(24, 2, 5, 13, 0)) }
+      for (var j = 0; j < 12; j++) tr = tr.concat(T(nf(j % 2 ? 'G6' : 'C7'), 'ff'.replace(/f/g, (15 - j).toString(16)), 1))
+      return { p: 5, p2: J(M('C5:3 E5:3 G5:3 C6:3 E6:3 G6:3', 'fe', 1), tr), no: J(NS(30, 13, 2, 4, 15), NS(24, 2, 5, 15, 0)), dm: DM('yeah', 18) }
     },
     ballsBack: { p: 6, p1: M('G5:5 G5:5 G5:5 C6:15 A5:8 B5:8 C6:26', 'dcbba99', 1, 12), p2: M('E5:5 E5:5 E5:5 G5:15 F5:8 G5:8 E5:26', 'a9988776', 1),
-      tr: M('C4:5 C4:5 C4:5 C3:15 F3:8 G3:8 C3:26', 'f', 0), no: J(Z(15), NE(3, CRASH)) },
+      tr: M('C4:5 C4:5 C4:5 C3:15 F3:8 G3:8 C3:26', 'f', 0), no: J(Z(15), NE(3, CRASH)), dm: DM('yeah', 14) },
     rerack: function () {
       var no = Z(32)
       ;[0, 4, 7, 12, 15, 19, 23, 26].forEach(function (f, j) { no[f] = [1, 10 - (j & 1) * 3, 1]; no[f + 1] = [1, 4, 1] })
@@ -630,7 +722,7 @@
     letter: { p: 1, p2: J(T(nf('C6'), 'c', 2), T(nf('C7'), 'b964', 0)) },
     error: function () { var b = []; for (var k = 0; k < 10; k++) b.push([110, 12 - (k >> 2), k % 2 ? 0 : 3]); return { p: 2, p2: J(b, Z(4), b) } },
     // extras (not in the contract, harmless): swish, go, start
-    swish: { p: 4, p2: J(P(6, 800, 2400, 6, 12, 1), M('C7:3 E7:3 G7:3 C8:9', 'c', 0)), no: NS(10, 2, 1, 6, 0) },
+    swish: { p: 4, p2: J(P(6, 800, 2400, 9, 15, 1), M('C7:3 E7:3 G7:3 C8:9', 'fd', 1)), no: NS(14, 2, 1, 12, 0) },
     go: { p: 4, p2: VB(T(nf('A6'), 'cddddddddddddddddddcba9876543210', 2), 60, 3) },
     start: { p: 7, p1: M('C6:4 G6:4 C7:24', 'ddccbbaa99887766554433221100', 2), p2: M('G5:4 E6:4 G6:24', 'aa99887766554433221100', 1), no: J(Z(8), NE(3, CRASH)) },
   }
@@ -760,7 +852,7 @@
       return { name: name, bpm: S.bpm, rows: C.rows, bars: C.rows / 16, loop: C.loop, loopRow: C.loopRow, sec: (C.rows * 15) / S.bpm,
         loopSec: ((C.rows - C.loopRow) * 15) / S.bpm, introSec: (C.loopRow * 15) / S.bpm, warn: C.warn, key: S.k, scale: S.sc, extra: S.x || '', notes: notes }
     },
-    _dev: { Engine: Engine, Player: Player },
+    _dev: { Engine: Engine, Player: Player, dmc: dmcSample, enc: dpcmEncode, dec: dpcmDecode },
     _list: function () { return { music: Object.keys(SONGS), sfx: Object.keys(SFX) } },
     _state: function () { return { ctx: A.ctx ? A.ctx.state : 'none', playing: A.pl ? A.pl.name : null, paused: !!A.paused, muted: A.muted, tempo: A.tempo, pend: A.pend } },
   }

@@ -30,7 +30,59 @@
     lpurple: N(0x23), lavender: N(0x33), magenta: N(0x14), dmagenta: N(0x04), plum: N(0x24),
     periwinkle: N(0x32), lime2: N(0x39)
   };
-  function C(c) { return PAL[c] || (typeof c === 'string' && c.charAt(0) === '#' ? c : PAL.white); }
+  var SUB = null; // active per-stage color substitution (hex -> hex) while drawing a stage
+  function C(c) { var h = PAL[c] || (typeof c === 'string' && c.charAt(0) === '#' ? c.toUpperCase() : PAL.white); return (SUB && SUB[h]) || h; }
+
+  /* ---- NES color budget. A real NES frame shows <= 25 colors (1 shared bg + 4 BG palettes x3 + 4 sprite
+     palettes x3). Every stage is quantized to the sets below (static layer, crowd, table and animated bits);
+     player sprites, cups and ball only use the shared sprite colors + their stage's CPU colors.
+       Shared sprite palettes (all stages):  SP0 hero/cups  black red dred white  | SP1 skin  skin tan gold
+                                             SP2 ball/fx    white lgray gold      | SP3 = CPU character (below)
+       0 BACKYARD   BG0 sky  navy slate white | BG1 house gray lgray dgray | BG2 lawn forest dgreen green
+                    BG3 lights cream gold brown        SP3 CHAD  white lgray gold
+       1 BASEMENT   BG0 brick maroon dred dbrown | BG1 olive gold dgray | BG2 kegs gray lgray white
+                    BG3 navy blue green                SP3 TANK  brown green dgreen (+dbrown hair)
+       2 ROOFTOP    BG0 navy slate dgray | BG1 windows cream gold gray | BG2 lgray white red
+                    BG3 neon magenta purple dpurple    SP3 SKY   purple dpurple navy
+       3 BEACH      BG0 sky navy dpurple dmagenta | BG1 rose cream gold | BG2 sea dblue blue white
+                    BG3 sand olive orange dbrown       SP3 BRO-DY orange cyan rose (+blue/dmagenta)
+       4 ARENA      BG0 navy dblue blue | BG1 dgray gray lgray | BG2 cream gold white | BG3 red dred brown
+                    SP3 KEGMASTER blue dblue gold (+brown/navy)
+     The game HUD adds a few of its own (cyan/sky, orange, lgreen). tools/art-colors.mjs checks the totals. */
+  var STAGE_COLS = [
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'forest', 'dgreen', 'green', 'brown'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'maroon', 'dbrown', 'olive', 'gray', 'dgray', 'navy', 'blue', 'brown', 'green', 'dgreen'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'magenta', 'purple', 'dpurple', 'cyan'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'dpurple', 'dmagenta', 'rose', 'cream', 'dblue', 'blue', 'olive', 'orange', 'dbrown', 'cyan'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'dgray', 'gray', 'cream', 'navy', 'dblue', 'blue', 'brown']
+  ];
+  var STAGE_OVR = [
+    { maroon: 'dred', olive: 'dgray', orange: 'gold', salmon: 'red', xlgray: 'lgray', lime2: 'gold', yellow: 'gold', blue: 'slate', dbrown: 'dgray', skin2: 'tan', skin3: 'brown', sky: 'white' },
+    { orange: 'gold', salmon: 'red', purple: 'blue', magenta: 'blue', sky: 'white', cream: 'white', forest: 'dgreen', slate: 'navy', skin2: 'tan', skin3: 'brown', cyan: 'white', lgreen: 'green' },
+    { orange: 'gold', salmon: 'red', teal: 'slate', blue: 'slate', green: 'cyan', dbrown: 'dgray', brown: 'dred', olive: 'dgray', dmagenta: 'dpurple', skin2: 'tan', skin3: 'dred', sky: 'cyan', maroon: 'dred' },
+    { salmon: 'rose', pblue: 'white', forest: 'dbrown', brown: 'dbrown', gray: 'dbrown', teal: 'blue', pink: 'rose', lgreen: 'cyan', green: 'cyan', yellow: 'gold', skin2: 'orange', skin3: 'dbrown', maroon: 'dred' },
+    { lblue: 'blue', purple: 'navy', dpurple: 'navy', orange: 'gold', salmon: 'red', green: 'blue', maroon: 'dred', dbrown: 'brown', skin2: 'tan', skin3: 'brown', slate: 'navy', yellow: 'gold' }
+  ];
+  var subCache = [];
+  function stageSub(s) {
+    if (subCache[s]) return subCache[s];
+    var allow = {}, m = {}, list = STAGE_COLS[s].map(function (n) { return PAL[n]; }), k, i;
+    for (i = 0; i < list.length; i++) allow[list[i]] = 1;
+    var ovr = STAGE_OVR[s];
+    for (k in ovr) if (!allow[PAL[k]]) m[PAL[k]] = PAL[ovr[k]];
+    var all = NES.slice(); for (k in PAL) all.push(PAL[k]);
+    for (i = 0; i < all.length; i++) {
+      var h = all[i]; if (allow[h] || m[h]) continue;
+      var a = parseInt(h.slice(1), 16), best = null, bd = 1e9;
+      for (var j = 0; j < list.length; j++) {
+        var b = parseInt(list[j].slice(1), 16), dr = (a >> 16) - (b >> 16), dg = ((a >> 8) & 255) - ((b >> 8) & 255), db = (a & 255) - (b & 255);
+        var d = 3 * dr * dr + 4 * dg * dg + 2 * db * db; if (d < bd) { bd = d; best = list[j]; }
+      }
+      m[h] = best;
+    }
+    return (subCache[s] = m);
+  }
+  function withStage(s, fn) { var old = SUB; SUB = stageSub(s); try { return fn(); } finally { SUB = old; } }
   // darker companion (NES "shade" one luma row down) used by bigText / logo
   var DARK = { white: 'lgray', lgray: 'gray', xlgray: 'lgray', yellow: 'orange', gold: 'orange', cream: 'yellow',
     orange: 'red', beer: 'red', red: 'dred', pink: 'rose', salmon: 'red', green: 'dgreen', lgreen: 'green',
@@ -184,7 +236,7 @@
     return Math.max(maxw, cx - x);
   }
   function measure(str) { str = String(str == null ? '' : str); var m = 0, l = 0; for (var i = 0; i < str.length; i++) { if (str.charAt(i) === '\n') { l = 0; continue; } l++; if (l > m) m = l; } return m * 8; }
-  function textCenter(ctx, str, y, color, shadow) { return text(ctx, str, Math.round((W - measure(str)) / 2), y, color, shadow); }
+  function textCenter(ctx, str, y, color, shadow) { return text(ctx, str, Math.max(0, ((W - measure(str)) / 16) | 0) * 8, y, color, shadow); } // snapped to the 8-px tile grid
 
   // ---- big outlined callout text (cached per string/color/scale)
   var bigCache = {};
@@ -223,7 +275,7 @@
     ctx.drawImage(cv, Math.round(x) - 1, Math.round(y) - 1); return cv._w;
   }
   function bigTextCenter(ctx, str, y, color, scale) {
-    var cv = bigCanvas(str, color || 'white', scale || 2); return bigText(ctx, str, Math.round((W - cv._w) / 2), y, color, scale);
+    var cv = bigCanvas(str, color || 'white', scale || 2); return bigText(ctx, str, Math.max(0, ((W - cv._w) / 16) | 0) * 8, y, color, scale);
   }
 
   // ------------------------------------------------------------------ dialog boxes
@@ -235,41 +287,68 @@
     var s = BOX[style] || BOX['default'];
     R(ctx, x, y, w, h, s[2]);
     ctx.fillStyle = C(s[0]);
+    if (h < 16 || w < 16) { // slim 1-px frame so 8-px text fits inside (e.g. h=12 labels)
+      ctx.fillRect(x + 2, y + 1, w - 4, 1); ctx.fillRect(x + 2, y + h - 2, w - 4, 1);
+      ctx.fillRect(x + 1, y + 2, 1, h - 4); ctx.fillRect(x + w - 2, y + 2, 1, h - 4);
+      return;
+    }
     ctx.fillRect(x + 2, y + 1, w - 4, 2); ctx.fillRect(x + 2, y + h - 3, w - 4, 2);
     ctx.fillRect(x + 1, y + 2, 2, h - 4); ctx.fillRect(x + w - 3, y + 2, 2, h - 4);
-    if (s[1] && w > 10 && h > 10) {
+    if (s[1]) {
       ctx.fillStyle = C(s[1]);
       ctx.fillRect(x + 4, y + 4, w - 8, 1); ctx.fillRect(x + 4, y + h - 5, w - 8, 1);
       ctx.fillRect(x + 4, y + 4, 1, h - 8); ctx.fillRect(x + w - 5, y + 4, 1, h - 8);
     }
   }
 
-  // NES-style fade helper: level 0 (none) .. 4 (black) using ordered dither
-  var fadePats = null;
+  // NES palette-step fade: every pixel's 2C02 color drops one luma row (index - 0x10) per level;
+  // below row 0 -> black. level 0 = no-op, 4 = black. Post-processes the current frame.
+  var fadeLUT = null;
+  function nesIndexOf(rgbInt) { // nearest palette index (exact for palette colors)
+    var best = 0x0F, bd = 1e9;
+    for (var i = 0; i < 64; i++) {
+      if ((i & 15) >= 0x0E) continue; var b = parseInt(NES[i].slice(1), 16);
+      var dr = (rgbInt >> 16) - (b >> 16), dg = ((rgbInt >> 8) & 255) - ((b >> 8) & 255), db = (rgbInt & 255) - (b & 255), d = dr * dr + dg * dg + db * db;
+      if (d < bd || (d === bd && i < best)) { bd = d; best = i; } // lowest index wins ties ($20 white before $30)
+    }
+    return best;
+  }
   function fade(ctx, level) {
     level = Math.max(0, Math.min(4, level | 0)); if (!ctx || !level) return;
-    if (level >= 4) { R(ctx, 0, 0, W, H, 'black'); return; }
-    if (!fadePats) {
-      fadePats = [];
-      var M = [[0, 2], [3, 1]];
-      for (var l = 1; l <= 3; l++) {
-        var p = mk(2, 2); for (var yy = 0; yy < 2; yy++) for (var xx = 0; xx < 2; xx++) if (M[yy][xx] < l + (l === 3 ? 0 : 0)) P1(p._x, xx, yy, 'black');
-        fadePats[l] = ctx.createPattern(p, 'repeat');
+    var cw = ctx.canvas ? ctx.canvas.width : W, ch = ctx.canvas ? ctx.canvas.height : H;
+    if (level >= 4) { ctx.fillStyle = PAL.black; ctx.fillRect(0, 0, cw, ch); return; }
+    if (!fadeLUT) fadeLUT = [null, {}, {}, {}];
+    var lut = fadeLUT[level], img = ctx.getImageData(0, 0, cw, ch), d = img.data, last = -1, out = 0;
+    for (var p = 0; p < d.length; p += 4) {
+      var k = (d[p] << 16) | (d[p + 1] << 8) | d[p + 2];
+      if (k !== last) {
+        last = k; out = lut[k];
+        if (out === undefined) {
+          var j = nesIndexOf(k) - 0x10 * level;
+          out = lut[k] = (j < 0 || (j & 15) >= 0x0D) ? 0 : parseInt(NES[j].slice(1), 16);
+        }
       }
+      d[p] = out >> 16; d[p + 1] = (out >> 8) & 255; d[p + 2] = out & 255;
     }
-    ctx.fillStyle = fadePats[level]; ctx.fillRect(0, 0, W, H);
+    ctx.putImageData(img, 0, 0);
   }
 
   // ------------------------------------------------------------------ small sprites
   var S = {}; // prerendered sprite canvases
   var CUPMAP = {
     full: ['WWWWWWWW', 'gWWWWWWg', 'RLRRRRRD', 'RLRRRRRD', '.DDDDDD.', '.RLRRRD.', '.RLRRRD.', '.RLRRRD.', '.RLRRDD.', '.DDDDDD.'],
-    pal: { W: 'white', g: 'lgray', R: 'red', L: 'salmon', D: 'dred' }
+    pal: { W: 'white', g: 'lgray', R: 'red', L: 'red', D: 'dred' }
   };
   var BALL = ['.WWW.', 'WWWWW', 'WWWWg', 'WWWgg', '.ggg.'];
-  var FIRE = [
-    ['...R...', '..RYR..', '.RYWYOR', 'RYWWWYR', 'RYWWWYO', '.OYYYO.', '..OOO..'],
-    ['..R....', '.RYR.R.', '.RYYRYR', 'RYWWWYR', 'OYWWWYR', '.OYYYO.', '..OOO..']
+  var FIRE = [ // 8x8 fireball, 2 flicker frames (red/orange/gold + white-hot core)
+    ['...R..R.', '..RO.RO.', '.ROORYOR', 'ROYYYYOR', 'ROYWWYOR', 'ROYWWYOR', '.ROYYOR.', '..RRRR..'],
+    ['.R...R..', '.OR.ROR.', 'ROORROR.', 'ROYYYYOR', 'ROYWWYOR', 'OOYWWYOO', '.ROYYOR.', '..RRRR..']
+  ];
+  var FLAME = [ // 5x5 trail flame puffs
+    ['..R..', '.ROR.', '.OYO.', 'ROYOR', '.ROR.'],
+    ['.R...', '.RR..', 'ROOR.', 'ROYOR', '.ROR.'],
+    ['...R.', '..RR.', '.ROOR', 'ROYOR', '.ROR.'],
+    ['.....', '..R..', '.ROR.', '.OYO.', '..R..']
   ];
   var XHAIR = ['..WWWWW..', '.W..W..W.', 'W...W...W', 'W.......W', 'WWW.R.WWW', 'W.......W', 'W...W...W', '.W..W..W.', '..WWWWW..'];
   var ICONS = {
@@ -291,7 +370,7 @@
     crown: ['........', 'Y..Y..Y.', 'YY.Y.YY.', 'YYYYYYY.', 'YRYYYRY.', 'YYYYYYY.', 'OOOOOOO.', '........'],
     trophy: ['YYYYYYY.', 'YWYYYOY.', '.YYYYO..', '..YYO...', '...Y....', '..YYO...', '.OOOOO..', '........']
   };
-  var ICONPAL = { W: 'white', g: 'lgray', R: 'red', L: 'salmon', D: 'dred', B: 'beer', Y: 'yellow', O: 'orange' };
+  var ICONPAL = { W: 'white', g: 'lgray', R: 'red', L: 'red', D: 'dred', B: 'orange', Y: 'gold', O: 'orange' };
 
   // ------------------------------------------------------------------ characters (paper-doll rasterizer)
   function grid(w, h) { return { w: w, h: h, a: new Array(w * h) }; }
@@ -450,12 +529,12 @@
   var HELDCUP = ['rrrr', 'RRRR', 'RRRR', '.RR.', '.RR.'];
   var HELDBALL = ['.BB.', 'BBBb', 'BBbb', '.bb.'];
   var CHARS = {
-    hero: { name: 'YOU', head: 'hero', logo: 'W', wide: 0, pal: { S: 'skin', s: 'salmon', H: 'maroon', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', L: 'white', P: 'tan', p: 'yellow', O: 'white', W: 'white', w2: 'red' }, bg: 'blue' },
-    chad: { name: 'CHAD', head: 'chad', logo: 'W', wide: 0, pal: { S: 'skin', s: 'salmon', H: 'yellow', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', L: 'red', P: 'red', p: 'dred', O: 'white', W: 'white', w2: 'red' }, bg: 'red' },
-    tank: { name: 'TANK', head: 'tank', logo: 'N8', wide: 3, armR: 1.4, pal: { S: 'skin3', s: 'maroon', H: 'dbrown', T: 'green', t: 'dgreen', V: 'green', L: 'white', P: 'lgray', p: 'gray', O: 'white', W: 'gray', w2: 'dgray' }, bg: 'orange' },
-    sky: { name: 'SKY', head: 'sky', logo: 'bolt', wide: 0, pal: { S: 'skin', s: 'salmon', H: 'slate', G: 'black', g: 'sky', T: 'purple', t: 'dpurple', V: 'purple', L: 'yellow', P: 'dgray', p: 'black', O: 'white', W: 'white', w2: 'purple' }, bg: 'teal' },
-    brody: { name: 'BRO-DY', head: 'brody', logo: null, wide: 1, pal: { S: 'skin2', s: 'brown', H: 'cream', G: 'black', g: 'pink', T: 'cyan', t: 'teal', V: 'skin2', L: 'white', P: 'pink', p: 'rose', O: 'skin2', W: 'yellow', w2: 'orange' }, bg: 'rose' },
-    kegmaster: { name: 'KEGMASTER', head: 'kegmaster', logo: 'K', wide: 4, armR: 1.3, belly: 1, pal: { S: 'skin', s: 'salmon', H: 'brown', D: 'brown', X: 'gold', x: 'orange', J: 'red', T: 'blue', t: 'dblue', V: 'blue', L: 'gold', P: 'dpurple', p: 'black', O: 'white', W: 'gold', w2: 'orange' }, bg: 'dmagenta' }
+    hero: { name: 'YOU', head: 'hero', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'dred', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', L: 'white', P: 'tan', p: 'gold', O: 'white', W: 'white', w2: 'red' }, bg: 'blue' },
+    chad: { name: 'CHAD', head: 'chad', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'gold', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', L: 'red', P: 'red', p: 'dred', O: 'white', W: 'white', w2: 'red' }, bg: 'red' },
+    tank: { name: 'TANK', head: 'tank', logo: 'N8', wide: 3, armR: 1.4, pal: { S: 'brown', s: 'dred', H: 'dbrown', T: 'green', t: 'dgreen', V: 'green', L: 'white', P: 'lgray', p: 'gray', O: 'white', W: 'gray', w2: 'dgray' }, bg: 'orange' },
+    sky: { name: 'SKY', head: 'sky', logo: 'bolt', wide: 0, pal: { S: 'skin', s: 'tan', H: 'navy', G: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', L: 'gold', P: 'dgray', p: 'black', O: 'white', W: 'white', w2: 'purple' }, bg: 'slate' },
+    brody: { name: 'BRO-DY', head: 'brody', logo: null, wide: 1, pal: { S: 'orange', s: 'red', H: 'cream', G: 'black', g: 'white', T: 'cyan', t: 'blue', V: 'orange', L: 'white', P: 'rose', p: 'dmagenta', O: 'orange', W: 'gold', w2: 'red' }, bg: 'rose' },
+    kegmaster: { name: 'KEGMASTER', head: 'kegmaster', logo: 'K', wide: 4, armR: 1.3, belly: 1, pal: { S: 'skin', s: 'tan', H: 'brown', D: 'brown', X: 'gold', x: 'brown', J: 'red', T: 'blue', t: 'dblue', V: 'blue', L: 'gold', P: 'navy', p: 'black', O: 'white', W: 'gold', w2: 'brown' }, bg: 'dmagenta' }
   };
   // Poses in a 24x48 frame (feet bottom at y=47), facing right. Points: [x,y].
   // h:[hx,hy,expr] t:torso poly, s:shorts poly, ab/af: back/front arm [shoulder,elbow,hand],
@@ -674,9 +753,126 @@
     R(c, 0, 0, 32, 1, 'black'); R(c, 0, 31, 32, 1, 'black'); R(c, 0, 0, 1, 32, 'black'); R(c, 31, 0, 1, 32, 'black');
     return cv;
   }
-  function drawPortrait(ctx, who, x, y) {
+  // ---- 64x64 native VS-screen portraits (Punch-Out!! style): same roles, hand-placed detail at 1:1
+  function ell(g, cx, cy, rx, ry, v, pw, only) {
+    pw = pw || 2;
+    for (var y = Math.floor(cy - ry); y <= cy + ry; y++) for (var x = Math.floor(cx - rx); x <= cx + rx; x++) {
+      var dx = Math.abs(x + 0.5 - cx) / rx, dy = Math.abs(y + 0.5 - cy) / ry;
+      if (Math.pow(dx, pw) + Math.pow(dy, (y + 0.5 > cy ? pw : 2)) <= 1 && (!only || gg(g, x, y) === only)) gs(g, x, y, v);
+    }
+  }
+  function hline(g, x0, x1, y, v) { for (var x = x0; x <= x1; x++) gs(g, x, y, v); }
+  function buildPortrait64(who) {
+    var ch = CHARS[who] || CHARS.chad, hd = ch.head, big = ch.wide >= 3 ? 2 : 0, g = grid(64, 64), x, y, i;
+    // shoulders / shirt
+    var b = grid(64, 64);
+    gPoly(b, [[1 - big, 64], [63 + big, 64], [57 + big, 50], [44, 47], [20, 47], [7 - big, 50]], 'T');
+    if (hd === 'brody') { gPoly(b, [[1, 64], [18, 64], [18, 49], [7, 51]], 'S'); gPoly(b, [[46, 64], [63, 64], [57, 51], [46, 49]], 'S'); }
+    gPoly(b, [[23 - big, 36], [41 + big, 36], [42 + big, 52], [32, 56], [22 - big, 52]], 'S'); // neck
+    for (y = 42; y < 50; y++) for (x = 22 - big; x < 33; x++) if (gg(b, x, y) === 'S' && x < 26 - big + (y - 42) / 3) gs(b, x, y, 's');
+    hline(b, 22 - big, 42 + big, 47, 's'); hline(b, 23, 41, 48, 's');
+    if (hd !== 'brody') { for (x = 20; x < 45; x++) { var cy2 = 49 + Math.round(Math.pow((x - 32) / 12, 2) * -3) + 3; gs(b, x, cy2, 't'); gs(b, x, cy2 + 1, 't'); } }
+    if (ch.logo && LOGOS[ch.logo]) { var L = LOGOS[ch.logo]; for (y = 0; y < 5; y++) for (x = 0; x < 5; x++) if (L[y].charAt(x) === 'L') { gs(b, 27 + x * 2, 54 + y * 2, 'L'); gs(b, 28 + x * 2, 54 + y * 2, 'L'); gs(b, 27 + x * 2, 55 + y * 2, 'L'); gs(b, 28 + x * 2, 55 + y * 2, 'L'); } }
+    for (y = 50; y < 64; y++) for (x = 0; x < 64; x++) if (gg(b, x, y) === 'T' && (x < 12 - big || x > 52 + big) && ((x + y) & 1)) gs(b, x, y, 't');
+    gOutline(b); gComp(g, b);
+    // head
+    var f = grid(64, 64), rx = 15 + (big ? 2 : 0), cx = 32, cy = 29;
+    ell(f, cx, cy, rx, 18, 'S', 2.6);
+    gCaps(f, cx - rx - 1, 29, cx - rx - 1, 33, 2.6, 'S'); gCaps(f, cx + rx + 1, 29, cx + rx + 1, 33, 2.6, 'S'); // ears
+    for (y = 0; y < 64; y++) { for (x = 0; x < 64; x++) if (gg(f, x, y) === 'S') { gs(f, x, y, 's'); if (y > 22) gs(f, x + 1, y, 's'); break; } }
+    gs(f, cx - rx - 1, 31, 's'); gs(f, cx - rx - 1, 32, 's'); gs(f, cx + rx + 1, 31, 's'); gs(f, cx + rx + 1, 32, 's');
+    // hair & headwear
+    if (hd === 'hero' || hd === 'chad') {
+      for (y = 19; y < 29; y++) { hline(f, cx - rx, cx - rx + 2, y, 'H'); hline(f, cx + rx - 2, cx + rx, y, 'H'); }
+      for (y = 0; y <= 19; y++) for (x = 0; x < 64; x++) { var ddx = (x + 0.5 - 32) / (19 + big), ddy = (y + 0.5 - 20) / 16; if (ddx * ddx + ddy * ddy <= 1) gs(f, x, y, 'C'); }
+      for (y = 5; y < 19; y++) { gs(f, 32, y, 'c'); if (y > 8) { gs(f, 22 - ((y - 5) >> 3), y, 'c'); gs(f, 42 + ((y - 5) >> 3), y, 'c'); } }
+      for (x = 0; x < 64; x++) for (y = 0; y < 19; y++) if (gg(f, x, y) === 'C' && x < 21 && ((x + y) & 1)) gs(f, x, y, 'c');
+      if (hd === 'hero') {
+        hline(f, 9, 55, 19, 'c'); hline(f, 7, 57, 20, 'c'); hline(f, 6, 58, 21, 'c'); hline(f, 7, 57, 22, 'K');
+        hline(f, 15, 49, 23, 'H');
+        var Wm = ['w...w', 'w...w', 'w.w.w', 'wwwww', '.w.w.'];
+        for (y = 0; y < 5; y++) for (x = 0; x < 5; x++) if (Wm[y].charAt(x) === 'w') { gs(f, 27 + x * 2, 8 + y * 2, 'w'); gs(f, 28 + x * 2, 8 + y * 2, 'w'); gs(f, 27 + x * 2, 9 + y * 2, 'w'); gs(f, 28 + x * 2, 9 + y * 2, 'w'); }
+      } else {
+        for (y = 10; y < 20; y++) hline(f, 25, 39, y, 'H');
+        for (y = 11; y < 19; y += 3) hline(f, 26, 38, y, 'h');
+        hline(f, 24, 40, 17, 'c'); hline(f, 24, 40, 18, 'c'); hline(f, 31, 33, 16, 'c');
+        hline(f, 12, 52, 19, 'c'); hline(f, 13, 51, 20, 'c'); hline(f, 14, 50, 21, 'K');
+        gCaps(f, 26, 23, 31, 24, 1.2, 'H'); hline(f, 16, 48, 22, 'H');
+      }
+    } else if (hd === 'tank') {
+      gPoly(f, [[13, 5], [51, 5], [51, 22], [47, 18], [17, 18], [13, 22]], 'H');
+      for (x = 14; x < 51; x += 2) gs(f, x, 5, 'h'); for (x = 15; x < 51; x += 4) gs(f, x, 7, 'h');
+      for (y = 18; y < 30; y++) { hline(f, 13, 15, y, 'H'); hline(f, 49, 51, y, 'H'); }
+    } else if (hd === 'sky') {
+      gCaps(f, 18, 18, 40, 10, 8, 'H'); gCaps(f, 38, 8, 50, 14, 5, 'H'); gCaps(f, 15, 22, 16, 32, 3, 'H'); gCaps(f, 48, 18, 49, 28, 3, 'H');
+      for (i = 0; i < 4; i++) for (x = 20 + i * 6; x < 26 + i * 6; x++) gs(f, x, 6 + i + ((x - 20) >> 2), 'h');
+    } else if (hd === 'brody') {
+      ell(f, 32, 20, 18, 9, 'H', 2);
+      var sp = [[10, 6], [17, 0], [25, 2], [32, -1], [39, 2], [47, 0], [54, 6], [8, 16], [56, 16]];
+      for (i = 0; i < sp.length; i++) gCaps(f, sp[i][0], sp[i][1], 32 + (sp[i][0] - 32) * 0.5, 18, 2.4, 'H');
+      for (i = 0; i < sp.length; i++) gCaps(f, sp[i][0] + 1, sp[i][1] + 3, 32 + (sp[i][0] - 32) * 0.55, 18, 0.6, 'h');
+      for (y = 20; y < 30; y++) { hline(f, 15, 17, y, 'H'); hline(f, 47, 49, y, 'H'); }
+    } else if (hd === 'kegmaster') {
+      for (y = 16; y < 26; y++) { hline(f, 13, 17, y, 'H'); hline(f, 47, 51, y, 'H'); }
+      gPoly(f, [[12, 8], [52, 8], [52, 20], [12, 20]], 'X');
+      [[13, 0], [22, 2], [32, -1], [42, 2], [51, 0]].forEach(function (pp) { gPoly(f, [[pp[0] - 4, 9], [pp[0] + 4, 9], [pp[0], pp[1]]], 'X'); gCaps(f, pp[0], pp[1] + 1, pp[0], pp[1] + 1, 1.4, 'X'); });
+      hline(f, 12, 51, 17, 'x'); hline(f, 12, 51, 18, 'x'); hline(f, 12, 51, 19, 'X');
+      [[18, 13], [32, 12], [46, 13]].forEach(function (pp, k) { gCaps(f, pp[0], pp[1], pp[0], pp[1], k === 1 ? 2.3 : 1.6, 'J'); gs(f, pp[0] - 1, pp[1] - 1, 'w'); });
+      for (x = 13; x < 52; x += 3) gs(f, x, 10, 'w');
+      // beard
+      for (y = 33; y < 52; y++) for (x = 10; x < 54; x++) { var v = gg(f, x, y); if ((v === 'S' || v === 's') && (y > 37 || x < 21 || x > 43)) gs(f, x, y, 'D'); }
+      gCaps(f, 32, 49, 32, 52, 7, 'D'); gCaps(f, 24, 46, 40, 46, 6, 'D');
+    }
+    gOutline(f);
+    // eyes
+    var ey = 28, glasses = hd === 'sky' || hd === 'brody';
+    if (glasses) {
+      for (y = ey - 2; y < ey + 4; y++) hline(f, 16, 48, y, 'G');
+      for (y = ey + 4; y < ey + 6; y++) { hline(f, 18, 29, y, 'G'); hline(f, 35, 46, y, 'G'); }
+      hline(f, 30, 34, ey + 4, 'S'); hline(f, 30, 34, ey + 5, 'S');
+      for (i = 0; i < 3; i++) { gs(f, 21 + i, ey - 1 + i, 'g'); gs(f, 38 + i, ey - 1 + i, 'g'); gs(f, 22 + i, ey - 1 + i, 'g'); }
+    } else {
+      [[20, 1], [37, -1]].forEach(function (e) {
+        var ex = e[0];
+        hline(f, ex, ex + 6, ey - 1, 'K');
+        for (y = ey; y < ey + 4; y++) { hline(f, ex, ex + 6, y, 'w'); }
+        var px = e[1] > 0 ? ex + 3 : ex + 2;
+        for (y = ey; y < ey + 4; y++) { gs(f, px, y, 'E'); gs(f, px + 1, y, 'E'); }
+        gs(f, px, ey, 'w'); hline(f, ex + 1, ex + 5, ey + 4, 's');
+        gs(f, ex - 1, ey, 'K'); gs(f, ex + 7, ey, 'K');
+        var bc = hd === 'kegmaster' ? 'D' : hd === 'chad' ? 'h' : 'K';
+        for (x = ex - 1; x < ex + 8; x++) { var inner = e[1] > 0 ? x - ex : ex + 6 - x, by = ey - 5 + (inner > 4 ? 1 : 0) + (hd === 'tank' || hd === 'kegmaster' ? (inner > 4 ? 1 : 0) : 0); gs(f, x, by, bc); gs(f, x, by + 1, bc); }
+      });
+    }
+    // nose
+    for (y = ey + 3; y < ey + 8; y++) gs(f, 31, y, 's');
+    gs(f, 29, ey + 8, 's'); gs(f, 30, ey + 8, 's'); gs(f, 34, ey + 8, 's'); gs(f, 35, ey + 8, 's'); gs(f, 32, ey + 9, 's'); gs(f, 33, ey + 9, 's');
+    // cheeks
+    hline(f, 18, 20, ey + 8, 's'); hline(f, 44, 46, ey + 8, 's');
+    // mouth
+    var my = ey + 13;
+    if (who === 'hero' || who === 'brody') { hline(f, 25, 39, my, 'K'); for (y = my + 1; y < my + 3; y++) hline(f, 26, 38, y, 'w'); hline(f, 27, 37, my + 3, 'K'); gs(f, 24, my - 1, 'K'); gs(f, 40, my - 1, 'K'); for (x = 28; x < 38; x += 3) gs(f, x, my + 1, 's'); }
+    else if (who === 'chad') { hline(f, 26, 38, my, 'K'); gs(f, 39, my - 1, 'K'); gs(f, 40, my - 2, 'K'); hline(f, 28, 36, my + 2, 's'); }
+    else if (who === 'tank') { hline(f, 24, 40, my, 'K'); hline(f, 26, 38, my + 2, 's'); gs(f, 23, my + 1, 'K'); gs(f, 41, my + 1, 'K'); }
+    else if (who === 'sky') { hline(f, 27, 37, my, 'K'); gs(f, 38, my - 1, 'K'); hline(f, 29, 35, my + 2, 's'); }
+    else if (who === 'kegmaster') { for (y = my - 3; y < my; y++) hline(f, 21, 43, y, 'D'); hline(f, 22, 42, my - 4, 'D'); hline(f, 26, 38, my, 'K'); for (y = my + 1; y < my + 4; y++) hline(f, 26, 38, y, 'M'); hline(f, 27, 37, my + 1, 'w'); hline(f, 26, 38, my + 4, 'K'); }
+    gComp(g, f);
+    var cv = mk(64, 64), c = cv._x;
+    R(c, 0, 0, 64, 64, ch.bg);
+    c.fillStyle = C(DARK[ch.bg] || 'black');
+    for (y = 0; y < 64; y++) for (x = 0; x < 64; x++) if (((x + y) % 8) < 3) c.fillRect(x, y, 1, 1);
+    var map = { K: 'black', E: 'black', M: 'dred', w: 'white', G: 'black', g: 'white', h: ch.pal.H === 'gold' || ch.pal.H === 'cream' ? 'olive' : 'dgray' };
+    for (var key in ch.pal) map[key] = ch.pal[key];
+    map.w = 'white'; map.c = ch.pal.c || 'dred'; map.D = ch.pal.D || 'brown';
+    if (hd === 'hero') map.h = 'dred';
+    c.drawImage(gCanvas(g, map), 0, 0);
+    R(c, 0, 0, 64, 1, 'black'); R(c, 0, 63, 64, 1, 'black'); R(c, 0, 0, 1, 64, 'black'); R(c, 63, 0, 1, 64, 'black');
+    return cv;
+  }
+  var portrait64 = {};
+  function drawPortrait(ctx, who, x, y, size) {
     if (!ctx) return; if (!CHARS[who]) who = 'chad';
-    var cv = portraitCache[who] || (portraitCache[who] = buildPortrait(who));
+    var cv = (size | 0) >= 48 ? (portrait64[who] || (portrait64[who] = buildPortrait64(who))) : (portraitCache[who] || (portraitCache[who] = buildPortrait(who)));
     ctx.drawImage(cv, Math.round(x), Math.round(y));
   }
 
@@ -759,8 +955,8 @@
       '.KKKKK.KKKKK']
   };
   var crowdCache = {};
-  function crowdSprite(v, frame) {
-    var key = v.join(',') + frame; if (crowdCache[key]) return crowdCache[key];
+  function crowdSprite(v, frame, st) {
+    var key = v.join(',') + frame + st; if (crowdCache[key]) return crowdCache[key];
     var map = { K: 'black', E: 'black', M: 'dred', R: 'red', H: v[0], S: v[1], T: v[2], L: v[3], P: v[4], W: 'white' };
     return (crowdCache[key] = spr(CROWD[frame], map, false));
   }
@@ -791,7 +987,7 @@
         if (lively) { fr = ((ph >> 3) & 1) ? 'cheer' : (i % 3 === 1 ? 'cup' : 'stand'); var j = (ph >> 2) % 6; dy = -Math.round([0, 2, 3, 3, 2, 0][j] * Math.min(1, ex * 1.4)); }
       } else if (((ph >> 5) & 3) === 0) dy = -1;
       if (((ph >> 6) % 5) === 0 && ex <= 0.05 && i % 2 === 0) fr = 'cup';
-      ctx.drawImage(crowdSprite(m[1], fr), m[0] - 6, 160 + dy);
+      ctx.drawImage(crowdSprite(m[1], fr, stage), m[0] - 6, 167 + dy);
     }
   }
 
@@ -835,7 +1031,7 @@
     var r = rng(seed);
     for (var i = 0; i < 260; i++) { var x = (r() * 256) | 0, y = (y0 + 2 + r() * (y1 - y0 - 3)) | 0; P1(c, x, y, tuft); P1(c, x + 1, y - 1, tuft); P1(c, x + 2, y, tuft); }
   }
-  function lyingCup(c, x, y) { paint(c, ['.WRRRRD', 'WWRLRRD', 'WWRRRRD', '.WRRRD.'], { W: 'white', R: 'red', L: 'salmon', D: 'dred' }, x, y); }
+  function lyingCup(c, x, y) { paint(c, ['.WRRRRD', 'WWRLRRD', 'WWRRRRD', '.WRRRD.'], { W: 'white', R: 'red', L: 'white', D: 'dred' }, x, y); }
 
   function bgBackyard() {
     var cv = mk(W, H), c = cv._x, i;
@@ -1099,7 +1295,7 @@
   var standFrames = null;
   function arenaStands() {
     if (standFrames) return standFrames;
-    standFrames = [0, 1].map(function (fr) {
+    standFrames = withStage(4, function () { return [0, 1].map(function (fr) {
       var cv = mk(W, 112), c = cv._x, r = rng(31), x, y;
       R(c, 0, 0, W, 112, 'black');
       for (var row = 0; row < 9; row++) {
@@ -1115,12 +1311,12 @@
       }
       dith4(c, 0, 0, W, 40, 'black', 1);
       return cv;
-    });
+    }); });
     return standFrames;
   }
 
   var BG_BUILDERS = [bgBackyard, bgBasement, bgRooftop, bgBeach, bgArena];
-  function stageBG(s) { return stageCache[s] || (stageCache[s] = BG_BUILDERS[s]()); }
+  function stageBG(s) { return stageCache[s] || (stageCache[s] = withStage(s, BG_BUILDERS[s])); }
   function clampStage(stage) { stage = stage | 0; return ((stage % 5) + 5) % 5; }
 
   function twinkle(ctx, list, t) {
@@ -1144,6 +1340,9 @@
   function drawBackground(ctx, stage, t, excite) {
     if (!ctx) return;
     stage = clampStage(stage); t = t | 0; var ex = Math.max(0, Math.min(1, +excite || 0));
+    withStage(stage, function () { drawBG(ctx, stage, t, ex); });
+  }
+  function drawBG(ctx, stage, t, ex) {
     if (stage === 4) { var sf = arenaStands(); ctx.drawImage(stageBG(4), 0, 0); ctx.drawImage(sf[(ex > 0.05 ? (t >> (ex > 0.6 ? 2 : 3)) : (t >> 5)) & 1], 0, 38); }
     else ctx.drawImage(stageBG(stage), 0, 0);
     var i, x, y;
@@ -1214,7 +1413,7 @@
   // ------------------------------------------------------------------ tables
   var TABLES = [
     { top: 'red', top2: 'dred', trim: 'white', stripe: 'white', apron: 'red', apron2: 'dred', leg: 'dgray', leg2: 'black' },
-    { top: 'orange', top2: 'brown', trim: 'tan', stripe: 'brown', apron: 'brown', apron2: 'maroon', leg: 'dgray', leg2: 'black', wood: 1 },
+    { top: 'brown', top2: 'dbrown', trim: 'gold', stripe: 'dbrown', apron: 'dbrown', apron2: 'maroon', leg: 'dgray', leg2: 'black', wood: 1 },
     { top: 'dgray', top2: 'black', trim: 'lgray', stripe: 'cyan', apron: 'gray', apron2: 'dgray', leg: 'lgray', leg2: 'gray' },
     { top: 'gold', top2: 'orange', trim: 'cream', stripe: 'olive', apron: 'olive', apron2: 'dbrown', leg: 'olive', leg2: 'dbrown', wood: 2 },
     { top: 'dblue', top2: 'navy', trim: 'gold', stripe: 'white', apron: 'blue', apron2: 'dblue', leg: 'gold', leg2: 'orange', star: 1 }
@@ -1251,7 +1450,7 @@
   }
   function drawTable(ctx, stage) {
     if (!ctx) return; stage = clampStage(stage);
-    var cv = tableCache[stage] || (tableCache[stage] = buildTable(stage));
+    var cv = tableCache[stage] || (tableCache[stage] = withStage(stage, function () { return buildTable(stage); }));
     ctx.drawImage(cv, 0, 180);
   }
 
@@ -1280,8 +1479,12 @@
   }
   function drawBall(ctx, x, y, fire, t) {
     if (!ctx) return; x = Math.round(x); y = Math.round(y);
-    if (fire) { var f = ((t | 0) >> 2) & 1; ctx.drawImage(S.fire[f], x - 3, y - 3); }
+    if (fire) { var f = ((t | 0) >> 2) & 1; ctx.drawImage(S.fire[f], x - 4, y - 5); }
     else ctx.drawImage(S.ball, x - 2, y - 2);
+  }
+  function drawFlame(ctx, x, y, t) { // short flickering flame-trail puff centered at x,y (t = frame/age)
+    if (!ctx || !S.flame) return; var f = (((t | 0) >> 2) + ((x + y) & 1)) & 3;
+    ctx.drawImage(S.flame[f], Math.round(x) - 2, Math.round(y) - 2);
   }
   function drawShadow(ctx, x, y) {
     if (!ctx) return; x = Math.round(x); y = Math.round(y);
@@ -1415,7 +1618,8 @@
       S.cup = spr(CUPMAP.full, CUPMAP.pal);
       S.cupDim = spr(CUPMAP.full, { W: 'lgray', g: 'gray', R: 'dred', L: 'red', D: 'maroon' });
       S.ball = spr(BALL, { W: 'white', g: 'lgray' });
-      S.fire = FIRE.map(function (f, i) { return spr(f, i ? { R: 'red', Y: 'yellow', W: 'white', O: 'orange' } : { R: 'red', Y: 'orange', W: 'cream', O: 'red' }); });
+      S.fire = FIRE.map(function (f) { return spr(f, { R: 'red', Y: 'gold', W: 'white', O: 'orange' }); });
+      S.flame = FLAME.map(function (f) { return spr(f, { R: 'red', Y: 'gold', O: 'orange' }); });
       S.xhair = spr(XHAIR, { W: 'white', R: 'red' }); S.xhair2 = spr(XHAIR, { W: 'yellow', R: 'white' });
       S.xhairShadow = spr(XHAIR, { W: 'black', R: 'black' });
       S.icons = {}; for (var k in ICONS) S.icons[k] = spr(ICONS[k], ICONPAL);
@@ -1428,13 +1632,13 @@
           else if (d <= 6.1) col = d > 5.3 ? 'black' : d > 4.2 ? (dx + dy > 2.5 ? 'dred' : 'red') : d > 3.1 ? 'white' : (mode === 'hit' ? ((x + y) & 1 ? 'white' : 'beer') : (dx + dy < -1.5 ? 'yellow' : 'beer'));
           if (col) P1(c, x, y, col);
         }
-        if (mode !== 'gone') { P1(c, 4, 4, 'cream'); P1(c, 5, 4, 'cream'); }
+        if (mode !== 'gone') { P1(c, 4, 4, 'white'); P1(c, 5, 4, 'white'); }
         return cv;
       }
       S.cupTop = topCup('full'); S.cupTopGone = topCup('gone'); S.cupTopHit = topCup('hit');
       for (var w in CHARS) for (var pk in POSES) { charSprite(w, pk, false); charSprite(w, pk, true); }
-      for (var w2 in CHARS) portraitCache[w2] = buildPortrait(w2);
-      for (var s = 0; s < 5; s++) { stageBG(s); tableCache[s] = buildTable(s); }
+      for (var w2 in CHARS) { portraitCache[w2] = buildPortrait(w2); portrait64[w2] = buildPortrait64(w2); }
+      for (var s = 0; s < 5; s++) { stageBG(s); drawTable(mk(1, 1)._x, s); }
       arenaStands(); buildLogo(); atlas('white'); atlas('black');
     } catch (e) { if (window.console) console.warn('Art.init', e); }
   }
@@ -1453,6 +1657,6 @@
     drawBackground: wrap(drawBackground), drawTable: wrap(drawTable), drawPlayer: wrap(drawPlayer),
     drawCup: wrap(drawCup), drawCupTop: wrap(drawCupTop), drawBall: wrap(drawBall), drawShadow: wrap(drawShadow),
     drawSplash: wrap(drawSplash), drawCrosshair: wrap(drawCrosshair), drawIcon: wrap(drawIcon),
-    drawLogo: wrap(drawLogo), drawPortrait: wrap(drawPortrait), drawTrailDot: wrap(drawTrailDot)
+    drawLogo: wrap(drawLogo), drawFlame: wrap(drawFlame), drawPortrait: wrap(drawPortrait), drawTrailDot: wrap(drawTrailDot)
   };
 })();

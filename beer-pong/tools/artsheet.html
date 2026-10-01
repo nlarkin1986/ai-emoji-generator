@@ -23,7 +23,7 @@ function scene(ctx, s, t, ex, poseL, poseR) {
   A.drawPlayer(ctx, 'hero', poseL || 'idle', 16, 228, t);
   A.drawPlayer(ctx, CPU[s], poseR || 'idle', 240, 228, t);
   // ball arc + trail
-  for (var i = 0; i < 14; i++) { var x = 40 + i * 9, y = 186 - Math.sin(i / 20 * Math.PI) * 70; A.drawTrailDot(ctx, x, y, s === 3); }
+  for (var i = 0; i < 14; i++) { var x = 40 + i * 9, y = 186 - Math.sin(i / 20 * Math.PI) * 70; if (s === 3 && i > 9) A.drawFlame(ctx, x, y, t + i); else A.drawTrailDot(ctx, x, y, s === 3); }
   A.drawShadow(ctx, 166, 190); A.drawBall(ctx, 166, 140, s === 3, t);
   // HUD
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 256, 24);
@@ -49,7 +49,7 @@ function misc(ctx) {
   A.text(ctx, '▶ ♥ ★ © × push start! © 1989 party soft', 4, 90, 'white', true);
   A.bigText(ctx, 'SWISH!', 8, 102, 'yellow'); A.bigText(ctx, 'ON FIRE!', 116, 102, 'orange');
   A.bigText(ctx, 'MISS', 8, 124, 'white'); A.bigText(ctx, 'RE-RACK!', 80, 124, 'sky'); A.bigText(ctx, 'GO!', 200, 124, 'lgreen');
-  A.drawBox(ctx, 4, 146, 60, 30); A.text(ctx, 'PAUSE', 14, 157);
+  A.drawBox(ctx, 4, 146, 60, 30); A.text(ctx, 'PAUSE', 14, 157); A.drawBox(ctx, 70, 160, 120, 12, 'gold'); A.text(ctx, 'BOUNCE ON', 72, 162, 'gold');
   A.drawBox(ctx, 68, 146, 60, 30, 'red'); A.drawBox(ctx, 132, 146, 60, 30, 'gold'); A.drawBox(ctx, 196, 146, 56, 30, 'dim');
   var names = ['hero', 'chad', 'tank', 'sky', 'brody', 'kegmaster'];
   names.forEach(function (w, i) { A.drawPortrait(ctx, w, 4 + i * 42, 180); });
@@ -75,7 +75,10 @@ function fx(ctx) {
   ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(ctx.canvas, 4, 112, 80, 72, 96, 112, 160, 144); ctx.restore();
   A.drawLogo(ctx, 128, 182, 0);
 }
-if (panel === 'por') { cv.width = 200; cv.height = 76; c.fillStyle = '#000'; c.fillRect(0, 0, 200, 76); ['hero', 'chad', 'tank', 'sky', 'brody', 'kegmaster'].forEach(function (w, i) { A.drawPortrait(c, w, 2 + (i % 3) * 66, 2 + (i / 3 | 0) * 38); A.drawPlayer(c, w, 'idle', 50 + (i % 3) * 66, 36 + (i / 3 | 0) * 38, 0); }); }
+if (panel === 'one') { cv.width = 64; cv.height = 64; A.drawPortrait(c, q.get('who') || 'hero', 0, 0, 64); }
+else if (panel === 'p64') { cv.width = 204; cv.height = 136; c.fillStyle = '#000'; c.fillRect(0, 0, 204, 136); ['hero', 'chad', 'tank', 'sky', 'brody', 'kegmaster'].forEach(function (w, i) { A.drawPortrait(c, w, 2 + (i % 3) * 68, 2 + (i / 3 | 0) * 68, 64); }); }
+else if (panel === 'fade') { scene(c, 0, T, 0); A.fade(c, +(q.get('lv') || 1)); }
+else if (panel === 'por') { cv.width = 200; cv.height = 76; c.fillStyle = '#000'; c.fillRect(0, 0, 200, 76); ['hero', 'chad', 'tank', 'sky', 'brody', 'kegmaster'].forEach(function (w, i) { A.drawPortrait(c, w, 2 + (i % 3) * 66, 2 + (i / 3 | 0) * 38); A.drawPlayer(c, w, 'idle', 50 + (i % 3) * 66, 36 + (i / 3 | 0) * 38, 0); }); }
 else if (panel === 'fx') fx(c); else if (/^s\d$/.test(panel)) { var s = +panel[1]; scene(c, s, T, EX, q.get('pl'), q.get('pr')); }
 else if (panel === 'chars') { cv.width = 440; cv.height = 360; c.imageSmoothingEnabled = false; chars(c); }
 else if (panel === 'misc') { misc(c); }

@@ -551,7 +551,59 @@ body.m-landscape #dpad .plate{display:block}
     lpurple: N(0x23), lavender: N(0x33), magenta: N(0x14), dmagenta: N(0x04), plum: N(0x24),
     periwinkle: N(0x32), lime2: N(0x39)
   };
-  function C(c) { return PAL[c] || (typeof c === 'string' && c.charAt(0) === '#' ? c : PAL.white); }
+  var SUB = null; // active per-stage color substitution (hex -> hex) while drawing a stage
+  function C(c) { var h = PAL[c] || (typeof c === 'string' && c.charAt(0) === '#' ? c.toUpperCase() : PAL.white); return (SUB && SUB[h]) || h; }
+
+  /* ---- NES color budget. A real NES frame shows <= 25 colors (1 shared bg + 4 BG palettes x3 + 4 sprite
+     palettes x3). Every stage is quantized to the sets below (static layer, crowd, table and animated bits);
+     player sprites, cups and ball only use the shared sprite colors + their stage's CPU colors.
+       Shared sprite palettes (all stages):  SP0 hero/cups  black red dred white  | SP1 skin  skin tan gold
+                                             SP2 ball/fx    white lgray gold      | SP3 = CPU character (below)
+       0 BACKYARD   BG0 sky  navy slate white | BG1 house gray lgray dgray | BG2 lawn forest dgreen green
+                    BG3 lights cream gold brown        SP3 CHAD  white lgray gold
+       1 BASEMENT   BG0 brick maroon dred dbrown | BG1 olive gold dgray | BG2 kegs gray lgray white
+                    BG3 navy blue green                SP3 TANK  brown green dgreen (+dbrown hair)
+       2 ROOFTOP    BG0 navy slate dgray | BG1 windows cream gold gray | BG2 lgray white red
+                    BG3 neon magenta purple dpurple    SP3 SKY   purple dpurple navy
+       3 BEACH      BG0 sky navy dpurple dmagenta | BG1 rose cream gold | BG2 sea dblue blue white
+                    BG3 sand olive orange dbrown       SP3 BRO-DY orange cyan rose (+blue/dmagenta)
+       4 ARENA      BG0 navy dblue blue | BG1 dgray gray lgray | BG2 cream gold white | BG3 red dred brown
+                    SP3 KEGMASTER blue dblue gold (+brown/navy)
+     The game HUD adds a few of its own (cyan/sky, orange, lgreen). tools/art-colors.mjs checks the totals. */
+  var STAGE_COLS = [
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'forest', 'dgreen', 'green', 'brown'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'maroon', 'dbrown', 'olive', 'gray', 'dgray', 'navy', 'blue', 'brown', 'green', 'dgreen'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'magenta', 'purple', 'dpurple', 'cyan'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'dpurple', 'dmagenta', 'rose', 'cream', 'dblue', 'blue', 'olive', 'orange', 'dbrown', 'cyan'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'dgray', 'gray', 'cream', 'navy', 'dblue', 'blue', 'brown']
+  ];
+  var STAGE_OVR = [
+    { maroon: 'dred', olive: 'dgray', orange: 'gold', salmon: 'red', xlgray: 'lgray', lime2: 'gold', yellow: 'gold', blue: 'slate', dbrown: 'dgray', skin2: 'tan', skin3: 'brown', sky: 'white' },
+    { orange: 'gold', salmon: 'red', purple: 'blue', magenta: 'blue', sky: 'white', cream: 'white', forest: 'dgreen', slate: 'navy', skin2: 'tan', skin3: 'brown', cyan: 'white', lgreen: 'green' },
+    { orange: 'gold', salmon: 'red', teal: 'slate', blue: 'slate', green: 'cyan', dbrown: 'dgray', brown: 'dred', olive: 'dgray', dmagenta: 'dpurple', skin2: 'tan', skin3: 'dred', sky: 'cyan', maroon: 'dred' },
+    { salmon: 'rose', pblue: 'white', forest: 'dbrown', brown: 'dbrown', gray: 'dbrown', teal: 'blue', pink: 'rose', lgreen: 'cyan', green: 'cyan', yellow: 'gold', skin2: 'orange', skin3: 'dbrown', maroon: 'dred' },
+    { lblue: 'blue', purple: 'navy', dpurple: 'navy', orange: 'gold', salmon: 'red', green: 'blue', maroon: 'dred', dbrown: 'brown', skin2: 'tan', skin3: 'brown', slate: 'navy', yellow: 'gold' }
+  ];
+  var subCache = [];
+  function stageSub(s) {
+    if (subCache[s]) return subCache[s];
+    var allow = {}, m = {}, list = STAGE_COLS[s].map(function (n) { return PAL[n]; }), k, i;
+    for (i = 0; i < list.length; i++) allow[list[i]] = 1;
+    var ovr = STAGE_OVR[s];
+    for (k in ovr) if (!allow[PAL[k]]) m[PAL[k]] = PAL[ovr[k]];
+    var all = NES.slice(); for (k in PAL) all.push(PAL[k]);
+    for (i = 0; i < all.length; i++) {
+      var h = all[i]; if (allow[h] || m[h]) continue;
+      var a = parseInt(h.slice(1), 16), best = null, bd = 1e9;
+      for (var j = 0; j < list.length; j++) {
+        var b = parseInt(list[j].slice(1), 16), dr = (a >> 16) - (b >> 16), dg = ((a >> 8) & 255) - ((b >> 8) & 255), db = (a & 255) - (b & 255);
+        var d = 3 * dr * dr + 4 * dg * dg + 2 * db * db; if (d < bd) { bd = d; best = list[j]; }
+      }
+      m[h] = best;
+    }
+    return (subCache[s] = m);
+  }
+  function withStage(s, fn) { var old = SUB; SUB = stageSub(s); try { return fn(); } finally { SUB = old; } }
   // darker companion (NES "shade" one luma row down) used by bigText / logo
   var DARK = { white: 'lgray', lgray: 'gray', xlgray: 'lgray', yellow: 'orange', gold: 'orange', cream: 'yellow',
     orange: 'red', beer: 'red', red: 'dred', pink: 'rose', salmon: 'red', green: 'dgreen', lgreen: 'green',
@@ -705,7 +757,7 @@ body.m-landscape #dpad .plate{display:block}
     return Math.max(maxw, cx - x);
   }
   function measure(str) { str = String(str == null ? '' : str); var m = 0, l = 0; for (var i = 0; i < str.length; i++) { if (str.charAt(i) === '\n') { l = 0; continue; } l++; if (l > m) m = l; } return m * 8; }
-  function textCenter(ctx, str, y, color, shadow) { return text(ctx, str, Math.round((W - measure(str)) / 2), y, color, shadow); }
+  function textCenter(ctx, str, y, color, shadow) { return text(ctx, str, Math.max(0, ((W - measure(str)) / 16) | 0) * 8, y, color, shadow); } // snapped to the 8-px tile grid
 
   // ---- big outlined callout text (cached per string/color/scale)
   var bigCache = {};
@@ -744,7 +796,7 @@ body.m-landscape #dpad .plate{display:block}
     ctx.drawImage(cv, Math.round(x) - 1, Math.round(y) - 1); return cv._w;
   }
   function bigTextCenter(ctx, str, y, color, scale) {
-    var cv = bigCanvas(str, color || 'white', scale || 2); return bigText(ctx, str, Math.round((W - cv._w) / 2), y, color, scale);
+    var cv = bigCanvas(str, color || 'white', scale || 2); return bigText(ctx, str, Math.max(0, ((W - cv._w) / 16) | 0) * 8, y, color, scale);
   }
 
   // ------------------------------------------------------------------ dialog boxes
@@ -756,41 +808,68 @@ body.m-landscape #dpad .plate{display:block}
     var s = BOX[style] || BOX['default'];
     R(ctx, x, y, w, h, s[2]);
     ctx.fillStyle = C(s[0]);
+    if (h < 16 || w < 16) { // slim 1-px frame so 8-px text fits inside (e.g. h=12 labels)
+      ctx.fillRect(x + 2, y + 1, w - 4, 1); ctx.fillRect(x + 2, y + h - 2, w - 4, 1);
+      ctx.fillRect(x + 1, y + 2, 1, h - 4); ctx.fillRect(x + w - 2, y + 2, 1, h - 4);
+      return;
+    }
     ctx.fillRect(x + 2, y + 1, w - 4, 2); ctx.fillRect(x + 2, y + h - 3, w - 4, 2);
     ctx.fillRect(x + 1, y + 2, 2, h - 4); ctx.fillRect(x + w - 3, y + 2, 2, h - 4);
-    if (s[1] && w > 10 && h > 10) {
+    if (s[1]) {
       ctx.fillStyle = C(s[1]);
       ctx.fillRect(x + 4, y + 4, w - 8, 1); ctx.fillRect(x + 4, y + h - 5, w - 8, 1);
       ctx.fillRect(x + 4, y + 4, 1, h - 8); ctx.fillRect(x + w - 5, y + 4, 1, h - 8);
     }
   }
 
-  // NES-style fade helper: level 0 (none) .. 4 (black) using ordered dither
-  var fadePats = null;
+  // NES palette-step fade: every pixel's 2C02 color drops one luma row (index - 0x10) per level;
+  // below row 0 -> black. level 0 = no-op, 4 = black. Post-processes the current frame.
+  var fadeLUT = null;
+  function nesIndexOf(rgbInt) { // nearest palette index (exact for palette colors)
+    var best = 0x0F, bd = 1e9;
+    for (var i = 0; i < 64; i++) {
+      if ((i & 15) >= 0x0E) continue; var b = parseInt(NES[i].slice(1), 16);
+      var dr = (rgbInt >> 16) - (b >> 16), dg = ((rgbInt >> 8) & 255) - ((b >> 8) & 255), db = (rgbInt & 255) - (b & 255), d = dr * dr + dg * dg + db * db;
+      if (d < bd || (d === bd && i < best)) { bd = d; best = i; } // lowest index wins ties ($20 white before $30)
+    }
+    return best;
+  }
   function fade(ctx, level) {
     level = Math.max(0, Math.min(4, level | 0)); if (!ctx || !level) return;
-    if (level >= 4) { R(ctx, 0, 0, W, H, 'black'); return; }
-    if (!fadePats) {
-      fadePats = [];
-      var M = [[0, 2], [3, 1]];
-      for (var l = 1; l <= 3; l++) {
-        var p = mk(2, 2); for (var yy = 0; yy < 2; yy++) for (var xx = 0; xx < 2; xx++) if (M[yy][xx] < l + (l === 3 ? 0 : 0)) P1(p._x, xx, yy, 'black');
-        fadePats[l] = ctx.createPattern(p, 'repeat');
+    var cw = ctx.canvas ? ctx.canvas.width : W, ch = ctx.canvas ? ctx.canvas.height : H;
+    if (level >= 4) { ctx.fillStyle = PAL.black; ctx.fillRect(0, 0, cw, ch); return; }
+    if (!fadeLUT) fadeLUT = [null, {}, {}, {}];
+    var lut = fadeLUT[level], img = ctx.getImageData(0, 0, cw, ch), d = img.data, last = -1, out = 0;
+    for (var p = 0; p < d.length; p += 4) {
+      var k = (d[p] << 16) | (d[p + 1] << 8) | d[p + 2];
+      if (k !== last) {
+        last = k; out = lut[k];
+        if (out === undefined) {
+          var j = nesIndexOf(k) - 0x10 * level;
+          out = lut[k] = (j < 0 || (j & 15) >= 0x0D) ? 0 : parseInt(NES[j].slice(1), 16);
+        }
       }
+      d[p] = out >> 16; d[p + 1] = (out >> 8) & 255; d[p + 2] = out & 255;
     }
-    ctx.fillStyle = fadePats[level]; ctx.fillRect(0, 0, W, H);
+    ctx.putImageData(img, 0, 0);
   }
 
   // ------------------------------------------------------------------ small sprites
   var S = {}; // prerendered sprite canvases
   var CUPMAP = {
     full: ['WWWWWWWW', 'gWWWWWWg', 'RLRRRRRD', 'RLRRRRRD', '.DDDDDD.', '.RLRRRD.', '.RLRRRD.', '.RLRRRD.', '.RLRRDD.', '.DDDDDD.'],
-    pal: { W: 'white', g: 'lgray', R: 'red', L: 'salmon', D: 'dred' }
+    pal: { W: 'white', g: 'lgray', R: 'red', L: 'red', D: 'dred' }
   };
   var BALL = ['.WWW.', 'WWWWW', 'WWWWg', 'WWWgg', '.ggg.'];
-  var FIRE = [
-    ['...R...', '..RYR..', '.RYWYOR', 'RYWWWYR', 'RYWWWYO', '.OYYYO.', '..OOO..'],
-    ['..R....', '.RYR.R.', '.RYYRYR', 'RYWWWYR', 'OYWWWYR', '.OYYYO.', '..OOO..']
+  var FIRE = [ // 8x8 fireball, 2 flicker frames (red/orange/gold + white-hot core)
+    ['...R..R.', '..RO.RO.', '.ROORYOR', 'ROYYYYOR', 'ROYWWYOR', 'ROYWWYOR', '.ROYYOR.', '..RRRR..'],
+    ['.R...R..', '.OR.ROR.', 'ROORROR.', 'ROYYYYOR', 'ROYWWYOR', 'OOYWWYOO', '.ROYYOR.', '..RRRR..']
+  ];
+  var FLAME = [ // 5x5 trail flame puffs
+    ['..R..', '.ROR.', '.OYO.', 'ROYOR', '.ROR.'],
+    ['.R...', '.RR..', 'ROOR.', 'ROYOR', '.ROR.'],
+    ['...R.', '..RR.', '.ROOR', 'ROYOR', '.ROR.'],
+    ['.....', '..R..', '.ROR.', '.OYO.', '..R..']
   ];
   var XHAIR = ['..WWWWW..', '.W..W..W.', 'W...W...W', 'W.......W', 'WWW.R.WWW', 'W.......W', 'W...W...W', '.W..W..W.', '..WWWWW..'];
   var ICONS = {
@@ -812,7 +891,7 @@ body.m-landscape #dpad .plate{display:block}
     crown: ['........', 'Y..Y..Y.', 'YY.Y.YY.', 'YYYYYYY.', 'YRYYYRY.', 'YYYYYYY.', 'OOOOOOO.', '........'],
     trophy: ['YYYYYYY.', 'YWYYYOY.', '.YYYYO..', '..YYO...', '...Y....', '..YYO...', '.OOOOO..', '........']
   };
-  var ICONPAL = { W: 'white', g: 'lgray', R: 'red', L: 'salmon', D: 'dred', B: 'beer', Y: 'yellow', O: 'orange' };
+  var ICONPAL = { W: 'white', g: 'lgray', R: 'red', L: 'red', D: 'dred', B: 'orange', Y: 'gold', O: 'orange' };
 
   // ------------------------------------------------------------------ characters (paper-doll rasterizer)
   function grid(w, h) { return { w: w, h: h, a: new Array(w * h) }; }
@@ -971,12 +1050,12 @@ body.m-landscape #dpad .plate{display:block}
   var HELDCUP = ['rrrr', 'RRRR', 'RRRR', '.RR.', '.RR.'];
   var HELDBALL = ['.BB.', 'BBBb', 'BBbb', '.bb.'];
   var CHARS = {
-    hero: { name: 'YOU', head: 'hero', logo: 'W', wide: 0, pal: { S: 'skin', s: 'salmon', H: 'maroon', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', L: 'white', P: 'tan', p: 'yellow', O: 'white', W: 'white', w2: 'red' }, bg: 'blue' },
-    chad: { name: 'CHAD', head: 'chad', logo: 'W', wide: 0, pal: { S: 'skin', s: 'salmon', H: 'yellow', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', L: 'red', P: 'red', p: 'dred', O: 'white', W: 'white', w2: 'red' }, bg: 'red' },
-    tank: { name: 'TANK', head: 'tank', logo: 'N8', wide: 3, armR: 1.4, pal: { S: 'skin3', s: 'maroon', H: 'dbrown', T: 'green', t: 'dgreen', V: 'green', L: 'white', P: 'lgray', p: 'gray', O: 'white', W: 'gray', w2: 'dgray' }, bg: 'orange' },
-    sky: { name: 'SKY', head: 'sky', logo: 'bolt', wide: 0, pal: { S: 'skin', s: 'salmon', H: 'slate', G: 'black', g: 'sky', T: 'purple', t: 'dpurple', V: 'purple', L: 'yellow', P: 'dgray', p: 'black', O: 'white', W: 'white', w2: 'purple' }, bg: 'teal' },
-    brody: { name: 'BRO-DY', head: 'brody', logo: null, wide: 1, pal: { S: 'skin2', s: 'brown', H: 'cream', G: 'black', g: 'pink', T: 'cyan', t: 'teal', V: 'skin2', L: 'white', P: 'pink', p: 'rose', O: 'skin2', W: 'yellow', w2: 'orange' }, bg: 'rose' },
-    kegmaster: { name: 'KEGMASTER', head: 'kegmaster', logo: 'K', wide: 4, armR: 1.3, belly: 1, pal: { S: 'skin', s: 'salmon', H: 'brown', D: 'brown', X: 'gold', x: 'orange', J: 'red', T: 'blue', t: 'dblue', V: 'blue', L: 'gold', P: 'dpurple', p: 'black', O: 'white', W: 'gold', w2: 'orange' }, bg: 'dmagenta' }
+    hero: { name: 'YOU', head: 'hero', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'dred', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', L: 'white', P: 'tan', p: 'gold', O: 'white', W: 'white', w2: 'red' }, bg: 'blue' },
+    chad: { name: 'CHAD', head: 'chad', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'gold', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', L: 'red', P: 'red', p: 'dred', O: 'white', W: 'white', w2: 'red' }, bg: 'red' },
+    tank: { name: 'TANK', head: 'tank', logo: 'N8', wide: 3, armR: 1.4, pal: { S: 'brown', s: 'dred', H: 'dbrown', T: 'green', t: 'dgreen', V: 'green', L: 'white', P: 'lgray', p: 'gray', O: 'white', W: 'gray', w2: 'dgray' }, bg: 'orange' },
+    sky: { name: 'SKY', head: 'sky', logo: 'bolt', wide: 0, pal: { S: 'skin', s: 'tan', H: 'navy', G: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', L: 'gold', P: 'dgray', p: 'black', O: 'white', W: 'white', w2: 'purple' }, bg: 'slate' },
+    brody: { name: 'BRO-DY', head: 'brody', logo: null, wide: 1, pal: { S: 'orange', s: 'red', H: 'cream', G: 'black', g: 'white', T: 'cyan', t: 'blue', V: 'orange', L: 'white', P: 'rose', p: 'dmagenta', O: 'orange', W: 'gold', w2: 'red' }, bg: 'rose' },
+    kegmaster: { name: 'KEGMASTER', head: 'kegmaster', logo: 'K', wide: 4, armR: 1.3, belly: 1, pal: { S: 'skin', s: 'tan', H: 'brown', D: 'brown', X: 'gold', x: 'brown', J: 'red', T: 'blue', t: 'dblue', V: 'blue', L: 'gold', P: 'navy', p: 'black', O: 'white', W: 'gold', w2: 'brown' }, bg: 'dmagenta' }
   };
   // Poses in a 24x48 frame (feet bottom at y=47), facing right. Points: [x,y].
   // h:[hx,hy,expr] t:torso poly, s:shorts poly, ab/af: back/front arm [shoulder,elbow,hand],
@@ -1195,9 +1274,126 @@ body.m-landscape #dpad .plate{display:block}
     R(c, 0, 0, 32, 1, 'black'); R(c, 0, 31, 32, 1, 'black'); R(c, 0, 0, 1, 32, 'black'); R(c, 31, 0, 1, 32, 'black');
     return cv;
   }
-  function drawPortrait(ctx, who, x, y) {
+  // ---- 64x64 native VS-screen portraits (Punch-Out!! style): same roles, hand-placed detail at 1:1
+  function ell(g, cx, cy, rx, ry, v, pw, only) {
+    pw = pw || 2;
+    for (var y = Math.floor(cy - ry); y <= cy + ry; y++) for (var x = Math.floor(cx - rx); x <= cx + rx; x++) {
+      var dx = Math.abs(x + 0.5 - cx) / rx, dy = Math.abs(y + 0.5 - cy) / ry;
+      if (Math.pow(dx, pw) + Math.pow(dy, (y + 0.5 > cy ? pw : 2)) <= 1 && (!only || gg(g, x, y) === only)) gs(g, x, y, v);
+    }
+  }
+  function hline(g, x0, x1, y, v) { for (var x = x0; x <= x1; x++) gs(g, x, y, v); }
+  function buildPortrait64(who) {
+    var ch = CHARS[who] || CHARS.chad, hd = ch.head, big = ch.wide >= 3 ? 2 : 0, g = grid(64, 64), x, y, i;
+    // shoulders / shirt
+    var b = grid(64, 64);
+    gPoly(b, [[1 - big, 64], [63 + big, 64], [57 + big, 50], [44, 47], [20, 47], [7 - big, 50]], 'T');
+    if (hd === 'brody') { gPoly(b, [[1, 64], [18, 64], [18, 49], [7, 51]], 'S'); gPoly(b, [[46, 64], [63, 64], [57, 51], [46, 49]], 'S'); }
+    gPoly(b, [[23 - big, 36], [41 + big, 36], [42 + big, 52], [32, 56], [22 - big, 52]], 'S'); // neck
+    for (y = 42; y < 50; y++) for (x = 22 - big; x < 33; x++) if (gg(b, x, y) === 'S' && x < 26 - big + (y - 42) / 3) gs(b, x, y, 's');
+    hline(b, 22 - big, 42 + big, 47, 's'); hline(b, 23, 41, 48, 's');
+    if (hd !== 'brody') { for (x = 20; x < 45; x++) { var cy2 = 49 + Math.round(Math.pow((x - 32) / 12, 2) * -3) + 3; gs(b, x, cy2, 't'); gs(b, x, cy2 + 1, 't'); } }
+    if (ch.logo && LOGOS[ch.logo]) { var L = LOGOS[ch.logo]; for (y = 0; y < 5; y++) for (x = 0; x < 5; x++) if (L[y].charAt(x) === 'L') { gs(b, 27 + x * 2, 54 + y * 2, 'L'); gs(b, 28 + x * 2, 54 + y * 2, 'L'); gs(b, 27 + x * 2, 55 + y * 2, 'L'); gs(b, 28 + x * 2, 55 + y * 2, 'L'); } }
+    for (y = 50; y < 64; y++) for (x = 0; x < 64; x++) if (gg(b, x, y) === 'T' && (x < 12 - big || x > 52 + big) && ((x + y) & 1)) gs(b, x, y, 't');
+    gOutline(b); gComp(g, b);
+    // head
+    var f = grid(64, 64), rx = 15 + (big ? 2 : 0), cx = 32, cy = 29;
+    ell(f, cx, cy, rx, 18, 'S', 2.6);
+    gCaps(f, cx - rx - 1, 29, cx - rx - 1, 33, 2.6, 'S'); gCaps(f, cx + rx + 1, 29, cx + rx + 1, 33, 2.6, 'S'); // ears
+    for (y = 0; y < 64; y++) { for (x = 0; x < 64; x++) if (gg(f, x, y) === 'S') { gs(f, x, y, 's'); if (y > 22) gs(f, x + 1, y, 's'); break; } }
+    gs(f, cx - rx - 1, 31, 's'); gs(f, cx - rx - 1, 32, 's'); gs(f, cx + rx + 1, 31, 's'); gs(f, cx + rx + 1, 32, 's');
+    // hair & headwear
+    if (hd === 'hero' || hd === 'chad') {
+      for (y = 19; y < 29; y++) { hline(f, cx - rx, cx - rx + 2, y, 'H'); hline(f, cx + rx - 2, cx + rx, y, 'H'); }
+      for (y = 0; y <= 19; y++) for (x = 0; x < 64; x++) { var ddx = (x + 0.5 - 32) / (19 + big), ddy = (y + 0.5 - 20) / 16; if (ddx * ddx + ddy * ddy <= 1) gs(f, x, y, 'C'); }
+      for (y = 5; y < 19; y++) { gs(f, 32, y, 'c'); if (y > 8) { gs(f, 22 - ((y - 5) >> 3), y, 'c'); gs(f, 42 + ((y - 5) >> 3), y, 'c'); } }
+      for (x = 0; x < 64; x++) for (y = 0; y < 19; y++) if (gg(f, x, y) === 'C' && x < 21 && ((x + y) & 1)) gs(f, x, y, 'c');
+      if (hd === 'hero') {
+        hline(f, 9, 55, 19, 'c'); hline(f, 7, 57, 20, 'c'); hline(f, 6, 58, 21, 'c'); hline(f, 7, 57, 22, 'K');
+        hline(f, 15, 49, 23, 'H');
+        var Wm = ['w...w', 'w...w', 'w.w.w', 'wwwww', '.w.w.'];
+        for (y = 0; y < 5; y++) for (x = 0; x < 5; x++) if (Wm[y].charAt(x) === 'w') { gs(f, 27 + x * 2, 8 + y * 2, 'w'); gs(f, 28 + x * 2, 8 + y * 2, 'w'); gs(f, 27 + x * 2, 9 + y * 2, 'w'); gs(f, 28 + x * 2, 9 + y * 2, 'w'); }
+      } else {
+        for (y = 10; y < 20; y++) hline(f, 25, 39, y, 'H');
+        for (y = 11; y < 19; y += 3) hline(f, 26, 38, y, 'h');
+        hline(f, 24, 40, 17, 'c'); hline(f, 24, 40, 18, 'c'); hline(f, 31, 33, 16, 'c');
+        hline(f, 12, 52, 19, 'c'); hline(f, 13, 51, 20, 'c'); hline(f, 14, 50, 21, 'K');
+        gCaps(f, 26, 23, 31, 24, 1.2, 'H'); hline(f, 16, 48, 22, 'H');
+      }
+    } else if (hd === 'tank') {
+      gPoly(f, [[13, 5], [51, 5], [51, 22], [47, 18], [17, 18], [13, 22]], 'H');
+      for (x = 14; x < 51; x += 2) gs(f, x, 5, 'h'); for (x = 15; x < 51; x += 4) gs(f, x, 7, 'h');
+      for (y = 18; y < 30; y++) { hline(f, 13, 15, y, 'H'); hline(f, 49, 51, y, 'H'); }
+    } else if (hd === 'sky') {
+      gCaps(f, 18, 18, 40, 10, 8, 'H'); gCaps(f, 38, 8, 50, 14, 5, 'H'); gCaps(f, 15, 22, 16, 32, 3, 'H'); gCaps(f, 48, 18, 49, 28, 3, 'H');
+      for (i = 0; i < 4; i++) for (x = 20 + i * 6; x < 26 + i * 6; x++) gs(f, x, 6 + i + ((x - 20) >> 2), 'h');
+    } else if (hd === 'brody') {
+      ell(f, 32, 20, 18, 9, 'H', 2);
+      var sp = [[10, 6], [17, 0], [25, 2], [32, -1], [39, 2], [47, 0], [54, 6], [8, 16], [56, 16]];
+      for (i = 0; i < sp.length; i++) gCaps(f, sp[i][0], sp[i][1], 32 + (sp[i][0] - 32) * 0.5, 18, 2.4, 'H');
+      for (i = 0; i < sp.length; i++) gCaps(f, sp[i][0] + 1, sp[i][1] + 3, 32 + (sp[i][0] - 32) * 0.55, 18, 0.6, 'h');
+      for (y = 20; y < 30; y++) { hline(f, 15, 17, y, 'H'); hline(f, 47, 49, y, 'H'); }
+    } else if (hd === 'kegmaster') {
+      for (y = 16; y < 26; y++) { hline(f, 13, 17, y, 'H'); hline(f, 47, 51, y, 'H'); }
+      gPoly(f, [[12, 8], [52, 8], [52, 20], [12, 20]], 'X');
+      [[13, 0], [22, 2], [32, -1], [42, 2], [51, 0]].forEach(function (pp) { gPoly(f, [[pp[0] - 4, 9], [pp[0] + 4, 9], [pp[0], pp[1]]], 'X'); gCaps(f, pp[0], pp[1] + 1, pp[0], pp[1] + 1, 1.4, 'X'); });
+      hline(f, 12, 51, 17, 'x'); hline(f, 12, 51, 18, 'x'); hline(f, 12, 51, 19, 'X');
+      [[18, 13], [32, 12], [46, 13]].forEach(function (pp, k) { gCaps(f, pp[0], pp[1], pp[0], pp[1], k === 1 ? 2.3 : 1.6, 'J'); gs(f, pp[0] - 1, pp[1] - 1, 'w'); });
+      for (x = 13; x < 52; x += 3) gs(f, x, 10, 'w');
+      // beard
+      for (y = 33; y < 52; y++) for (x = 10; x < 54; x++) { var v = gg(f, x, y); if ((v === 'S' || v === 's') && (y > 37 || x < 21 || x > 43)) gs(f, x, y, 'D'); }
+      gCaps(f, 32, 49, 32, 52, 7, 'D'); gCaps(f, 24, 46, 40, 46, 6, 'D');
+    }
+    gOutline(f);
+    // eyes
+    var ey = 28, glasses = hd === 'sky' || hd === 'brody';
+    if (glasses) {
+      for (y = ey - 2; y < ey + 4; y++) hline(f, 16, 48, y, 'G');
+      for (y = ey + 4; y < ey + 6; y++) { hline(f, 18, 29, y, 'G'); hline(f, 35, 46, y, 'G'); }
+      hline(f, 30, 34, ey + 4, 'S'); hline(f, 30, 34, ey + 5, 'S');
+      for (i = 0; i < 3; i++) { gs(f, 21 + i, ey - 1 + i, 'g'); gs(f, 38 + i, ey - 1 + i, 'g'); gs(f, 22 + i, ey - 1 + i, 'g'); }
+    } else {
+      [[20, 1], [37, -1]].forEach(function (e) {
+        var ex = e[0];
+        hline(f, ex, ex + 6, ey - 1, 'K');
+        for (y = ey; y < ey + 4; y++) { hline(f, ex, ex + 6, y, 'w'); }
+        var px = e[1] > 0 ? ex + 3 : ex + 2;
+        for (y = ey; y < ey + 4; y++) { gs(f, px, y, 'E'); gs(f, px + 1, y, 'E'); }
+        gs(f, px, ey, 'w'); hline(f, ex + 1, ex + 5, ey + 4, 's');
+        gs(f, ex - 1, ey, 'K'); gs(f, ex + 7, ey, 'K');
+        var bc = hd === 'kegmaster' ? 'D' : hd === 'chad' ? 'h' : 'K';
+        for (x = ex - 1; x < ex + 8; x++) { var inner = e[1] > 0 ? x - ex : ex + 6 - x, by = ey - 5 + (inner > 4 ? 1 : 0) + (hd === 'tank' || hd === 'kegmaster' ? (inner > 4 ? 1 : 0) : 0); gs(f, x, by, bc); gs(f, x, by + 1, bc); }
+      });
+    }
+    // nose
+    for (y = ey + 3; y < ey + 8; y++) gs(f, 31, y, 's');
+    gs(f, 29, ey + 8, 's'); gs(f, 30, ey + 8, 's'); gs(f, 34, ey + 8, 's'); gs(f, 35, ey + 8, 's'); gs(f, 32, ey + 9, 's'); gs(f, 33, ey + 9, 's');
+    // cheeks
+    hline(f, 18, 20, ey + 8, 's'); hline(f, 44, 46, ey + 8, 's');
+    // mouth
+    var my = ey + 13;
+    if (who === 'hero' || who === 'brody') { hline(f, 25, 39, my, 'K'); for (y = my + 1; y < my + 3; y++) hline(f, 26, 38, y, 'w'); hline(f, 27, 37, my + 3, 'K'); gs(f, 24, my - 1, 'K'); gs(f, 40, my - 1, 'K'); for (x = 28; x < 38; x += 3) gs(f, x, my + 1, 's'); }
+    else if (who === 'chad') { hline(f, 26, 38, my, 'K'); gs(f, 39, my - 1, 'K'); gs(f, 40, my - 2, 'K'); hline(f, 28, 36, my + 2, 's'); }
+    else if (who === 'tank') { hline(f, 24, 40, my, 'K'); hline(f, 26, 38, my + 2, 's'); gs(f, 23, my + 1, 'K'); gs(f, 41, my + 1, 'K'); }
+    else if (who === 'sky') { hline(f, 27, 37, my, 'K'); gs(f, 38, my - 1, 'K'); hline(f, 29, 35, my + 2, 's'); }
+    else if (who === 'kegmaster') { for (y = my - 3; y < my; y++) hline(f, 21, 43, y, 'D'); hline(f, 22, 42, my - 4, 'D'); hline(f, 26, 38, my, 'K'); for (y = my + 1; y < my + 4; y++) hline(f, 26, 38, y, 'M'); hline(f, 27, 37, my + 1, 'w'); hline(f, 26, 38, my + 4, 'K'); }
+    gComp(g, f);
+    var cv = mk(64, 64), c = cv._x;
+    R(c, 0, 0, 64, 64, ch.bg);
+    c.fillStyle = C(DARK[ch.bg] || 'black');
+    for (y = 0; y < 64; y++) for (x = 0; x < 64; x++) if (((x + y) % 8) < 3) c.fillRect(x, y, 1, 1);
+    var map = { K: 'black', E: 'black', M: 'dred', w: 'white', G: 'black', g: 'white', h: ch.pal.H === 'gold' || ch.pal.H === 'cream' ? 'olive' : 'dgray' };
+    for (var key in ch.pal) map[key] = ch.pal[key];
+    map.w = 'white'; map.c = ch.pal.c || 'dred'; map.D = ch.pal.D || 'brown';
+    if (hd === 'hero') map.h = 'dred';
+    c.drawImage(gCanvas(g, map), 0, 0);
+    R(c, 0, 0, 64, 1, 'black'); R(c, 0, 63, 64, 1, 'black'); R(c, 0, 0, 1, 64, 'black'); R(c, 63, 0, 1, 64, 'black');
+    return cv;
+  }
+  var portrait64 = {};
+  function drawPortrait(ctx, who, x, y, size) {
     if (!ctx) return; if (!CHARS[who]) who = 'chad';
-    var cv = portraitCache[who] || (portraitCache[who] = buildPortrait(who));
+    var cv = (size | 0) >= 48 ? (portrait64[who] || (portrait64[who] = buildPortrait64(who))) : (portraitCache[who] || (portraitCache[who] = buildPortrait(who)));
     ctx.drawImage(cv, Math.round(x), Math.round(y));
   }
 
@@ -1280,8 +1476,8 @@ body.m-landscape #dpad .plate{display:block}
       '.KKKKK.KKKKK']
   };
   var crowdCache = {};
-  function crowdSprite(v, frame) {
-    var key = v.join(',') + frame; if (crowdCache[key]) return crowdCache[key];
+  function crowdSprite(v, frame, st) {
+    var key = v.join(',') + frame + st; if (crowdCache[key]) return crowdCache[key];
     var map = { K: 'black', E: 'black', M: 'dred', R: 'red', H: v[0], S: v[1], T: v[2], L: v[3], P: v[4], W: 'white' };
     return (crowdCache[key] = spr(CROWD[frame], map, false));
   }
@@ -1312,7 +1508,7 @@ body.m-landscape #dpad .plate{display:block}
         if (lively) { fr = ((ph >> 3) & 1) ? 'cheer' : (i % 3 === 1 ? 'cup' : 'stand'); var j = (ph >> 2) % 6; dy = -Math.round([0, 2, 3, 3, 2, 0][j] * Math.min(1, ex * 1.4)); }
       } else if (((ph >> 5) & 3) === 0) dy = -1;
       if (((ph >> 6) % 5) === 0 && ex <= 0.05 && i % 2 === 0) fr = 'cup';
-      ctx.drawImage(crowdSprite(m[1], fr), m[0] - 6, 160 + dy);
+      ctx.drawImage(crowdSprite(m[1], fr, stage), m[0] - 6, 167 + dy);
     }
   }
 
@@ -1356,7 +1552,7 @@ body.m-landscape #dpad .plate{display:block}
     var r = rng(seed);
     for (var i = 0; i < 260; i++) { var x = (r() * 256) | 0, y = (y0 + 2 + r() * (y1 - y0 - 3)) | 0; P1(c, x, y, tuft); P1(c, x + 1, y - 1, tuft); P1(c, x + 2, y, tuft); }
   }
-  function lyingCup(c, x, y) { paint(c, ['.WRRRRD', 'WWRLRRD', 'WWRRRRD', '.WRRRD.'], { W: 'white', R: 'red', L: 'salmon', D: 'dred' }, x, y); }
+  function lyingCup(c, x, y) { paint(c, ['.WRRRRD', 'WWRLRRD', 'WWRRRRD', '.WRRRD.'], { W: 'white', R: 'red', L: 'white', D: 'dred' }, x, y); }
 
   function bgBackyard() {
     var cv = mk(W, H), c = cv._x, i;
@@ -1620,7 +1816,7 @@ body.m-landscape #dpad .plate{display:block}
   var standFrames = null;
   function arenaStands() {
     if (standFrames) return standFrames;
-    standFrames = [0, 1].map(function (fr) {
+    standFrames = withStage(4, function () { return [0, 1].map(function (fr) {
       var cv = mk(W, 112), c = cv._x, r = rng(31), x, y;
       R(c, 0, 0, W, 112, 'black');
       for (var row = 0; row < 9; row++) {
@@ -1636,12 +1832,12 @@ body.m-landscape #dpad .plate{display:block}
       }
       dith4(c, 0, 0, W, 40, 'black', 1);
       return cv;
-    });
+    }); });
     return standFrames;
   }
 
   var BG_BUILDERS = [bgBackyard, bgBasement, bgRooftop, bgBeach, bgArena];
-  function stageBG(s) { return stageCache[s] || (stageCache[s] = BG_BUILDERS[s]()); }
+  function stageBG(s) { return stageCache[s] || (stageCache[s] = withStage(s, BG_BUILDERS[s])); }
   function clampStage(stage) { stage = stage | 0; return ((stage % 5) + 5) % 5; }
 
   function twinkle(ctx, list, t) {
@@ -1665,6 +1861,9 @@ body.m-landscape #dpad .plate{display:block}
   function drawBackground(ctx, stage, t, excite) {
     if (!ctx) return;
     stage = clampStage(stage); t = t | 0; var ex = Math.max(0, Math.min(1, +excite || 0));
+    withStage(stage, function () { drawBG(ctx, stage, t, ex); });
+  }
+  function drawBG(ctx, stage, t, ex) {
     if (stage === 4) { var sf = arenaStands(); ctx.drawImage(stageBG(4), 0, 0); ctx.drawImage(sf[(ex > 0.05 ? (t >> (ex > 0.6 ? 2 : 3)) : (t >> 5)) & 1], 0, 38); }
     else ctx.drawImage(stageBG(stage), 0, 0);
     var i, x, y;
@@ -1735,7 +1934,7 @@ body.m-landscape #dpad .plate{display:block}
   // ------------------------------------------------------------------ tables
   var TABLES = [
     { top: 'red', top2: 'dred', trim: 'white', stripe: 'white', apron: 'red', apron2: 'dred', leg: 'dgray', leg2: 'black' },
-    { top: 'orange', top2: 'brown', trim: 'tan', stripe: 'brown', apron: 'brown', apron2: 'maroon', leg: 'dgray', leg2: 'black', wood: 1 },
+    { top: 'brown', top2: 'dbrown', trim: 'gold', stripe: 'dbrown', apron: 'dbrown', apron2: 'maroon', leg: 'dgray', leg2: 'black', wood: 1 },
     { top: 'dgray', top2: 'black', trim: 'lgray', stripe: 'cyan', apron: 'gray', apron2: 'dgray', leg: 'lgray', leg2: 'gray' },
     { top: 'gold', top2: 'orange', trim: 'cream', stripe: 'olive', apron: 'olive', apron2: 'dbrown', leg: 'olive', leg2: 'dbrown', wood: 2 },
     { top: 'dblue', top2: 'navy', trim: 'gold', stripe: 'white', apron: 'blue', apron2: 'dblue', leg: 'gold', leg2: 'orange', star: 1 }
@@ -1772,7 +1971,7 @@ body.m-landscape #dpad .plate{display:block}
   }
   function drawTable(ctx, stage) {
     if (!ctx) return; stage = clampStage(stage);
-    var cv = tableCache[stage] || (tableCache[stage] = buildTable(stage));
+    var cv = tableCache[stage] || (tableCache[stage] = withStage(stage, function () { return buildTable(stage); }));
     ctx.drawImage(cv, 0, 180);
   }
 
@@ -1801,8 +2000,12 @@ body.m-landscape #dpad .plate{display:block}
   }
   function drawBall(ctx, x, y, fire, t) {
     if (!ctx) return; x = Math.round(x); y = Math.round(y);
-    if (fire) { var f = ((t | 0) >> 2) & 1; ctx.drawImage(S.fire[f], x - 3, y - 3); }
+    if (fire) { var f = ((t | 0) >> 2) & 1; ctx.drawImage(S.fire[f], x - 4, y - 5); }
     else ctx.drawImage(S.ball, x - 2, y - 2);
+  }
+  function drawFlame(ctx, x, y, t) { // short flickering flame-trail puff centered at x,y (t = frame/age)
+    if (!ctx || !S.flame) return; var f = (((t | 0) >> 2) + ((x + y) & 1)) & 3;
+    ctx.drawImage(S.flame[f], Math.round(x) - 2, Math.round(y) - 2);
   }
   function drawShadow(ctx, x, y) {
     if (!ctx) return; x = Math.round(x); y = Math.round(y);
@@ -1936,7 +2139,8 @@ body.m-landscape #dpad .plate{display:block}
       S.cup = spr(CUPMAP.full, CUPMAP.pal);
       S.cupDim = spr(CUPMAP.full, { W: 'lgray', g: 'gray', R: 'dred', L: 'red', D: 'maroon' });
       S.ball = spr(BALL, { W: 'white', g: 'lgray' });
-      S.fire = FIRE.map(function (f, i) { return spr(f, i ? { R: 'red', Y: 'yellow', W: 'white', O: 'orange' } : { R: 'red', Y: 'orange', W: 'cream', O: 'red' }); });
+      S.fire = FIRE.map(function (f) { return spr(f, { R: 'red', Y: 'gold', W: 'white', O: 'orange' }); });
+      S.flame = FLAME.map(function (f) { return spr(f, { R: 'red', Y: 'gold', O: 'orange' }); });
       S.xhair = spr(XHAIR, { W: 'white', R: 'red' }); S.xhair2 = spr(XHAIR, { W: 'yellow', R: 'white' });
       S.xhairShadow = spr(XHAIR, { W: 'black', R: 'black' });
       S.icons = {}; for (var k in ICONS) S.icons[k] = spr(ICONS[k], ICONPAL);
@@ -1949,13 +2153,13 @@ body.m-landscape #dpad .plate{display:block}
           else if (d <= 6.1) col = d > 5.3 ? 'black' : d > 4.2 ? (dx + dy > 2.5 ? 'dred' : 'red') : d > 3.1 ? 'white' : (mode === 'hit' ? ((x + y) & 1 ? 'white' : 'beer') : (dx + dy < -1.5 ? 'yellow' : 'beer'));
           if (col) P1(c, x, y, col);
         }
-        if (mode !== 'gone') { P1(c, 4, 4, 'cream'); P1(c, 5, 4, 'cream'); }
+        if (mode !== 'gone') { P1(c, 4, 4, 'white'); P1(c, 5, 4, 'white'); }
         return cv;
       }
       S.cupTop = topCup('full'); S.cupTopGone = topCup('gone'); S.cupTopHit = topCup('hit');
       for (var w in CHARS) for (var pk in POSES) { charSprite(w, pk, false); charSprite(w, pk, true); }
-      for (var w2 in CHARS) portraitCache[w2] = buildPortrait(w2);
-      for (var s = 0; s < 5; s++) { stageBG(s); tableCache[s] = buildTable(s); }
+      for (var w2 in CHARS) { portraitCache[w2] = buildPortrait(w2); portrait64[w2] = buildPortrait64(w2); }
+      for (var s = 0; s < 5; s++) { stageBG(s); drawTable(mk(1, 1)._x, s); }
       arenaStands(); buildLogo(); atlas('white'); atlas('black');
     } catch (e) { if (window.console) console.warn('Art.init', e); }
   }
@@ -1974,7 +2178,7 @@ body.m-landscape #dpad .plate{display:block}
     drawBackground: wrap(drawBackground), drawTable: wrap(drawTable), drawPlayer: wrap(drawPlayer),
     drawCup: wrap(drawCup), drawCupTop: wrap(drawCupTop), drawBall: wrap(drawBall), drawShadow: wrap(drawShadow),
     drawSplash: wrap(drawSplash), drawCrosshair: wrap(drawCrosshair), drawIcon: wrap(drawIcon),
-    drawLogo: wrap(drawLogo), drawPortrait: wrap(drawPortrait), drawTrailDot: wrap(drawTrailDot)
+    drawLogo: wrap(drawLogo), drawFlame: wrap(drawFlame), drawPortrait: wrap(drawPortrait), drawTrailDot: wrap(drawTrailDot)
   };
 })();
 
@@ -1989,6 +2193,8 @@ body.m-landscape #dpad .plate{display:block}
  *   triangle          : 32-step 4-bit stepped triangle (PeriodicWave), linear-counter style gate (no volume).
  *   noise             : real 15-bit LFSR, long (32767) + short "metallic" (93) modes, the 16 NTSC period rates
  *                       pre-generated as buffers, per-frame period changes via playbackRate.
+ *   DMC (DPCM)        : 1-bit delta samples (7-bit counter +-2 per bit, NTSC DMC rate table), synthesised
+ *                       procedurally then DPCM-encoded: kick, snare, crowd "OHH!" / "YEAH!" voice stingers.
  *   mixer             : 2A03-ish channel weights -> master -> 90 Hz 1st-order HP -> ~13 kHz LP -> out.
  * SFX steal a music channel (usually pulse 2 / noise) and hand it back afterwards, like NES drivers.
  * Music: tracker-style note strings, lookahead scheduler (25 ms tick, 120 ms horizon) on AudioContext time.
@@ -1998,10 +2204,12 @@ body.m-landscape #dpad .plate{display:block}
   var BP = (window.BP = window.BP || {})
   var CPU = 1789773
   var NPER = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068]
-  var CHS = ['p1', 'p2', 'tr', 'no']
+  var CHS = ['p1', 'p2', 'tr', 'no', 'dm']
   var K = 2.3 // overall headroom factor on top of the 2A03 linear DAC weights
-  var LEVEL = { p1: 0.113 * K, p2: 0.113 * K, tr: 0.128 * K, no: 0.074 * K }
+  var LEVEL = { p1: 0.113 * K, p2: 0.113 * K, tr: 0.128 * K, no: 0.074 * K, dm: 0.42 * K }
   var LOOK = 0.12
+  var MUSIC_BUS = 0.72 // music sits a little under the SFX so event sounds always read clearly
+  var VIB = [0, 0.59, 0.95, 0.95, 0.59, 0, -0.59, -0.95, -0.95, -0.59]
 
   // ------------------------------------------------------------------ pitch helpers
   var NI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
@@ -2043,6 +2251,68 @@ body.m-landscape #dpad .plate{display:block}
     var P = b.length, c = new Float64Array(P + 1)
     for (var i = 0; i < P; i++) c[i + 1] = c[i] + b[i]
     return (LFSR[mode] = { b: b, c: c, P: P })
+  }
+
+  // ------------------------------------------------------------------ DMC / DPCM
+  var DMC_RATE = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54] // CPU cycles per bit (NTSC)
+  // r: rate index, d: seconds. Sources are synthesised at the DMC bit rate, encoded to 1-bit deltas, then decoded.
+  var DMS = { K: { r: 15, d: 0.17 }, S: { r: 15, d: 0.16 }, oh: { r: 14, d: 0.56 }, yeah: { r: 14, d: 0.64 } }
+  var DMCL = {}
+  function dpcmEncode(x) { // x: -1..1 at bit rate -> sample bytes (LSB first), like a .dmc file
+    var c = 64, bytes = new Uint8Array(Math.ceil(x.length / 8))
+    for (var i = 0; i < x.length; i++) {
+      var bit = 64 + x[i] * 63 > c ? 1 : 0
+      if (bit) { if (c <= 125) c += 2 } else if (c >= 2) c -= 2
+      if (bit) bytes[i >> 3] |= 1 << (i & 7)
+    }
+    return bytes
+  }
+  function dpcmDecode(bytes, n) { // the 2A03 DMC output unit: 7-bit counter, +2 / -2 per bit, clamped
+    var c = 64, lv = new Uint8Array(n)
+    for (var i = 0; i < n; i++) {
+      if ((bytes[i >> 3] >> (i & 7)) & 1) { if (c <= 125) c += 2 } else if (c >= 2) c -= 2
+      lv[i] = c
+    }
+    return lv
+  }
+  function dmcSample(name) {
+    if (DMCL[name]) return DMCL[name]
+    var D = DMS[name], fs = CPU / DMC_RATE[D.r], n = Math.round(D.d * fs), tail = Math.round(0.03 * fs), x = new Float32Array(n + tail)
+    var s = 0x1234567, rnd = function () { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x3fffffff - 1 }
+    var i, t, ph = 0
+    if (name === 'K') for (i = 0; i < n; i++) { // pitch-dropping sine thump + click
+      t = i / fs; ph += (2 * Math.PI * (48 + 120 * Math.exp(-t / 0.028))) / fs
+      x[i] = Math.sin(ph) * Math.exp(-t / 0.07) * 0.95 + (t < 0.003 ? rnd() * 0.6 : 0)
+    }
+    else if (name === 'S') for (i = 0; i < n; i++) { // body tone + noise burst (slope overload makes it crunchy)
+      t = i / fs; ph += (2 * Math.PI * (185 - 40 * t)) / fs
+      x[i] = Math.sin(ph) * 0.85 * Math.exp(-t / 0.05) + rnd() * 0.9 * Math.exp(-t / 0.06)
+    }
+    else { // crowd vowel: 4 detuned glottal saws -> 3 time-varying formant resonators
+      var yeah = name === 'yeah', mul = [1, 1.13, 0.88, 1.27], vph = [0, 0.3, 0.6, 0.15], st = [0, 0.012, 0.025, 0.006]
+      var y = new Float32Array(n), F = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], peak = 1e-6, j
+      for (i = 0; i < n; i++) {
+        t = i / fs
+        var u = t / D.d, f0 = yeah ? 150 + 60 * Math.sin(Math.PI * Math.min(1, u * 1.6)) : 170 - 55 * u, src = 0
+        for (j = 0; j < 4; j++) {
+          vph[j] = (vph[j] + (f0 * mul[j] * (1 + 0.01 * Math.sin(t * 37 + j))) / fs) % 1
+          if (t >= st[j]) src += vph[j] * 2 - 1
+        }
+        src = src / 4 + rnd() * 0.12
+        var fm = yeah ? (u < 0.2 ? [300, 2200, 2900] : u < 0.38 ? [540, 1800, 2500] : [760, 1220, 2500]) : [520, 880, 2450]
+        var out = 0
+        for (j = 0; j < 3; j++) {
+          var bw = [90, 110, 160][j], r = Math.exp((-Math.PI * bw) / fs), a1 = 2 * r * Math.cos((2 * Math.PI * fm[j]) / fs), a2 = -r * r
+          var o = (1 - r) * src + a1 * F[j][0] + a2 * F[j][1]
+          F[j][1] = F[j][0]; F[j][0] = o; out += o * [1, 0.45, 0.2][j]
+        }
+        var env = Math.min(1, t / 0.03) * (u < 0.55 ? 1 : Math.max(0, (1 - u) / 0.45))
+        y[i] = out * env; if (Math.abs(y[i]) > peak) peak = Math.abs(y[i])
+      }
+      for (i = 0; i < n; i++) x[i] = Math.tanh((y[i] / peak) * 2.2) * 0.95 // hot, soft-clipped: loud & crunchy once 1-bit encoded
+    }
+    var bytes = dpcmEncode(x)
+    return (DMCL[name] = { lv: dpcmDecode(bytes, x.length), fs: fs, bytes: bytes })
   }
 
   // ------------------------------------------------------------------ instruments & drums
@@ -2091,30 +2361,32 @@ body.m-landscape #dpad .plate{display:block}
         I: ['C6:2 r:2 C6:2 r:2 C6:1 r:1 C6:2 D6:2 E6:2 D6:2 r:2 D6:2 r:2 D6:1 r:1 G6:6',
           'E5:2 r:2 E5:2 r:2 E5:1 r:1 E5:2 F5:2 G5:2 B5:2 r:2 B5:2 r:2 B5:1 r:1 D6:6',
           'C3:2 r:2 C3:2 r:2 C3:1 r:1 C3:2 D3:2 E3:2 G2:2 r:2 G2:2 r:2 G2:1 r:1 G2:2 A2:2 B2:2',
-          's:2 r:2 s:2 r:2 s:1 r:1 k:2 k:2 k:2 s:2 r:2 s:2 r:2 s:1 r:1 s:1 s:1 s:1 s:1 s:1 s:1'],
+          's:2 r:2 s:2 r:2 s:1 r:1 k:2 k:2 k:2 s:2 r:2 s:2 r:2 s:1 r:1 s:1 s:1 s:1 s:1 s:1 s:1',
+          'S:4 S:4 S:2 K:2 K:2 K:2 S:4 S:4 S:2 S:1 S:1 S:1 S:1 S:1 S:1'],
         A: ['E5:2 G5:2 C6:3 B5:1 C6:2 G5:2 E5:4 A5:2 C6:2 E6:3 D6:1 C6:2 A5:2 E5:4 F5:2 A5:2 C6:2 F6:4 E6:2 D6:2 C6:2 D6:6 B5:2 G5:4 r:2 G5:1 B5:1 C6:2 G5:2 E6:3 D6:1 C6:2 E6:2 G6:4 A6:4 G6:2 E6:2 C6:4 A5:4 F6:2 E6:2 D6:2 C6:2 D6:2 E6:2 F6:2 B5:2 C6:12 r:4',
           '@stab %047 [C5:3 C5:3 C5:2]2 %037 [A4:3 A4:3 A4:2]2 %047 [F4:3 F4:3 F4:2]2 [G4:3 G4:3 G4:2]2 [C5:3 C5:3 C5:2]2 %037 [A4:3 A4:3 A4:2]2 %047 F4:3 F4:3 F4:2 G4:3 G4:3 G4:2 C5:3 C5:3 C5:2 C5:8',
           '2 [C3 C4]4 [A2 A3]4 [F2 F3]4 [G2 G3]4 [C3 C4]4 [A2 A3]4 [F2 F3]2 [G2 G3]2 C3 C4 C3 G2 C3:8',
-          '2 c h s h k k s h [k h s h k k s h]6 k h s h s:1 s:1 s:1 s:1 s s'],
+          '2 c h s h k k s h [k h s h k k s h]6 k h s h s:1 s:1 s:1 s:1 s s', '[K:4 S:4 K:2 K:2 S:4]7 K:4 S:4 S:1 S:1 S:1 S:1 S:2 S:2'],
         B: ['r:2 A5:2 B5:2 C6:2 E6:4 D6:2 C6:2 B5:4 G5:2 B5:2 E6:6 r:2 r:2 F5:2 A5:2 C6:2 F6:4 E6:2 C6:2 E6:6 D6:2 C6:2 G5:2 E5:4 F5:2 A5:2 D6:3 C6:1 D6:2 F6:2 A6:4 G6:4 F6:2 D6:2 B5:4 G5:4 E6:4 G6:4 A6:4 E6:4 F6:4 E6:2 D6:2 D6:2 B5:2 G5:2 B5:2',
           '<h-2 @harm',
           '2 [A2 A3]4 [E2 E3]4 [F2 F3]4 [C3 C4]4 [D3 D4]4 [G2 G3]4 [E2 E3]2 [A2 A3]2 [D3 D4]2 G2 G3 G2 B2',
-          '2 c o s o k k s o [k o s o k k s o]6 k k s s s:1 s:1 s:1 s:1 s s'],
+          '2 c o s o k k s o [k o s o k k s o]6 k k s s s:1 s:1 s:1 s:1 s s', '[K:4 S:4 K:2 K:2 S:4]7 K:2 K:2 S:2 S:2 S:1 S:1 S:1 S:1 S:2 S:2'],
       },
     },
     stage0: { // BACKYARD BASH — party rock, G (mixolydian b7 flavour)
       bpm: 160, k: 'G', sc: 'maj', x: 'F', ins: ['lead', 'chug', 'bass'], loop: 0, ord: 'A A2 B C',
       mac: { h: 'G4:3 G4:3 G4:2 G4:2 G4:2 G4:2 G4:2', q: 'G2:2 G2:2 G3:2 G2:2 G2:2 G3:2 D3:2 G2:2',
-        d: 'k:2 h:2 s:2 h:2 k:2 k:2 s:2 h:2', f: 'k:2 h:2 s:2 h:2 s:1 s:1 s:1 s:1 s:2 s:2' },
+        d: 'k:2 h:2 s:2 h:2 k:2 k:2 s:2 h:2', f: 'k:2 h:2 s:2 h:2 s:1 s:1 s:1 s:1 s:2 s:2',
+        D: '[K:4 S:4 K:2 K:2 S:4]3 K:4 S:4 S:1 S:1 S:1 S:1 S:2 S:2' },
       pat: {
         A: ['G5:2 G5:1 G5:1 B5:2 D6:2 r:2 D6:2 B5:2 G5:2 A5:2 B5:2 A5:2 G5:2 F5:2 G5:6 E5:2 G5:2 C6:2 E6:4 D6:2 C6:2 A5:2 B5:4 A5:2 G5:2 D5:4 r:4',
-          '%07c $h $h t-7 $h t0 $h', '$q $q t5 $q t0 $q', 'c:2 h:2 s:2 h:2 k:2 k:2 s:2 h:2 $d $d $f'],
+          '%07c $h $h t-7 $h t0 $h', '$q $q t5 $q t0 $q', 'c:2 h:2 s:2 h:2 k:2 k:2 s:2 h:2 $d $d $f', '$D'],
         A2: ['A5:2 A5:1 A5:1 D6:2 F#6:2 r:2 F#6:2 E6:2 D6:2 E6:2 D6:2 C6:2 B5:2 A5:2 G5:2 E5:4 D5:2 G5:2 B5:2 D6:2 G6:4 F6:2 D6:2 E6:2 D6:2 C6:2 A5:2 F#5:4 D5:4',
-          '%07c t-5 $h t-7 $h t0 $h t-5 $h', 't7 $q t5 $q t0 $q t7 $q', '$d $d $d $f'],
+          '%07c t-5 $h t-7 $h t0 $h t-5 $h', 't7 $q t5 $q t0 $q t7 $q', '$d $d $d $f', '$D'],
         B: ['E6:3 E6:3 E6:2 D6:2 B5:2 G5:4 C6:3 C6:3 C6:2 D6:2 E6:2 G6:4 G6:2 F6:2 D6:2 B5:2 D6:2 B5:2 G5:4 A5:4 B5:2 C6:2 D6:8',
-          '%07c t-3 $h t-7 $h t0 $h t-5 $h', 't-3 $q t5 $q t0 $q t7 $q', '[k:2 o:2 s:2 o:2 k:2 k:2 s:2 o:2]3 $f'],
+          '%07c t-3 $h t-7 $h t0 $h t-5 $h', 't-3 $q t5 $q t0 $q t7 $q', '[k:2 o:2 s:2 o:2 k:2 k:2 s:2 o:2]3 $f', '$D'],
         C: ['C6:2 r:2 C6:2 r:2 E6:2 D6:2 C6:4 D6:2 r:2 D6:2 r:2 F#6:2 E6:2 D6:4 G6:6 D6:2 B5:4 G5:4 A5:2 B5:2 D6:2 B5:2 A5:2 G5:2 F5:2 D5:2',
-          '%07c t-7 $h t-5 $h t0 $h G4:2 r:6 G4:2 G4:2 r:4', 't5 $q t7 $q t0 $q G2:2 A2:2 B2:2 D3:2 F3:2 E3:2 D3:2 B2:2', '$d $d $d $f'],
+          '%07c t-7 $h t-5 $h t0 $h G4:2 r:6 G4:2 G4:2 r:4', 't5 $q t7 $q t0 $q G2:2 A2:2 B2:2 D3:2 F3:2 E3:2 D3:2 B2:2', '$d $d $d $f', '$D'],
       },
     },
     stage1: { // FRAT BASEMENT — funk, E dorian, triangle slap-bass riff
@@ -2160,12 +2432,13 @@ body.m-landscape #dpad .plate{display:block}
     stage4: { // CHAMPIONSHIP — heroic march, D major, brass in 3rds
       bpm: 116, k: 'D', sc: 'maj', ins: ['brass', 'brass2', 'bass'], loop: 0, ord: 'A B',
       mac: { mb: 'D3:4 A2:4 D3:4 A2:4', d: 'k:2 s:1 s:1 s:2 s:2 k:2 s:1 s:1 s:2 s:2', r: 's:1 s:1 s:1 s:1 s:1 s:1 s:1 s:1 k:2 s:2 k:2 c:2',
-        n: 'c:2 s:1 s:1 s:2 s:2 k:2 s:1 s:1 s:2 s:2 [$d]2 $r [$d]3 $r' },
+        n: 'c:2 s:1 s:1 s:2 s:2 k:2 s:1 s:1 s:2 s:2 [$d]2 $r [$d]3 $r',
+        D: '[K:4 S:4 K:4 S:4]3 S:1 S:1 S:1 S:1 S:1 S:1 S:1 S:1 K:2 S:2 K:2 S:2 [K:4 S:4 K:4 S:4]3 S:2 S:2 S:2 S:2 K:2 S:2 K:2 S:2' },
       pat: {
         A: ['A5:3 A5:1 D6:4 F#6:3 E6:1 D6:4 B5:3 B5:1 D6:4 G6:6 F#6:2 F#6:3 E6:1 D6:2 A5:2 F#5:4 A5:4 E6:3 F#6:1 E6:2 C#6:2 A5:8 A5:3 A5:1 D6:4 F#6:3 G6:1 A6:4 B6:6 A6:2 G6:4 B5:4 G6:4 E6:4 E6:2 F#6:2 G6:2 C#6:2 D6:12 r:4',
-          '<h-2 @brass2', '$mb t5 $mb t0 $mb t-5 $mb t0 $mb t5 $mb t0 E3:4 B2:4 A2:4 E2:4 D3:4 A2:4 D3:8', '$n'],
+          '<h-2 @brass2', '$mb t5 $mb t0 $mb t-5 $mb t0 $mb t5 $mb t0 E3:4 B2:4 A2:4 E2:4 D3:4 A2:4 D3:8', '$n', '$D'],
         B: ['F#6:3 F#6:1 D6:2 B5:2 F#5:4 B5:4 C#6:3 C#6:1 A5:2 F#5:2 C#5:4 F#5:4 D6:3 D6:1 B5:2 G5:2 D6:3 E6:1 G6:4 F#6:6 E6:2 D6:4 A5:4 B5:3 C#6:1 D6:4 B5:3 D6:1 G6:4 C#6:3 D6:1 E6:4 C#6:3 E6:1 A6:4 B6:4 A6:2 F#6:2 G6:4 F#6:2 E6:2 E6:4 F#6:2 G6:2 A6:8',
-          '<h-2 @brass2', 't-3 $mb t4 $mb t5 $mb t0 $mb t5 $mb t-5 $mb t0 B2:4 F#2:4 G2:4 D3:4 t-5 $mb', '$n'],
+          '<h-2 @brass2', 't-3 $mb t4 $mb t5 $mb t0 $mb t5 $mb t-5 $mb t0 B2:4 F#2:4 G2:4 D3:4 t-5 $mb', '$n', '$D'],
       },
     },
     fire: { // ON FIRE — hype loop, D harmonic minor, 172 bpm
@@ -2173,12 +2446,13 @@ body.m-landscape #dpad .plate{display:block}
       mac: { d: 'k:2 h:1 h:1 s:2 h:1 h:1 k:1 h:1 k:1 h:1 s:2 h:1 h:1', f: 'k:2 h:1 h:1 s:2 h:1 h:1 s:1 s:1 s:1 s:1 s:1 s:1 c:2',
         x: 'D6:2 D6:1 D6:1 F6:2 A6:2 G6:2 F6:2 E6:2 F6:2 D6:2 D6:1 D6:1 F6:2 Bb6:2 A6:2 G6:2 F6:2 D6:2 E6:2 E6:1 E6:1 G6:2 C7:2 Bb6:2 G6:2 E6:2 C6:2',
         p: '%037 [D5:2]8 %047 [Bb4:2]8 [C5:2]8 [A4:2]8', q: '%037 [G4:2]8 [D5:2]8 %047 [Bb4:2]4 [C5:2]4 [A4:2]8',
+        D: '[K:4 S:4 K:2 K:2 S:4]3 K:4 S:4 S:1 S:1 S:1 S:1 S:1 S:1 S:2',
         b: '2 [D2 D3]4 [Bb1 Bb2]4 [C2 C3]4 [A1 A2]4', c: '2 [G2 G3]4 [D2 D3]4 [Bb1 Bb2]2 [C2 C3]2 [A1 A2]4' },
       pat: {
-        A: ['$x C#6:4 E6:4 A6:6 r:2', '$p', '$b', '[$d]3 $f'],
-        A2: ['$x A6:2 G6:2 F6:2 E6:2 C#6:2 E6:2 A5:4', '$p', '$b', '[$d]3 $f'],
-        B: ['Bb6:6 A6:2 G6:4 D6:4 F6:6 E6:2 D6:4 A5:4 Bb5:2 D6:2 F6:4 C6:2 E6:2 G6:4 A6:2 r:2 A6:2 r:2 C#7:2 r:2 E7:4', '$q', '$c', '[$d]3 $f'],
-        B2: ['Bb6:2 A6:2 G6:2 F6:2 G6:2 F6:2 E6:2 D6:2 F6:2 E6:2 D6:2 C#6:2 D6:2 E6:2 F6:2 A6:2 Bb6:4 A6:4 G6:4 E6:4 C#6:4 E6:4 A6:8', '$q', '$c', '[$d]3 $f'],
+        A: ['$x C#6:4 E6:4 A6:6 r:2', '$p', '$b', '[$d]3 $f', '$D'],
+        A2: ['$x A6:2 G6:2 F6:2 E6:2 C#6:2 E6:2 A5:4', '$p', '$b', '[$d]3 $f', '$D'],
+        B: ['Bb6:6 A6:2 G6:4 D6:4 F6:6 E6:2 D6:4 A5:4 Bb5:2 D6:2 F6:4 C6:2 E6:2 G6:4 A6:2 r:2 A6:2 r:2 C#7:2 r:2 E7:4', '$q', '$c', '[$d]3 $f', '$D'],
+        B2: ['Bb6:2 A6:2 G6:2 F6:2 G6:2 F6:2 E6:2 D6:2 F6:2 E6:2 D6:2 C#6:2 D6:2 E6:2 F6:2 A6:2 Bb6:4 A6:4 G6:4 E6:4 C#6:4 E6:4 A6:8', '$q', '$c', '[$d]3 $f', '$D'],
       },
     },
     vs: {
@@ -2251,15 +2525,15 @@ body.m-landscape #dpad .plate{display:block}
       if (!m) return
       var n = m[2] ? +m[2] : st.l, x = m[1], mi
       if (x === '^') { if (last) last.n += n } else if (x === 'r') {
-        if (ch !== 'no') out.push((last = { r: r, n: n, m: -1 })); else last = null
+        if (ch !== 'no' && ch !== 'dm') out.push((last = { r: r, n: n, m: -1 })); else last = null
       } else if ((mi = midiOf(x)) != null) out.push((last = { r: r, n: n, m: mi + st.t, i: st.i, v: st.v, a: st.a }))
-      else if (ch === 'no') out.push((last = { r: r, n: n, m: x, v: st.v }))
+      else if (ch === 'no' || ch === 'dm') out.push((last = { r: r, n: n, m: x, v: st.v }))
       r += n
     })
     return { ev: out, len: r }
   }
   function compile(S) {
-    var ev = { p1: [], p2: [], tr: [], no: [] }, row = 0, loopRow = 0, dirs = [], warn = [], ins = S.ins || []
+    var ev = { p1: [], p2: [], tr: [], no: [], dm: [] }, row = 0, loopRow = 0, dirs = [], warn = [], ins = S.ins || []
     S.ord.split(' ').forEach(function (pn, oi) {
       if (oi === S.loop) loopRow = row
       var P = S.pat[pn], res = {}, len = 0
@@ -2347,21 +2621,35 @@ body.m-landscape #dpad .plate{display:block}
     return (this.nb[key] = buf)
   }
 
+  // decoded DMC levels -> AudioBuffer (sample-and-hold at the DMC bit rate, like the DAC)
+  Engine.prototype.dmc = function (name) {
+    var key = 'd' + name
+    if (this.nb[key]) return this.nb[key]
+    var S = dmcSample(name), sr = this.ctx.sampleRate, n = Math.ceil((S.lv.length * sr) / S.fs), buf = this.ctx.createBuffer(1, n, sr), d = buf.getChannelData(0)
+    for (var i = 0; i < n; i++) d[i] = (S.lv[Math.min(S.lv.length - 1, Math.floor((i * S.fs) / sr))] - 64) / 127
+    return (this.nb[key] = buf)
+  }
+  function dmcHit(E, out, t, name) {
+    if (!DMS[name]) return null
+    var c = E.ctx, src = c.createBufferSource(), g = c.createGain(), buf = E.dmc(name)
+    src.buffer = buf; src.connect(g); g.connect(out); src.start(t); src.stop(t + buf.duration + 0.01)
+    drop(E, g, t + buf.duration)
+    return [g]
+  }
+
   // pulse voice: three phase-locked oscillators (12.5/25/50%), duty select gains, 4-bit volume gain
-  function PV(E, out, vib) {
+  function PV(E, out) {
     var c = E.ctx, me = this
     this.env = c.createGain(); this.env.gain.value = 0; this.env.connect(out)
-    this.o = []; this.g = []; this.f = -1; this.v = -1; this.d = -1; this.vb = 0
-    if (vib) { this.vg = c.createGain(); this.vg.gain.value = 0; this.lfo = c.createOscillator(); this.lfo.frequency.value = 5.6; this.lfo.connect(this.vg) }
+    this.o = []; this.g = []; this.f = -1; this.v = -1; this.d = -1
     for (var i = 0; i < 3; i++) {
       var o = c.createOscillator(), g = c.createGain()
       o.setPeriodicWave(E.pw[i]); g.gain.value = 0; o.connect(g); g.connect(me.env)
-      if (vib) this.vg.connect(o.detune)
       this.o.push(o); this.g.push(g)
     }
   }
-  PV.prototype.start = function (t) { this.o.forEach(function (o) { o.start(t) }); if (this.lfo) this.lfo.start(t) }
-  PV.prototype.stop = function (t) { try { this.o.forEach(function (o) { o.stop(t) }); if (this.lfo) this.lfo.stop(t) } catch (e) {} }
+  PV.prototype.start = function (t) { this.o.forEach(function (o) { o.start(t) }) }
+  PV.prototype.stop = function (t) { try { this.o.forEach(function (o) { o.stop(t) }) } catch (e) {} }
   PV.prototype.set = function (t, f, v, d) {
     if (v > 0 && f > 0) {
       if (d !== this.d) {
@@ -2374,7 +2662,6 @@ body.m-landscape #dpad .plate{display:block}
     } else v = 0
     if (v !== this.v) { this.env.gain.setValueAtTime(v / 15, t); this.v = v }
   }
-  PV.prototype.vibr = function (t, cents) { if (this.vg && cents !== this.vb) { this.vg.gain.setValueAtTime(cents, t); this.vb = cents } }
   // triangle voice: no volume control on the 2A03 — only on/off (tiny ramp to avoid DC clicks)
   function TV(E, out) {
     var c = E.ctx
@@ -2425,7 +2712,7 @@ body.m-landscape #dpad .plate{display:block}
     if (!fn) return false
     var d = typeof fn === 'function' ? fn(arg == null ? null : +arg, this.rnd) : fn, c = this.ctx, E = this
     var now = at != null ? at : c.currentTime + 0.01, st = now, chs = [], i, ch, b
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < CHS.length; i++) {
       ch = CHS[i]
       if (!d[ch] || !d[ch].length) continue
       chs.push(ch); b = this.busy[ch]
@@ -2438,6 +2725,7 @@ body.m-landscape #dpad .plate{display:block}
       gg.cancelScheduledValues(st); gg.setValueAtTime(0, st); gg.setValueAtTime(1, end)
       var out = c.createGain(); out.connect(E.lvl[ch])
       if (ch === 'no') noiseHit(E, out, st, fr)
+      else if (ch === 'dm') { var dh = null; for (k = 0; k < fr.length; k++) if (typeof fr[k] === 'string') { cut(dh, st + k / 60); dh = dmcHit(E, out, st + k / 60, fr[k]) } }
       else if (ch === 'tr') {
         var tv = new TV(E, out); tv.start(st)
         for (k = 0; k < fr.length; k++) tv.set(st + k / 60, fr[k][0], fr[k][1] > 0 ? 1 : 0)
@@ -2457,8 +2745,8 @@ body.m-landscape #dpad .plate{display:block}
   function Player(E, name, startRow, t0) {
     var C = song(name), c = E.ctx, me = this
     this.E = E; this.C = C; this.name = name; this.row = startRow || 0; this.t = t0; this.done = false; this.hist = []; this.out = {}
-    CHS.forEach(function (ch) { var g = c.createGain(); g.connect(E.gate[ch]); me.out[ch] = g })
-    this.vp = { p1: new PV(E, this.out.p1, 1), p2: new PV(E, this.out.p2, 1) }
+    CHS.forEach(function (ch) { var g = c.createGain(); g.gain.value = MUSIC_BUS; g.connect(E.gate[ch]); me.out[ch] = g })
+    this.vp = { p1: new PV(E, this.out.p1), p2: new PV(E, this.out.p2) }
     this.vt = new TV(E, this.out.tr)
     this.vp.p1.start(t0); this.vp.p2.start(t0); this.vt.start(t0)
     this.idx = {}
@@ -2496,6 +2784,8 @@ body.m-landscape #dpad .plate{display:block}
       var fr = []
       for (k = 0; k < D.E.length; k++) fr.push([D.N[Math.min(k, D.N.length - 1)], Math.round((D.E[k] * e.v) / 15), D.m])
       cut(this.nh, t); this.nh = noiseHit(this.E, this.out.no, t, fr)
+    } else if (ch === 'dm') {
+      if (DMS[e.m]) { cut(this.dh, t); this.dh = dmcHit(this.E, this.out.dm, t, e.m) } // DMC has no volume control
     } else if (ch === 'tr') {
       if (e.m < 0) return this.vt.set(t, 0, 0)
       I = INS[e.i] || INS.bass
@@ -2505,13 +2795,15 @@ body.m-landscape #dpad .plate{display:block}
       if (e.m < 0) return v.set(t, 0, 0, 0)
       I = INS[e.i] || INS.lead
       var A = e.a, tOff = Q(t0 + dur * (I.g || 0.94)), f0 = mf(e.m)
-      v.vibr(t, 0)
-      if (I.v && dur * 60 > I.v[0] + 6) v.vibr(t + I.v[0] / 60, I.v[1])
+      // vibrato is applied per 60 Hz frame from a 10-step sine table (~6 Hz), like NES sound drivers
+      var V = I.v && dur * 60 > I.v[0] + 6 ? I.v : null
       for (k = 0; ; k++) {
         var tk = t + k / 60
         if (k > 0 && tk >= tOff - 1e-4) break
-        v.set(tk, A ? mf(e.m + A[k % A.length]) : f0, Math.round((I.E[Math.min(k, I.E.length - 1)] * e.v) / 15), I.D[Math.min(k, I.D.length - 1)])
-        if (!A && k >= I.E.length && k >= I.D.length) break
+        var f = A ? mf(e.m + A[k % A.length]) : f0
+        if (V && k >= V[0]) f *= Math.pow(2, (V[1] / 1200) * VIB[(k - V[0]) % 10])
+        v.set(tk, f, Math.round((I.E[Math.min(k, I.E.length - 1)] * e.v) / 15), I.D[Math.min(k, I.D.length - 1)])
+        if (!A && !V && k >= I.E.length && k >= I.D.length) break
       }
       v.set(tOff, 0, 0, 0)
     }
@@ -2523,7 +2815,7 @@ body.m-landscape #dpad .plate{display:block}
   Player.prototype.kill = function (t) {
     var me = this
     CHS.forEach(function (ch) { var g = me.out[ch].gain; g.cancelScheduledValues(t); g.setValueAtTime(0, t) })
-    cut(this.nh, t); this.stopAll(t + 0.05)
+    cut(this.nh, t); cut(this.dh, t); this.stopAll(t + 0.05)
     setTimeout(function () { try { CHS.forEach(function (ch) { me.out[ch].disconnect() }) } catch (e) {} }, 400)
   }
   Player.prototype.rowAt = function (now) {
@@ -2549,7 +2841,9 @@ body.m-landscape #dpad .plate{display:block}
     })
     return vib ? VB(a, vib, 5) : a
   }
-  function splash(R) { var a = []; for (var k = 0; k < 28; k++) a.push([4 + Math.round(k / 8) + (R() < 0.3 ? 1 : 0), Math.max(0, Math.round(13 - k * 0.5 + R() * 3 - 1.5)), 0]); return a }
+  function splash(R, v0, n) { var a = []; n = n || 28; v0 = v0 || 13; for (var k = 0; k < n; k++) a.push([4 + Math.round((k * 4) / n) + (R() < 0.3 ? 1 : 0), Math.max(0, Math.round(v0 - (k * v0) / n + R() * 3 - 1.5)), 0]); return a }
+  // DMC channel frames: the sample name on its trigger frame, padding so the channel stays reserved while it plays
+  function DM(name, at) { var a = []; for (var k = 0; k < (at || 0) + Math.ceil(DMS[name].d * 60) + 3; k++) a.push(k === (at || 0) ? name : 0); return a }
   var CRASH = 'edccbbaa99887766554433221100'
   var SFX = {
     select: { p: 1, p2: J(T(nf('A6'), 'aa', 2), T(nf('E7'), 'a8642', 2)) },
@@ -2557,25 +2851,27 @@ body.m-landscape #dpad .plate{display:block}
     cancel: { p: 2, p2: J(T(nf('E5'), 'bbba', 2), T(nf('A4'), 'bba9876543210', 2)) },
     aimLock: { p: 2, p2: J(T(nf('B6'), 'ee', 0), T(nf('E6'), 'ca86420', 0)), no: NE(2, 'c840', 1) },
     powerLock: { p: 2, p2: J(P(8, 300, 1400, 13, 9, 1), T(1400, '87654321', 1)), no: NE(5, 'eb8530') },
-    throw: { p: 3, no: J(NS(6, 9, 4, 3, 11), NS(14, 4, 8, 11, 0)), p2: P(10, 220, 880, 7, 1, 0) },
+    throw: { p: 3, no: J(NS(6, 9, 3, 8, 15), NS(18, 3, 8, 15, 0)), p2: J(P(12, 200, 1050, 15, 11, 2), P(8, 1050, 1250, 11, 0, 1)) },
     bounce: function (i) {
       i = i == null || isNaN(i) ? 0.6 : Math.max(0, Math.min(1, i))
       var f = 900 + 800 * i, v = Math.round(5 + 9 * i)
       return { p: 1, p2: [[f, v, 2], [f * 0.8, v - 2, 2], [f * 0.8, Math.max(1, v - 5), 2]], no: [[1, Math.round(3 + 8 * i), 1], [1, 2, 1]] }
     },
-    rim: { p: 3, no: NE(2, 'dca98765443322110', 1), p2: VB(T(nf('E7'), 'fecba98877665544332211', 0), 25, 4) },
-    sink: function (_, R) {
+    rim: { p: 3, no: NE(2, 'fdca98765443322110', 1), p2: VB(T(nf('E7'), 'ffeedcba98877665544332211', 1), 25, 4), p1: T(nf('B6') * 1.01, 'ffdb975310', 0) },
+    sink: function (_, R) { // plink+plunk on pulse 1 (steals the lead ~12 frames), bubbles on pulse 2, splash on noise, crowd on DMC
       var b = []
-      for (var j = 0; j < 6; j++) { var f = 500 + j * 160 + R() * 120; b = b.concat([[f, 10 - j, 2], [f * 1.25, 9 - j, 2]], Z(2)) }
-      return { p: 5, p2: J(P(8, 560, 110, 15, 9, 2), Z(3), b), no: J(Z(4), splash(R)) }
+      for (var j = 0; j < 6; j++) { var f = 520 + j * 170 + R() * 120; b = b.concat([[f, 14 - j, 2], [f * 1.25, 13 - j, 2]], Z(2)) }
+      return { p: 5, p1: J(P(3, 1900, 1400, 15, 15, 1), P(9, 640, 105, 15, 11, 2)), p2: J(Z(8), b), no: J(Z(2), splash(R, 15, 34)), dm: DM('oh', 12) }
     },
-    splash: function (_, R) { return { p: 3, no: splash(R) } },
+    crowdOh: { p: 3, dm: DM('oh', 0) },
+    crowdYeah: { p: 3, dm: DM('yeah', 0) },
+    splash: function (_, R) { var b = []; for (var j = 0; j < 5; j++) b = b.concat([[700 + R() * 900, 13 - 2 * j, 2], [0, 0, 0], [0, 0, 0]], Z(j)); return { p: 3, no: splash(R, 15, 30), p2: J(Z(3), b) } },
     miss: { p: 2, p2: VB(J(P(12, 440, 392, 12, 10, 2), P(26, 392, 175, 10, 0, 2)), 35, 6) },
     floor: { p: 2, p2: J(T(240, 'b6', 2), Z(10), T(220, '85', 2), Z(7), T(210, '53', 2), Z(4), T(200, '31', 2)),
       no: J(NE(10, 'b6'), Z(10), NE(10, '84'), Z(7), NE(10, '52'), Z(4), NE(10, '31')) },
     cheer: function (_, R) {
       var no = [], n = 96
-      for (var k = 0; k < n; k++) { var e = k < 16 ? 3 + k * 0.55 : k < 60 ? 11.5 : (11.5 * (n - k)) / (n - 60); no.push([R() < 0.5 ? 5 : 6, Math.max(0, Math.round(e + R() * 2 - 1)), 0]) }
+      for (var k = 0; k < n; k++) { var e = k < 16 ? 4 + k * 0.6 : k < 60 ? 13.5 : (13.5 * (n - k)) / (n - 60); no.push([R() < 0.5 ? 5 : 6, Math.max(0, Math.round(e + R() * 2 - 1)), 0]) }
       return { p: 2, q: 1, no: no, p2: J(Z(18), P(10, 1400, 2600, 3, 7, 2), Z(5), P(7, 1500, 2700, 6, 7, 2), P(18, 2700, 1300, 7, 0, 2)) }
     },
     boo: function (_, R) {
@@ -2586,11 +2882,11 @@ body.m-landscape #dpad .plate{display:block}
     heatingUp: { p: 4, p2: J(M('E5:3 G#5:3 B5:3 F5:3 A5:3 C6:3 F#5:3 A#5:3 C#6:3 G5:3 B5:3 D6:3', 'cb', 1), T(nf('G6'), 'dcba98765432', 1)), no: J(Z(24), NS(20, 1, 2, 7, 0)) },
     onFire: function () {
       var tr = []
-      for (var j = 0; j < 12; j++) tr = tr.concat(T(nf(j % 2 ? 'G6' : 'C7'), 'ff'.replace(/f/g, (13 - j).toString(16)), 0))
-      return { p: 5, p2: J(M('C5:3 E5:3 G5:3 C6:3 E6:3 G6:3', 'dc', 1), tr), no: J(NS(30, 13, 2, 2, 13), NS(24, 2, 5, 13, 0)) }
+      for (var j = 0; j < 12; j++) tr = tr.concat(T(nf(j % 2 ? 'G6' : 'C7'), 'ff'.replace(/f/g, (15 - j).toString(16)), 1))
+      return { p: 5, p2: J(M('C5:3 E5:3 G5:3 C6:3 E6:3 G6:3', 'fe', 1), tr), no: J(NS(30, 13, 2, 4, 15), NS(24, 2, 5, 15, 0)), dm: DM('yeah', 18) }
     },
     ballsBack: { p: 6, p1: M('G5:5 G5:5 G5:5 C6:15 A5:8 B5:8 C6:26', 'dcbba99', 1, 12), p2: M('E5:5 E5:5 E5:5 G5:15 F5:8 G5:8 E5:26', 'a9988776', 1),
-      tr: M('C4:5 C4:5 C4:5 C3:15 F3:8 G3:8 C3:26', 'f', 0), no: J(Z(15), NE(3, CRASH)) },
+      tr: M('C4:5 C4:5 C4:5 C3:15 F3:8 G3:8 C3:26', 'f', 0), no: J(Z(15), NE(3, CRASH)), dm: DM('yeah', 14) },
     rerack: function () {
       var no = Z(32)
       ;[0, 4, 7, 12, 15, 19, 23, 26].forEach(function (f, j) { no[f] = [1, 10 - (j & 1) * 3, 1]; no[f + 1] = [1, 4, 1] })
@@ -2613,7 +2909,7 @@ body.m-landscape #dpad .plate{display:block}
     letter: { p: 1, p2: J(T(nf('C6'), 'c', 2), T(nf('C7'), 'b964', 0)) },
     error: function () { var b = []; for (var k = 0; k < 10; k++) b.push([110, 12 - (k >> 2), k % 2 ? 0 : 3]); return { p: 2, p2: J(b, Z(4), b) } },
     // extras (not in the contract, harmless): swish, go, start
-    swish: { p: 4, p2: J(P(6, 800, 2400, 6, 12, 1), M('C7:3 E7:3 G7:3 C8:9', 'c', 0)), no: NS(10, 2, 1, 6, 0) },
+    swish: { p: 4, p2: J(P(6, 800, 2400, 9, 15, 1), M('C7:3 E7:3 G7:3 C8:9', 'fd', 1)), no: NS(14, 2, 1, 12, 0) },
     go: { p: 4, p2: VB(T(nf('A6'), 'cddddddddddddddddddcba9876543210', 2), 60, 3) },
     start: { p: 7, p1: M('C6:4 G6:4 C7:24', 'ddccbbaa99887766554433221100', 2), p2: M('G5:4 E6:4 G6:24', 'aa99887766554433221100', 1), no: J(Z(8), NE(3, CRASH)) },
   }
@@ -2743,7 +3039,7 @@ body.m-landscape #dpad .plate{display:block}
       return { name: name, bpm: S.bpm, rows: C.rows, bars: C.rows / 16, loop: C.loop, loopRow: C.loopRow, sec: (C.rows * 15) / S.bpm,
         loopSec: ((C.rows - C.loopRow) * 15) / S.bpm, introSec: (C.loopRow * 15) / S.bpm, warn: C.warn, key: S.k, scale: S.sc, extra: S.x || '', notes: notes }
     },
-    _dev: { Engine: Engine, Player: Player },
+    _dev: { Engine: Engine, Player: Player, dmc: dmcSample, enc: dpcmEncode, dec: dpcmDecode },
     _list: function () { return { music: Object.keys(SONGS), sfx: Object.keys(SFX) } },
     _state: function () { return { ctx: A.ctx ? A.ctx.state : 'none', playing: A.pl ? A.pl.name : null, paused: !!A.paused, muted: A.muted, tempo: A.tempo, pend: A.pend } },
   }

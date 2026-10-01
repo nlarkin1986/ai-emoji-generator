@@ -42,8 +42,8 @@ async function render(spec, seconds, key) {
       r.mixCorr = T.corr(a, c)
       // per-channel solo renders: pass 2 must equal pass 1 (mix can differ slightly: free-running oscillator phases interfere)
       r.loopCorr = 1
-      for (const ch of ["p1", "p2", "tr", "no"]) {
-        const sb = await BP.Audio._renderOffline({ music: spec, mute: ["p1", "p2", "tr", "no"].filter((x) => x !== ch) }, seconds)
+      for (const ch of ["p1", "p2", "tr", "no", "dm"]) {
+        const sb = await BP.Audio._renderOffline({ music: spec, mute: ["p1", "p2", "tr", "no", "dm"].filter((x) => x !== ch) }, seconds)
         const sa = T.env(sb, 0.05 + info.introSec, 0.05 + info.introSec + info.loopSec, 0.1), sc = T.env(sb, 0.05 + info.introSec + info.loopSec, 0.05 + info.introSec + 2 * info.loopSec, 0.1)
         if (T.stats(sb).peak > 0.01) r.loopCorr = Math.min(r.loopCorr, T.corr(sa, sc))
       }
@@ -107,6 +107,49 @@ for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++
   const a = sfxStats[names[i]], b = sfxStats[names[j]]
   const sim = Math.abs((a.last - a.first) - (b.last - b.first)) < 0.02 && Math.abs(a.centroid - b.centroid) < 120 && Math.abs(a.rms - b.rms) < 0.004
   if (sim) fail(`sfx ${names[i]} and ${names[j]} look identical`)
+}
+
+console.log("== DMC (DPCM) SAMPLES")
+{
+  const r = await page.evaluate(() => ["K", "S", "oh", "yeah"].map((n) => {
+    const s = BP.Audio._dev.dmc(n), lv = s.lv, re = BP.Audio._dev.dec(s.bytes, lv.length)
+    let bad = 0, mn = 127, mx = 0, ss = 0, same = 0
+    for (let i = 0; i < lv.length; i++) { if (i && Math.abs(lv[i] - lv[i - 1]) !== 2 && lv[i] !== lv[i - 1]) bad++; if (re[i] === lv[i]) same++; mn = Math.min(mn, lv[i]); mx = Math.max(mx, lv[i]); ss += (lv[i] - 64) ** 2 }
+    return { n, rate: Math.round(s.fs), bytes: s.bytes.length, bad, mn, mx, rms: Math.sqrt(ss / lv.length), end: lv[lv.length - 1], same: same === lv.length }
+  }))
+  for (const x of r) {
+    console.log(`${x.n.padEnd(5)} ${x.rate} Hz ${x.bytes} bytes levels ${x.mn}-${x.mx} rms ${x.rms.toFixed(1)} end ${x.end}`)
+    if (x.bad) fail(`dmc ${x.n}: ${x.bad} steps not +-2`)
+    if (!x.same) fail(`dmc ${x.n}: decode(bytes) mismatch`)
+    if (x.rms < 8) fail(`dmc ${x.n} too quiet`)
+    if (Math.abs(x.end - 64) > 3) fail(`dmc ${x.n} does not return to rest level`)
+  }
+}
+
+console.log("== KEY SFX AUDIBILITY OVER EACH TRACK (sfx RMS / music RMS over the sfx window)")
+{
+  const r = await page.evaluate(async () => {
+    const SF = ["sink", "rim", "throw", "onFire", "ballsBack", "swish", "crowdOh", "crowdYeah", "splash"], out = {}
+    const rms = (b, a, z) => { const d = b.getChannelData(0); let s = 0, n = 0; for (let i = Math.round(a * 44100); i < Math.round(z * 44100); i++) { s += d[i] * d[i]; n++ } return Math.sqrt(s / n) }
+    const alone = {}
+    for (const x of SF) { const b = await BP.Audio._renderOffline({ sfx: [[2.0, x]] }, 5), st = T.stats(b); alone[x] = { b, a: st.first, z: st.last } }
+    for (const m of ["title", "stage0", "stage1", "stage2", "stage3", "stage4", "fire"]) {
+      const mb = await BP.Audio._renderOffline({ music: m }, 5); out[m] = {}
+      for (const x of SF) {
+        const A = alone[x], mix = await BP.Audio._renderOffline({ music: m, sfx: [[2.0, x]] }, 5)
+        out[m][x] = { ratio: rms(A.b, A.a, A.z) / rms(mb, A.a, A.z), peak: T.stats(mix).peak }
+      }
+    }
+    return out
+  })
+  for (const m in r) {
+    console.log(m.padEnd(7) + Object.entries(r[m]).map(([x, v]) => ` ${x}=${v.ratio.toFixed(2)}`).join(""))
+    for (const x in r[m]) {
+      const v = r[m][x]
+      if (v.peak >= 0.99) fail(`${m}+${x} clips`)
+      if (x === "sink" ? v.ratio < 1.15 : v.ratio < (x === "splash" ? 0.45 : 0.6)) fail(`${x} not clearly audible over ${m} (${v.ratio.toFixed(2)})`)
+    }
+  }
 }
 
 console.log("== CHANNEL STEALING / TEMPO / BOUNCE ARG")
