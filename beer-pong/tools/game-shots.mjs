@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url)
 const { chromium } = require(join(execSync("npm root -g").toString().trim(), "playwright"))
 const here = dirname(fileURLToPath(import.meta.url))
 const out = process.argv[2] || "/tmp"; mkdirSync(out, { recursive: true })
-const url = pathToFileURL(join(here, "..", "..", "public", "beerpong", "index.html")).href + "?seed=5"
+const url = pathToFileURL(join(here, "..", "..", "public", "beerpong", "index.html")).href + "?seed=5&debug"
 const browser = await chromium.launch()
 const page = await (await browser.newContext()).newPage()
 const errs = []

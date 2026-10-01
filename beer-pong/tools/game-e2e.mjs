@@ -23,7 +23,7 @@ function trackErrors(p) { const e = []; p.on("pageerror", (x) => e.push(x.messag
 {
   const page = await (await browser.newContext({ viewport: { width: 1000, height: 900 } })).newPage()
   const errs = trackErrors(page)
-  await page.goto(base + "?seed=9&fast")
+  await page.goto(base + "?debug&seed=9&fast")
   ok(await waitFor(page, () => BP.Game.debug.state === "title"), "boots to title")
   ok(await waitFor(page, () => BP.Game.debug.state === "scores", 14000), "idle title -> attract high scores")
   ok(await waitFor(page, () => BP.Game.debug.state === "demo", 9000), "attract scores -> demo play")
@@ -49,8 +49,16 @@ function trackErrors(p) { const e = []; p.on("pageerror", (x) => e.push(x.messag
   await page.evaluate(() => window.dispatchEvent(new Event("blur")))
   await page.waitForTimeout(200)
   ok((await dbg(page)).paused, "window blur auto-pauses")
-  await page.keyboard.press("ArrowDown"); await page.keyboard.press("z")
-  ok(await waitFor(page, () => BP.Game.debug.state === "gameover", 3000), "pause QUIT -> game over")
+  await page.waitForTimeout(300)
+  await page.keyboard.press("ArrowDown"); await page.keyboard.press("z"); await page.waitForTimeout(400)
+  await page.keyboard.press("z"); await page.waitForTimeout(300)
+  ok((await dbg(page)).state === "match" && (await dbg(page)).paused, "QUIT confirm defaults to NO (mash-safe)")
+  await page.keyboard.press("ArrowDown"); await page.keyboard.press("z"); await page.waitForTimeout(400)
+  await page.keyboard.press("ArrowLeft"); await page.keyboard.press("z")
+  ok(await waitFor(page, () => BP.Game.debug.state === "gameover", 3000), "pause QUIT -> YES -> game over")
+  // mash A from GAME OVER at ~10 Hz for 4 s: must never submit
+  for (let i = 0; i < 40; i++) { await page.keyboard.press("z"); await page.waitForTimeout(100) }
+  ok((await dbg(page)).state === "entry", "mashing A on game over/entry never submits (still in entry)")
   ok(errs.length === 0, "no console errors (desktop) " + errs.join(" | "))
 }
 
@@ -59,7 +67,7 @@ function trackErrors(p) { const e = []; p.on("pageerror", (x) => e.push(x.messag
   const ctx = await browser.newContext({ ...devices["iPhone 13"], hasTouch: true })
   const page = await ctx.newPage()
   const errs = trackErrors(page)
-  await page.goto(base + "?seed=3&fast")
+  await page.goto(base + "?debug&seed=3&fast")
   await waitFor(page, () => BP.Game.debug.state === "title")
   const box = await page.locator("#screen").boundingBox()
   const tapAt = async (x, y) => { await page.touchscreen.tap(box.x + (x / 256) * box.width, box.y + (y / 240) * box.height); await page.waitForTimeout(120) }
@@ -76,17 +84,22 @@ function trackErrors(p) { const e = []; p.on("pageerror", (x) => e.push(x.messag
   // jump to name entry with a score
   await page.evaluate(() => { const g = BP.Game.debug; g.startAt(0, 0, 0); g.autoplay = 0.99; g.step(60 * 20); g.autoplay = false; g.go("entry") })
   await page.waitForTimeout(300)
-  // clear prefilled name then tap N, I, C, K then END
-  for (let i = 0; i < 8; i++) await page.keyboard.press("x")
+  await page.waitForTimeout(600) // entry input lock
+  await tapAt(128, 30) // tap off-grid: must not type anything
   const cell = (ch) => { const rows = ["ABCDEFGHIJ", "KLMNOPQRST", "UVWXYZ0123", "456789.-! "]; for (let r = 0; r < 4; r++) { const c = rows[r].indexOf(ch); if (c >= 0) return [28 + c * 20 + 4, 104 + r * 18 + 4] } }
   for (const ch of "NICK") await tapAt(...cell(ch))
   const nm = await page.evaluate(() => "x")
   void nm
   await tapAt(28 + 124 + 12, 104 + 72 + 4)
-  ok(await waitFor(page, () => BP.Game.debug.state === "scores", 8000), "tap END submits -> leaderboard")
-  await page.waitForTimeout(800)
+  await page.waitForTimeout(400)
+  ok((await dbg(page)).state === "entry", "END opens OK? confirm (no instant submit)")
+  await tapAt(102, 150)
+  ok(await waitFor(page, () => BP.Game.debug.state === "scores", 8000), "tap YES submits -> leaderboard")
+  await tapAt(128, 120); await page.waitForTimeout(300)
+  ok((await dbg(page)).state === "scores", "leaderboard holds a 2 s input lock")
+  await page.waitForTimeout(1800)
   const top = await page.evaluate(() => BP.Scores.top(10))
-  ok(top.some((r) => r.name === "NICK"), "score saved with tapped name NICK")
+  ok(top.some((r) => r.name === "NICK"), "score saved with tapped name NICK (off-grid tap ignored)")
   await page.waitForTimeout(800)
   await tapAt(128, 120)
   ok(await waitFor(page, () => BP.Game.debug.state === "title", 4000), "tap leaderboard -> title")
@@ -100,6 +113,28 @@ function trackErrors(p) { const e = []; p.on("pageerror", (x) => e.push(x.messag
   await page.goto(base + "?tv")
   ok(await waitFor(page, () => BP.Game.debug.state === "tv"), "?tv boots into TV leaderboard")
   ok(errs.length === 0, "no console errors (tv)")
+}
+// ---------- 4. landscape phone: center tap on the title must not jump into HIGH SCORES
+{
+  const page = await (await browser.newContext({ ...devices["iPhone 13 landscape"], hasTouch: true })).newPage()
+  const errs = trackErrors(page)
+  await page.goto(base + "?debug&seed=4")
+  await waitFor(page, () => BP.Game.debug.state === "title"); await page.waitForTimeout(500)
+  const box = await page.locator("#screen").boundingBox()
+  const tapAt = async (x, y) => { await page.touchscreen.tap(box.x + (x / 256) * box.width, box.y + (y / 240) * box.height); await page.waitForTimeout(150) }
+  await tapAt(128, 124)
+  ok((await dbg(page)).state === "title", "tap on non-selected menu row only moves the cursor")
+  await tapAt(128, 210)
+  ok(await waitFor(page, () => BP.Game.debug.state === "scores", 3000), "tap elsewhere confirms the highlighted row")
+  ok(errs.length === 0, "no console errors (landscape)")
+}
+// ---------- 5. production build hides QA hooks
+{
+  const page = await (await browser.newContext()).newPage()
+  await page.goto(base)
+  await waitFor(page, () => BP.Game.debug.state === "title")
+  const d = await page.evaluate(() => ({ step: typeof BP.Game.debug.step, ap: "autoplay" in BP.Game.debug, startAt: typeof BP.Game.debug.startAt, frozen: Object.isFrozen(BP.Game.debug) }))
+  ok(d.step === "undefined" && !d.ap && d.startAt === "undefined" && d.frozen, "no ?debug: debug is read-only state only")
 }
 console.log(fails ? `${fails} FAILURES` : "ALL PASS")
 await browser.close()

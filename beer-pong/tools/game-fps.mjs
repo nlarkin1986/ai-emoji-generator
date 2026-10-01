@@ -10,7 +10,7 @@ const { chromium } = require(join(execSync("npm root -g").toString().trim(), "pl
 const here = dirname(fileURLToPath(import.meta.url))
 const args = process.argv.slice(2)
 const secs = +(args[args.indexOf("--secs") + 1] || 25) || 25
-const url = pathToFileURL(join(here, "..", "..", "public", "beerpong", "index.html")).href + "?seed=42&fast"
+const url = pathToFileURL(join(here, "..", "..", "public", "beerpong", "index.html")).href + "?debug&seed=42&fast"
 const browser = await chromium.launch()
 const results = {}
 await Promise.all([30, 60, 144, 240].map(async (hz) => {

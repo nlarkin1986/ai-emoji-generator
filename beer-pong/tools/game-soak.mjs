@@ -12,7 +12,7 @@ const args = process.argv.slice(2)
 const opt = (k, d) => { const i = args.indexOf(k); return i < 0 ? d : args[i + 1] }
 const skill = +opt("--skill", 0.6), minutes = +opt("--minutes", 20), seed = opt("--seed", "1")
 const file = join(here, "..", "..", "public", "beerpong", "index.html")
-const url = pathToFileURL(file).href + `?seed=${seed}` + (args.includes("--fast") ? "&fast" : "")
+const url = pathToFileURL(file).href + `?debug&seed=${seed}` + (args.includes("--fast") ? "&fast" : "")
 const browser = await chromium.launch()
 const page = await (await browser.newContext({ viewport: { width: 600, height: 600 } })).newPage()
 const errors = []

@@ -15,17 +15,18 @@
   var PX = [16, 240], FEET = 228
   var TWO_PI = Math.PI * 2
 
+  // acc = Round 1 CPU make chance, acc2 = Round 2 (remixed: 10-cup racks, wind on rooftop + beach, faster meters)
   var STAGES = [
-    { name: 'BACKYARD BASH', who: 'chad', cpu: 'CHAD', acc: 0.21, aim: 34, pow: 16, bounce: 0, wind: false, band: 'dblue', stars: 1,
-      taunt: ['NICE HAT, ROOKIE.', 'THIS IS MY YARD!'] },
-    { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.31, aim: 46, pow: 22, bounce: 0.05, wind: false, band: 'dred', stars: 2,
-      taunt: ['TANK NO MISS.', 'TANK ONLY DRINK.'] },
-    { name: 'ROOFTOP', who: 'sky', cpu: 'SKY', acc: 0.38, aim: 24, pow: 12, bounce: 0.08, wind: true, band: 'purple', stars: 3,
-      taunt: ['FEEL THAT BREEZE?', 'THE WIND IS MINE.'] },
-    { name: 'BEACH BONFIRE', who: 'brody', cpu: 'BRO-DY', acc: 0.44, aim: 30, pow: 14, bounce: 0.1, wind: false, band: 'dgreen', stars: 4,
-      taunt: ["SURF'S UP, BRO.", 'CUPS GOING DOWN.'] },
-    { name: 'CHAMPIONSHIP', who: 'kegmaster', cpu: 'KEGMASTER', acc: 0.51, aim: 40, pow: 18, bounce: 0.18, wind: false, band: 'dred', stars: 5,
-      taunt: ['KNEEL BEFORE THE', 'KEGMASTER, PEON!'] },
+    { name: 'BACKYARD BASH', who: 'chad', cpu: 'CHAD', acc: 0.22, acc2: 0.48, aim: 22, pow: 10, bounce: 0, wind: false, band: 'dblue', stars: 1,
+      taunt: ['NICE HAT, ROOKIE.', 'THIS IS MY YARD!'], taunt2: ['I PRACTICED, BRO.', 'REMATCH TIME!'] },
+    { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.33, acc2: 0.54, aim: 28, pow: 12, bounce: 0.05, wind: false, band: 'dred', stars: 2,
+      taunt: ['TANK NO MISS.', 'TANK ONLY DRINK.'], taunt2: ['TANK ANGRY NOW.', 'TANK SMASH CUPS.'] },
+    { name: 'ROOFTOP', who: 'sky', cpu: 'SKY', acc: 0.42, acc2: 0.6, aim: 18, pow: 8, bounce: 0.08, wind: true, band: 'purple', stars: 3,
+      taunt: ['FEEL THAT BREEZE?', 'THE WIND IS MINE.'], taunt2: ['STORM IS COMING.', 'HOLD ON TIGHT!'] },
+    { name: 'BEACH BONFIRE', who: 'brody', cpu: 'BRO-DY', acc: 0.5, acc2: 0.65, aim: 22, pow: 10, bounce: 0.1, wind: false, band: 'dgreen', stars: 4,
+      taunt: ["SURF'S UP, BRO.", 'CUPS GOING DOWN.'], taunt2: ['SEA BREEZE, BRO.', 'GOOD LUCK, HA!'] },
+    { name: 'CHAMPIONSHIP', who: 'kegmaster', cpu: 'KEGMASTER', acc: 0.58, acc2: 0.71, aim: 26, pow: 12, bounce: 0.18, wind: false, band: 'dred', stars: 5,
+      taunt: ['KNEEL BEFORE THE', 'KEGMASTER, PEON!'], taunt2: ['NO ONE BEATS ME', 'TWICE. NO ONE!'] },
   ]
 
   // ---------------------------------------------------------------- url flags
@@ -170,7 +171,7 @@
     for (var r = 0; r < rows; r++) {
       var n = rows - r
       for (var i = 0; i < n; i++) {
-        cups.push({ x: backX + dir * r * 7, z: (i - (n - 1) / 2) * 8, alive: true, hitT: 99 })
+        cups.push({ x: backX + dir * r * 9, z: (i - (n - 1) / 2) * 8, alive: true, hitT: 99 }) // rows 9 px apart: readable columns in the side view
       }
     }
     return cups
@@ -186,7 +187,7 @@
     for (var i = 0; i < cs.length; i++) {
       var o = cs[i]
       if (o === c || !o.alive) continue
-      if (Math.hypot(o.x - c.x, o.z - c.z) < 9) return true
+      if (Math.hypot(o.x - c.x, o.z - c.z) < 10.5) return true
     }
     return false
   }
@@ -366,7 +367,8 @@
       hints: 0, best: 0, cpuShots: 0, cpuMakes: 0, t0: Date.now(), tick0: ticks }
   }
   function roundMult() { return run && run.loop > 0 ? 2 : 1 }
-  function cpuAcc(stg, loop) { return Math.min(0.75, STAGES[stg].acc + 0.12 * loop) }
+  function cpuAcc(stg, loop) { return Math.min(0.75, loop > 0 ? STAGES[stg].acc2 : STAGES[stg].acc) }
+  function windOn() { return !!(m && (m.st.wind || (m.loop > 0 && m.stage === 3))) }
 
   function newMatch(demo, stg, loop) {
     var st = STAGES[stg]
@@ -390,8 +392,8 @@
   }
 
   function rollWind() {
-    if (!m.st.wind) { m.wind = { ax: 0, az: 0, s: 0, ang: 0 }; return }
-    var s = 1 + ri(3) // 1..3 — rooftop is always breezy
+    if (!windOn()) { m.wind = { ax: 0, az: 0, s: 0, ang: 0 }; return }
+    var s = m.loop > 0 && m.stage === 2 ? 2 + ri(2) : 1 + ri(3) // rooftop is always breezy, a gale in Round 2
     var a = ri(8) * (TWO_PI / 8)
     var k = 0.0011 * s
     m.wind = { ax: Math.cos(a) * k, az: Math.sin(a) * k, s: s, ang: a }
@@ -413,6 +415,7 @@
 
   function startTurn(side) {
     m.turn = side
+    m.ff = false
     m.balls = m.redemption ? 1 : 2
     m.made = 0
     m.ballsBack = false
@@ -444,7 +447,7 @@
   // ---------------------------------------------------------------- aim + power models
   function speedMul() {
     if (!run) return 1
-    var s = (1 + 0.07 * m.stage) * (m.loop > 0 ? 1.25 : 1) * (1 + 0.12 * run.buzz)
+    var s = (0.84 + 0.09 * m.stage) * (m.loop > 0 ? 1.18 : 1) * (1 + 0.12 * run.buzz)
     if (run.streak >= 3) s *= 0.7
     return s
   }
@@ -456,7 +459,7 @@
     var sm = m.ctrl[side] === 'human' ? speedMul() : 1
     m.aim = {
       cx: (x0 + x1) / 2, cz: (z0 + z1) / 2,
-      ax: Math.max(9, (x1 - x0) / 2 + 5), az: Math.max(10, (z1 - z0) / 2 + 5),
+      ax: Math.min(17, Math.max(9, (x1 - x0) / 2 + 5)), az: Math.max(10, (z1 - z0) / 2 + 5),
       wx: (TWO_PI / 124) * sm, wz: (TWO_PI / 86) * sm,
       px: rnd() * TWO_PI, pz: rnd() * TWO_PI,
       wob: m.ctrl[side] === 'human' && run ? run.buzz * 0.75 : 0,
@@ -470,8 +473,9 @@
     }
   }
   function setupPow() {
-    var sm = 1 + 0.05 * m.stage + (m.loop > 0 ? 0.25 : 0)
-    m.pow = { period: Math.round(58 / sm), sc: 0.66, bw: Math.max(0.04, 0.066 - 0.004 * m.stage - (m.loop > 0 ? 0.01 : 0)) }
+    // stage 1 is forgiving (wide green zone, slower bar); it tightens every stage and again in Round 2
+    var sm = 0.92 + 0.06 * m.stage + (m.loop > 0 ? 0.2 : 0)
+    m.pow = { period: Math.round(58 / sm), sc: 0.66, bw: Math.max(0.04, 0.088 - 0.007 * m.stage - (m.loop > 0 ? 0.012 : 0)) }
   }
   function powVal(t) {
     var p = m.pow.period, u = (t % p) / p
@@ -640,6 +644,7 @@
   }
 
   function finishResolve(calls, dur) {
+    if (m.ctrl[m.turn] === 'cpu' && !m.over && !m.pendingRed && !m.pendingOT && !m.demo) dur = Math.round(dur * 0.7)
     callouts(calls)
     m.phase = 'result'; m.pt = 0; m.resT = FAST ? Math.min(dur, 40) : dur
   }
@@ -693,7 +698,7 @@
       if (p.life <= 0) M.parts.splice(i, 1)
     }
     ;[0, 1].forEach(function (s) { M.sides[s].cups.forEach(function (c) { if (c.hitT < 99) c.hitT++ }) })
-    if (M.st.wind && M.wind.s && frame % 3 === 0 && M.windParts.length < 18) {
+    if (M.wind.s && frame % 3 === 0 && M.windParts.length < 18) {
       M.windParts.push({ x: M.wind.ax > 0 ? -4 : M.wind.ax < 0 ? 260 : vrnd() * 256, y: 30 + vrnd() * 140, life: 200 })
     }
     for (var wi = M.windParts.length - 1; wi >= 0; wi--) {
@@ -708,6 +713,9 @@
 
     var side = M.turn, human = M.ctrl[side] === 'human'
     var tp = tap()
+    if (M.phase !== 'end' && M.phase !== 'done' && M.phase !== 'ready') M.playT = (M.playT || 0) + 1
+    // CPU turn fast-forward: any A / tap during the CPU's turn speeds the whole turn up
+    if (!human && !M.demo && !M.ff && M.phase !== 'end' && M.phase !== 'done' && (okPr() || tp)) { M.ff = true; sfx('select') }
     switch (M.phase) {
       case 'ready':
         // match start: brief READY / GO overlay
@@ -716,7 +724,7 @@
         if (M.pt >= (FAST ? 10 : 50)) { startTurn(0) }
         break
       case 'banner':
-        if (M.pt >= (FAST ? 14 : 44) || (!M.demo && M.pt > 10 && okPr() && side === 0)) { M.banner = ''; beginThrow() }
+        if (M.pt >= (FAST ? 14 : side === 1 ? 30 : 40) || (M.ff && M.pt > 4) || (!M.demo && M.pt > 10 && okPr() && side === 0)) { M.banner = ''; beginThrow() }
         break
       case 'aim':
         if (human) {
@@ -731,7 +739,7 @@
           }
         } else {
           var P = M.plan
-          if (pr('a') && !M.demo && M.pt > 4) M.pt = Math.max(M.pt, P.aimT)
+          if (M.ff && M.pt > 3) M.pt = Math.max(M.pt, P.aimT)
           if (M.pt >= P.aimT) {
             M.lockAim = { x: P.ax, z: P.az }; M.bounce = P.bounce
             M.phase = 'power'; M.pt = 0
@@ -753,7 +761,7 @@
           }
         } else {
           var P2 = M.plan
-          if (pr('a') && !M.demo && M.pt > 2) M.pt = Math.max(M.pt, P2.powT)
+          if (M.ff && M.pt > 2) M.pt = Math.max(M.pt, P2.powT)
           if (M.pt >= P2.powT) {
             M.lockPow = P2.pv
             sfx('powerLock')
@@ -780,10 +788,11 @@
         break
       case 'flight':
         if (M.ball) stepBall()
-        if (!M.ball && M.phase === 'flight') { /* resolved elsewhere */ }
+        if (M.ff && M.ball && M.phase === 'flight') stepBall()
         break
       case 'result':
-        if (M.pt >= M.resT || (M.pt > 12 && human && !M.over && !M.demo && pr('a') && false)) afterResult()
+        // result pause: skippable with A / tap (never skips a match-ending moment)
+        if (M.pt >= M.resT || (M.ff && M.pt > 10 && !M.over) || (M.pt > 12 && human && !M.over && !M.demo && (okPr() || tp))) afterResult()
         break
       case 'end':
         M.endT++
@@ -876,6 +885,10 @@
       if (withBalls) for (var bi = 0; bi < M.balls; bi++) A.drawIcon(ctx, 'ball', 128 - M.balls * 5 + bi * 10 + 1, 135)
     }
     if (showHud !== false) drawHUD()
+    if (!M.demo && M.turn === 1 && !M.ff && !paused && (ph === 'banner' || ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight')) {
+      rect(52, 229, 152, 11, 'black')
+      if (blink(frame, 24)) TC(isTouch() ? 'TAP TO SKIP \u25B6\u25B6' : 'A: SKIP \u25B6\u25B6', 231, 'yellow')
+    }
     if (M.demo) {
       box(84, 202, 88, 18, 'dim')
       if (blink(frame, 24)) TC('DEMO PLAY', 207, 'gold')
@@ -906,8 +919,8 @@
   // inset mapping (behind-the-shooter view of the target rack)
   function insetXY(side, x, z) {
     var icx = IX + IW / 2
-    if (side === 0) return { x: icx + z * 2, y: IY + 8 + (TX1 - x) * 2 }
-    return { x: icx - z * 2, y: IY + 8 + (x - TX0) * 2 }
+    if (side === 0) return { x: icx + z * 2, y: IY + 6 + (TX1 - x) * 2 }
+    return { x: icx - z * 2, y: IY + 6 + (x - TX0) * 2 }
   }
   function drawInset() {
     var M = m, A = BP.Art, side = M.turn, human = M.ctrl[side] === 'human'
@@ -917,11 +930,11 @@
     rect(IX + 3, IY + 3, IW - 6, IH - 6, 'black')
     var icx = IX + IW / 2
     // table surface (top-down)
-    rect(icx - 29, IY + 8, 58, IH, 'dred')
-    rect(icx - 29, IY + 8, 58, 1, 'white')
-    rect(icx - 29, IY + 8, 1, IH, 'white')
-    rect(icx + 28, IY + 8, 1, IH, 'white')
-    rect(icx, IY + 9, 1, IH, 'red')
+    rect(icx - 29, IY + 6, 58, IH, 'dred')
+    rect(icx - 29, IY + 6, 58, 1, 'white')
+    rect(icx - 29, IY + 6, 1, IH, 'white')
+    rect(icx + 28, IY + 6, 1, IH, 'white')
+    rect(icx, IY + 7, 1, IH, 'red')
     // cups
     var cs = M.sides[1 - side].cups
     cs.forEach(function (c) {
@@ -1050,7 +1063,7 @@
       else if (st === 2) T('HEAT UP', 128, 16, 'orange')
       else for (var f = 0; f < 3; f++) if (f < st) A.drawIcon(ctx, 'fire', 128 + f * 9, 16)
     }
-    if (M.st.wind) {
+    if (windOn()) {
       A.drawIcon(ctx, 'wind', 196, 16)
       var wdx = Math.cos(M.wind.ang), wdz = Math.sin(M.wind.ang)
       if (M.wind.s) A.drawIcon(ctx, Math.abs(wdx) >= Math.abs(wdz) ? (wdx > 0 ? 'arrowR' : 'arrowL') : (wdz > 0 ? 'arrowD' : 'arrowU'), 205, 16)
@@ -1164,7 +1177,7 @@
     draw: function () {
       rect(0, 0, W, H, 'black')
       drawScoreTable(S.rows, S.hlRank, S.t, S.board ? S.label : null, S.board ? S.myRank : 0)
-      if (S.board && S.myRank > 10) {
+      if (S.board && S.myRank > 10 && !S.hlRank) {
         box(16, 196, 224, 16, 'gold')
         if (blink(frame, 8)) drawScoreRow(S.myRank, { name: S.myName, score: S.myScore, stage: S.myStage, round: S.myRound }, 200, 'gold')
       }
@@ -1226,11 +1239,12 @@
   }
 
   // ---------------------------------------------------------------- HOW TO PLAY
+  // Layout rules (checked at 3x): the frame interior is x 8..247, y 40..212; text columns never reach a sprite.
   var HOWTO = [
-    { title: 'AIM', lines: ['THE CROSSHAIR', 'SWEEPS OVER THE', 'CUPS. PRESS A OR', 'TAP TO LOCK IT.', '', 'HIT THE BEER', 'DEAD CENTER FOR', 'A SWISH!'] },
-    { title: 'POWER', lines: ['PRESS A AGAIN', 'WHEN THE BAR IS', 'IN THE GREEN.', 'LOW = SHORT', 'HIGH = LONG', '', 'B: BOUNCE SHOT.', 'HARDER, BUT IT', 'TAKES 2 CUPS!'] },
-    { title: 'RULES', lines: ['2 BALLS A TURN. SINK BOTH', 'FOR BALLS BACK!', '', '2 IN A ROW: HEATING UP', '3 IN A ROW: ON FIRE! X3', '', 'LOSE A CUP: +1 BUZZ.', 'BUZZ MAKES YOUR AIM SHAKY.', '', 'LOSE YOUR LAST CUP? SINK', 'ALL OF THEIRS IN A ROW', 'FOR REDEMPTION + OVERTIME!'] },
-    { title: 'SCORING', lines: ['CUP ........... 100', 'SWISH ......... +50', 'RATTLED IN .... +25', 'BOUNCE SHOT .. +200', 'ISLAND CUP ... +250', 'BALLS BACK ... +300', 'HEATING UP ..... X2', 'ON FIRE ........ X3', 'STAGE CLEAR  BONUS!', 'PERFECT ...... 5000', 'ROUND 2 ........ X2'] },
+    { title: 'AIM', lines: ['THE CROSSHAIR', 'SWEEPS OVER THE', 'CUPS. PRESS A', 'OR TAP TO LOCK', 'IT ON A CUP.', '', 'HIT THE BEER', 'FOR A SWISH!'] },
+    { title: 'POWER', lines: ['PRESS A AGAIN', 'WHEN THE BAR', 'IS IN THE', 'GREEN ZONE.', '', 'LOW  = SHORT', 'HIGH = LONG'] },
+    { title: 'RULES', lines: ['2 BALLS A TURN. SINK BOTH', 'FOR BALLS BACK!', '', '2 IN A ROW: HEATING UP X2', '3 IN A ROW: ON FIRE!   X3', '', 'LOSE A CUP: +1 BUZZ. BUZZ', 'MAKES YOUR AIM SHAKY.', '', 'LAST CUP GONE? SINK THEM', 'ALL FOR REDEMPTION!', '', 'WIN 2 ROUNDS = CHAMPION!'] },
+    { title: 'SCORING', lines: ['CUP ............ 100', 'SWISH ........... +50', 'RATTLED IN ...... +25', 'BOUNCE SHOT .... +200', 'ISLAND CUP ..... +250', 'BALLS BACK ..... +300', 'HEATING UP ....... X2', 'ON FIRE .......... X3', 'FAST CLEAR ... +3000', 'PERFECT ....... +3000', 'ROUND 2 .......... X2'] },
   ]
   STATES.howto = {
     enter: function () { S.page = 0; S.demoRack = buildRack(1, 3) },
@@ -1253,46 +1267,51 @@
       TC(pg.title, 19, 'gold')
       box(4, 36, 248, 180, 'default')
       if (S.page === 0 || S.page === 1) {
-        // drawn example
-        var ex = 14, ey = 50, ew = 90, eh = 82
+        var ex = 14, ey = 46, ew = 90, eh = 82
         box(ex, ey, ew, eh, 'default')
         ctx.save(); ctx.beginPath(); ctx.rect(ex + 3, ey + 3, ew - 6, eh - 6); ctx.clip()
         rect(ex + 3, ey + 3, ew - 6, eh - 6, 'black')
         var icx = ex + ew / 2
         rect(icx - 29, ey + 8, 58, eh, 'dred'); rect(icx - 29, ey + 8, 58, 1, 'white')
-        S.demoRack.forEach(function (c) { A.drawCupTop(ctx, R(icx + c.z * 2), R(ey + 8 + (TX1 - c.x) * 2), 'full') })
+        S.demoRack.forEach(function (c) { A.drawCupTop(ctx, R(icx + c.z * 2), R(ey + 14 + (TX1 - c.x) * 2), 'full') })
         if (S.page === 0) {
-          var tt = frame
-          A.drawCrosshair(ctx, R(icx + 13 * Math.sin(tt * 0.06)), R(ey + 8 + 14 + 12 * Math.sin(tt * 0.042 + 1)), frame)
-        } else A.drawCrosshair(ctx, R(icx), R(ey + 8 + 14), frame)
+          var cxh = R(icx + 13 * Math.sin(frame * 0.05)), cyh = R(ey + 14 + 16 + 14 * Math.sin(frame * 0.035 + 1))
+          A.drawCrosshair(ctx, cxh, cyh, frame)
+          var on = false
+          S.demoRack.forEach(function (c) { if (Math.hypot(icx + c.z * 2 - cxh, ey + 14 + (TX1 - c.x) * 2 - cyh) < 4.5) on = true })
+          reticle(cxh, cyh, on ? 'lgreen' : 'yellow')
+        } else A.drawCrosshair(ctx, R(icx), R(ey + 14 + 18), frame)
         ctx.restore()
         if (S.page === 1) {
           var mx = ex + ew + 4, fh = eh - 8
           box(mx, ey, 16, eh, 'default')
           rect(mx + 4, ey + 4, 8, fh, 'dgray')
-          rect(mx + 4, ey + 4 + fh * (1 - 0.74), 8, fh * 0.16, 'green')
+          rect(mx + 4, ey + 4 + fh * (1 - 0.75), 8, fh * 0.18, 'green')
           var u = (frame % 66) / 66, v = u < 0.5 ? u * 2 : 2 - u * 2
-          var inZ = Math.abs(v - 0.66) <= 0.08
+          var inZ = Math.abs(v - 0.66) <= 0.09
           rect(mx + 4, ey + 4 + fh * (1 - v), 8, fh * v, inZ ? 'lgreen' : v > 0.66 ? 'red' : 'orange')
           rect(mx + 2, ey + 3 + fh * (1 - v), 12, 2, 'white')
         }
-        var tx = S.page === 1 ? 130 : 112
-        pg.lines.forEach(function (l, i) { T(l, tx, 50 + i * 11, i === pg.lines.length - 1 ? 'gold' : 'white') })
+        var tx = S.page === 1 ? 132 : 112
+        pg.lines.forEach(function (l, i) { T(l, tx, 48 + i * 11, i === pg.lines.length - 1 ? 'gold' : 'white') })
         if (S.page === 0) {
-          A.drawPlayer(ctx, 'hero', 'aim', 60, 206, frame)
-          T('A', 92, 176, 'red'); T('= LOCK', 104, 176, 'white')
-          T('TAP SCREEN WORKS TOO!', 40, 194, 'lgray')
+          A.drawPlayer(ctx, 'hero', 'aim', 40, 208, frame)
+          T('A', 72, 150, 'red'); T('/ TAP = LOCK AIM', 88, 150, 'white')
+          T('GREEN BRACKETS =', 72, 168, 'lgreen')
+          T('RIGHT ON A CUP!', 72, 180, 'white')
         } else {
-          A.drawPlayer(ctx, 'hero', 'throw', 60, 206, frame)
-          T('B', 92, 168, 'red'); T('= BOUNCE ON/OFF', 104, 168, 'white')
+          A.drawPlayer(ctx, 'hero', 'throw', 224, 208, frame)
+          T('B', 16, 146, 'red'); T(': BOUNCE SHOT ON/OFF', 24, 146, 'white')
+          T('HARDER TO SINK, BUT', 16, 160, 'white')
+          T('IT TAKES 2 CUPS!', 16, 172, 'gold')
         }
       } else if (S.page === 2) {
-        pg.lines.forEach(function (l, i) { T(l, 16, 46 + i * 12, l.indexOf('FIRE') >= 0 ? 'orange' : l.indexOf('BUZZ') >= 0 ? 'beer' : l.indexOf('REDEMPTION') >= 0 ? 'gold' : 'white') })
-        A.drawIcon(ctx, 'ball', 226, 46); A.drawIcon(ctx, 'ball', 236, 46)
-        A.drawIcon(ctx, 'fire', 226, 94); A.drawIcon(ctx, 'mugFull', 226, 118)
+        pg.lines.forEach(function (l, i) { T(l, 16, 44 + i * 12, l.indexOf('FIRE') >= 0 || l.indexOf('HEATING') >= 0 ? 'orange' : l.indexOf('BUZZ') >= 0 ? 'beer' : l.indexOf('CHAMPION') >= 0 || l.indexOf('REDEMPTION') >= 0 ? 'gold' : 'white') })
+        A.drawIcon(ctx, 'ball', 226, 44); A.drawIcon(ctx, 'ball', 236, 44)
+        A.drawIcon(ctx, 'fire', 230, 92); A.drawIcon(ctx, 'mugFull', 230, 116); A.drawIcon(ctx, 'trophy', 230, 188)
       } else {
-        pg.lines.forEach(function (l, i) { T(l, 52, 46 + i * 14, i === 6 || i === 7 ? 'orange' : 'white') })
-        A.drawIcon(ctx, 'cup', 36, 46); A.drawIcon(ctx, 'star', 36, 60)
+        pg.lines.forEach(function (l, i) { T(l, 40, 46 + i * 14, i === 6 || i === 7 ? 'orange' : i >= 8 ? 'gold' : 'white') })
+        A.drawIcon(ctx, 'cup', 22, 46); A.drawIcon(ctx, 'star', 22, 60); A.drawIcon(ctx, 'fire', 22, 158); A.drawIcon(ctx, 'trophy', 22, 186)
       }
       if (blink(frame, 30)) TC(S.page < HOWTO.length - 1 ? 'A: NEXT   B: BACK' : 'A: DONE   B: BACK', 222, 'lgray')
     },
@@ -1333,11 +1352,12 @@
       for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 20 + k * 9, 150)
       if (t > 50) {
         box(16, 162, 224, 38, 'dim')
-        var shown = Math.min(st.taunt[0].length + st.taunt[1].length, ((t - 50) / 2) | 0)
+        var tn = run.loop > 0 ? st.taunt2 : st.taunt
+        var shown = Math.min(tn[0].length + tn[1].length, ((t - 50) / 2) | 0)
         T(st.cpu + ':', 24, 168, 'red')
-        T(st.taunt[0].slice(0, shown), 24, 178, 'white')
-        if (shown > st.taunt[0].length) T(st.taunt[1].slice(0, shown - st.taunt[0].length), 24, 187, 'white')
-        if (t % 2 === 0 && shown < st.taunt[0].length + st.taunt[1].length && !FAST) sfx('letter')
+        T(tn[0].slice(0, shown), 24, 178, 'white')
+        if (shown > tn[0].length) T(tn[1].slice(0, shown - tn[0].length), 24, 187, 'white')
+        if (t % 2 === 0 && shown < tn[0].length + tn[1].length && !FAST) sfx('letter')
       }
       if (t > S.dur - 50) BIG('GO!', 128, 208, 'gold', 2)
       else if (t > 40) { if (blink(frame, 12)) BIG('READY?', 128, 208, 'white', 2) }
@@ -1398,7 +1418,7 @@
   function updatePause() {
     pauseT++
     if (pauseConfirm) {
-      var r = yesNo(pauseConfirm, 76, 124)
+      var r = yesNo(pauseConfirm, 76, 128)
       if (r === 'no') { pauseConfirm = null; sfx('cancel') }
       else if (r === 'yes') {
         pauseConfirm = null
@@ -1423,10 +1443,10 @@
     else if (choose === 1) { pauseConfirm = { sel: 1, t: 0 }; sfx('select') } // default NO
   }
   function drawPause() {
-    box(64, 84, 128, 62, 'default')
+    box(40, 82, 176, 66, 'default')
     if (pauseConfirm) {
       BIG('QUIT?', 128, 92, 'red', 2)
-      T('GAME OVER IF', 80, 110, 'lgray')
+      T('YOUR RUN ENDS', 76, 110, 'lgray')
       drawYesNo(pauseConfirm, 76, 128)
       return
     }
@@ -1443,12 +1463,15 @@
       var rm = roundMult()
       var left = alive(0)
       var acc = run.stShots ? Math.round((100 * run.stMakes) / run.stShots) : 0
+      var pt = m.playT || 0, secs = Math.round(pt / 60)
+      var tb = Math.round((3000 * Math.max(0, 1 - pt / 7200)) / 10) * 10 // time bonus: 3000 decaying to 0 over 2 min
       S.lines = [
         { l: 'CLEAR BONUS', v: 1000 * (run.stage + 1) * rm },
-        { l: 'CUPS LEFT  ' + left + '×200', v: 200 * left * rm },
+        { l: 'CUPS LEFT  ' + left + '\u00D7200', v: 200 * left * rm },
         { l: 'ACCURACY ' + acc + '%', v: acc * 10 * rm },
+        { l: 'TIME ' + ((secs / 60) | 0) + ':' + pad(secs % 60, 2), v: tb * rm },
       ]
-      if (m.lost === 0 && !m.overtime) S.lines.push({ l: 'PERFECT!', v: 5000 * rm, gold: true })
+      if (m.lost === 0 && !m.overtime) S.lines.push({ l: 'PERFECT!', v: 3000 * rm, gold: true })
       S.i = 0; S.cnt = 0; S.done = false; S.wait = 0; S.total = 0
       S.confetti = []
       run.buzz = Math.max(0, run.buzz - 2)
@@ -1492,7 +1515,7 @@
       T('1P', 8, 0, 'red'); T(pad(run.disp, 6), 32, 0, 'white')
       T('HI', 168, 0, 'red'); T(pad(Math.max(hi, run.score), 6), 192, 0, 'white')
       TC('STAGE ' + (run.stage + 1) + ' CLEAR!', 10, 'gold')
-      box(20, 34, 216, 112, 'gold')
+      box(20, 34, 216, 138, 'gold')
       BIG('YOU WIN!', 128, 42, 'gold', 2)
       BP.Art.drawIcon(ctx, 'trophy', 30, 46); BP.Art.drawIcon(ctx, 'trophy', 218, 46)
       for (var i = 0; i < S.lines.length; i++) {
@@ -1506,12 +1529,13 @@
         rect(30, 66 + S.lines.length * 14 - 4, 196, 1, 'white')
         T('TOTAL', 30, 70 + S.lines.length * 14 - 2, 'gold')
         TR(pad(S.total, 6), 226, 70 + S.lines.length * 14 - 2, 'gold')
-        var nxt = run.stage >= 4 ? 'ROUND ' + (run.loop + 2) + ' NEXT!' : 'NEXT: ' + STAGES[run.stage + 1].name
-        if (blink(frame, 16)) TC(nxt, 150, 'white', true)
+        var nxt = run.stage >= 4 ? (run.loop >= 1 ? 'YOU ARE THE CHAMPION!' : 'ROUND 2: NO MERCY!') : 'NEXT: ' + STAGES[run.stage + 1].name
+        if (blink(frame, 16)) TC(nxt, 176, 'white', true)
       }
     },
   }
   function nextStage() {
+    if (run.stage >= 4 && run.loop >= 1) { go('ending'); return } // beat Round 2's KEGMASTER: the game has an ending
     if (run.stage >= 4) { run.loop++; run.stage = 0 } else run.stage++
     go('vs', { stage: run.stage })
   }
@@ -1525,8 +1549,7 @@
     update: function () {
       if ((S.t > 40 && (okPr() || tap())) || S.t > S.dur) {
         sfx('confirm')
-        if (run && run.score > 0) go('entry')
-        else go('title')
+        go(run ? 'entry' : 'title')
       }
     },
     draw: function () {
@@ -1555,39 +1578,51 @@
     '456789.-! '.split(''),
   ]
   var GX = 28, GY = 104, GCW = 20, GCH = 18
+  var sessionName = '' // only pre-fill a name typed earlier in THIS page session (shared party phones)
   STATES.entry = {
     enter: function () {
       music('entry', true)
-      var last = ''
-      try { last = localStorage.getItem('bp_name') || '' } catch (e) {}
-      S.nm = String(last).toUpperCase().replace(/[^A-Z0-9 .!\-]/g, '').slice(0, 8)
-      S.cx = 0; S.cy = S.nm ? 4 : 0; S.end = !!S.nm
-      S.sent = false
+      S.nm = sessionName
+      S.fresh = !!sessionName
+      S.cx = 0; S.cy = 0; S.end = false
+      S.sent = false; S.confirm = null; S.typed = false; S.msg = 0; S.idle = 0
     },
     update: function () {
       if (S.sent) return
+      if (S.t < 30) return // input lock: mashing A on GAME OVER must not type or submit
+      S.idle = anyPr() || tap() ? 0 : S.idle + 1
+      if (S.msg > 0) S.msg--
+      if (S.confirm) {
+        var r = yesNo(S.confirm, 76, 146)
+        if (r === 'yes') finishEntry()
+        else if (r === 'no') { S.confirm = null; sfx('cancel') }
+        return
+      }
       var p = tap()
-      if (p) {
+      if (p) { // taps only act when they hit a cell
         var hit = cellAt(p.x, p.y)
         if (hit) { S.cx = hit.cx; S.cy = hit.cy; S.end = hit.end; activate() }
         return
       }
-      if (pr('start')) { finishEntry(); return }
+      if (pr('start')) { askEnd(); return }
       if (pr('b')) { delLetter(); return }
       if (pr('left')) { mv(-1, 0) } else if (pr('right')) { mv(1, 0) } else if (pr('up')) { mv(0, -1) } else if (pr('down')) { mv(0, 1) }
-      if (pr('a')) activate()
-      if (S.t > 60 * 60) finishEntry()
+      if (pr('a') && ticks - lastTapTick > 10) activate()
+      // a player who typed a name and walked away still gets on the board (never a blank auto-submit)
+      if (S.typed && S.nm.length && S.idle > 60 * 120) finishEntry()
     },
     draw: function () {
       rect(0, 0, W, H, 'black')
-      BIG('NAME ENTRY', 128, 8, 'gold', 2)
-      TC('SCORE ' + pad(run ? run.score : 0, 6), 30, 'white')
-      // name slots
+      BIG('NAME ENTRY', 128, 6, 'gold', 2)
+      TC('SCORE ' + pad(run ? run.score : 0, 6), 26, 'white')
       for (var i = 0; i < 8; i++) {
         var x = 64 + i * 16
-        rect(x, 66, 12, 2, i === S.nm.length ? (blink(frame, 8) ? 'red' : 'black') : 'gray')
-        if (S.nm[i] && S.nm[i] !== ' ') BIG(S.nm[i], x + 6, 48, 'white', 2)
+        rect(x, 62, 12, 2, i === S.nm.length ? (blink(frame, 8) ? 'red' : 'black') : 'gray')
+        if (S.nm[i] && S.nm[i] !== ' ') BIG(S.nm[i], x + 6, 44, 'white', 2)
       }
+      if (S.msg > 0) TC('ENTER A NAME FIRST!', 70, 'red')
+      else if (S.fresh) TC('NEW PLAYER? B = CLEAR', 70, 'yellow')
+      else if (S.nm.length >= 8) TC('NAME FULL - PICK END', 70, 'lgray')
       box(GX - 10, GY - 8, 220, 108, 'default')
       for (var r = 0; r < 4; r++) for (var c = 0; c < 10; c++) {
         var ch = GRID[r][c], sel = !S.end && S.cy === r && S.cx === c
@@ -1600,7 +1635,13 @@
       if (esel) rect(GX + 120 - 3, GY + 4 * GCH - 3, 46, 14, blink(frame, 12) ? 'red' : 'dred')
       T('DEL', GX + 24, GY + 4 * GCH, dsel ? 'white' : 'lgray')
       T('END', GX + 124, GY + 4 * GCH, esel ? 'white' : 'gold')
-      if (S.sent) { box(64, 100, 128, 32, 'gold'); if (blink(frame, 8)) TC('SENDING...', 112, 'white') }
+      if (S.confirm) {
+        box(56, 116, 144, 44, 'gold')
+        TC('NAME: ' + S.nm, 124, 'white')
+        T('OK?', 64, 146, 'gold')
+        drawYesNo(S.confirm, 76 + 16, 146)
+      }
+      if (S.sent) { box(64, 116, 128, 32, 'gold'); if (blink(frame, 8)) TC('SENDING...', 128, 'white') }
       TC('A:ADD  B:DEL  START:END', 212, 'lgray')
       TC('OR TAP THE LETTERS', 224, 'gray')
     },
@@ -1630,29 +1671,36 @@
     if (S.cy < 0) { S.cy = 4; S.end = S.cx >= 5 }
     else if (S.cy > 3) { S.cy = 4; S.end = S.cx >= 5 }
   }
+  function askEnd() {
+    if (!S.nm.trim().length) { sfx('error'); S.msg = 120; return }
+    S.confirm = { sel: 0, t: 0 }
+    sfx('select')
+  }
   function activate() {
-    if (S.cy === 4) { if (S.end) finishEntry(); else delLetter(); return }
-    if (S.nm.length >= 8) { sfx('error'); S.cy = 4; S.end = true; return }
+    if (S.cy === 4) { if (S.end) askEnd(); else delLetter(); return }
+    if (S.nm.length >= 8) { sfx('error'); return } // full: stay put, never auto-jump to END
     S.nm += GRID[S.cy][S.cx]
+    S.typed = true; S.fresh = false
     sfx('letter')
-    if (S.nm.length >= 8) { S.cy = 4; S.end = true }
   }
   function delLetter() {
+    if (S.fresh) { S.nm = ''; S.fresh = false; sfx('cancel'); return }
     if (!S.nm.length) { sfx('error'); return }
     S.nm = S.nm.slice(0, -1); sfx('cancel')
   }
   function finishEntry() {
     var nm = S.nm.trim()
     if (!nm) nm = 'PLAYER'
-    try { localStorage.setItem('bp_name', nm) } catch (e) {}
+    sessionName = nm
     sfx('confirm')
-    S.sent = true
+    S.sent = true; S.sentT = S.t; S.confirm = null
     var entry = {
       name: nm, score: run.score, stage: run.stage, round: run.loop + 1, cups: run.cups,
       accuracy: run.shots ? Math.round((100 * run.makes) / run.shots) : 0,
       shots: run.shots, makes: run.makes, durationMs: Date.now() - run.t0,
     }
     var done = false
+    var me = S
     function show(res) {
       if (done) return
       done = true
@@ -1660,41 +1708,315 @@
       var rows = res && Array.isArray(res.top) ? res.top : null
       var hl = 0
       if (rows) {
-        for (var i = 0; i < rows.length; i++) if (rows[i] && rows[i].you) { hl = i + 1; break }
-        if (!hl) for (var j = 0; j < rows.length; j++) if (rows[j].name === entry.name && +rows[j].score === entry.score) { hl = j + 1; break }
+        for (var i = 0; i < rows.length && i < 10; i++) if (rows[i] && rows[i].you) { hl = i + 1; break }
+        if (!hl) for (var j = 0; j < rows.length && j < 10; j++) if (rows[j].name === entry.name && +rows[j].score === entry.score) { hl = j + 1; break }
       }
       if (!rank) rank = hl
+      var label = !res ? 'LOCAL RANKING' : res.queued ? 'SAVED - SENDING...' : res.rejected || res.mode === 'local' ? 'LOCAL RANKING' : 'GLOBAL RANKING'
       if (entry.score > hi) hi = entry.score
       refreshHi()
-      go('scores', { board: true, hlRank: hl, myRank: hl ? 0 : rank, myName: entry.name, myScore: entry.score, myStage: entry.stage, myRound: entry.round, preRows: rows })
+      go('scores', { board: true, hlRank: hl, myRank: rank, myName: entry.name, myScore: entry.score, myStage: entry.stage, myRound: entry.round, preRows: rows, label: label })
     }
+    me.finish = show
     try { Promise.resolve(BP.Scores.submit(entry)).then(show, function () { show(null) }) } catch (e) { show(null) }
     setTimeout(function () { show(null) }, 6000)
   }
 
+  // ---------------------------------------------------------------- ENDING (beat Round 2's KEGMASTER)
+  var CREDITS = [
+    ['SUPER BEER PONG', 'gold'], ['', ''], ['- STAFF -', 'red'], ['', ''],
+    ['PIXEL ART ........ ART', 'white'], ['SOUND & MUSIC .. SOUND', 'white'], ['GAME DESIGN ..... GAME', 'white'],
+    ['CONTROLS .......... UX', 'white'], ['LEADERBOARD ..... NET', 'white'], ['', ''],
+    ['- STARRING -', 'red'], ['YOU', 'gold'], ['', ''], ['- WITH -', 'red'],
+    ['CHAD', 'white'], ['TANK', 'white'], ['SKY', 'white'], ['BRO-DY', 'white'], ['THE KEGMASTER', 'white'], ['', ''],
+    ['NO CUPS WERE HARMED', 'lgray'], ['IN THE MAKING OF', 'lgray'], ['THIS GAME.', 'lgray'], ['', ''],
+    ['THANKS FOR PLAYING!', 'gold'],
+  ]
+  STATES.ending = {
+    enter: function () {
+      music('clear', true)
+      sfx('win')
+      run.champion = true
+      S.bonus = 5000
+      run.score += S.bonus; run.disp = run.score
+      S.conf = []
+      S.scroll = 0
+    },
+    update: function () {
+      var t = S.t, skip = t > 60 && (okPr() || tap())
+      if (S.conf.length < 80 && frame % 2 === 0) S.conf.push({ x: vrnd() * 256, y: -4, vy: 0.5 + vrnd(), c: ['red', 'gold', 'white', 'cyan', 'lgreen', 'pink'][(vrnd() * 6) | 0] })
+      S.conf.forEach(function (c) { c.y += c.vy; c.x += Math.sin((c.y + c.vy * 50) * 0.08) * 0.4 })
+      S.conf = S.conf.filter(function (c) { return c.y < 244 })
+      if (!S.phase && (t > 420 || skip)) { S.phase = 1; S.t0 = t; music('title', true); return }
+      if (S.phase === 1) {
+        S.scroll += 0.5
+        if (skip || S.scroll > CREDITS.length * 14 + 240) { S.phase = 2; S.t0 = t; sfx('win'); return }
+      }
+      if (S.phase === 2 && ((t - S.t0 > 40 && skip) || t - S.t0 > 600)) { sfx('confirm'); go('entry') }
+    },
+    draw: function () {
+      var A = BP.Art, t = S.t
+      if (!S.phase) {
+        A.drawBackground(ctx, 4, frame, 1)
+        A.drawTable(ctx, 4)
+        A.drawPlayer(ctx, 'kegmaster', 'sad', PX[1], FEET, frame)
+        var bob = ((frame / 10) | 0) % 2
+        A.drawPlayer(ctx, 'hero', 'cheer', 128, FEET, frame)
+        A.drawIcon(ctx, 'trophy', 124, 166 - bob * 2)
+        S.conf.forEach(function (c) { rect(c.x, c.y, 2, 2, c.c) })
+        box(8, 28, 240, 90, 'gold')
+        BIG('CONGRATULATIONS!', 128, 36, blink(frame, 8) ? 'gold' : 'yellow', 2)
+        if (t > 60) TC('YOU ARE THE', 62, 'white')
+        if (t > 90) BIG('PONG CHAMPION!', 128, 74, 'gold', 2)
+        if (t > 150) TC('CHAMPION BONUS +' + S.bonus, 100, 'cyan')
+        return
+      }
+      rect(0, 0, W, H, 'black')
+      for (var i = 0; i < 40; i++) rect((i * 97 + 13) % 256, (i * 57 + frame / 3) % 240, 1, 1, i % 3 ? 'dgray' : 'white')
+      if (S.phase === 1) {
+        for (var k = 0; k < CREDITS.length; k++) {
+          var y = 240 - S.scroll + k * 14
+          if (y > -10 && y < 240) TC(CREDITS[k][0], y, CREDITS[k][1] || 'white')
+        }
+        A.drawPlayer(ctx, 'hero', 'walk', 20 + ((frame / 2) | 0) % 230, 238, frame)
+        return
+      }
+      BIG('THE END', 128, 60, 'gold', 3)
+      TC('FINAL SCORE', 110, 'lgray')
+      BIG(pad(run.score, 6), 128, 122, 'white', 2)
+      A.drawIcon(ctx, 'crown', 124, 148)
+      A.drawPlayer(ctx, 'hero', 'cheer', 128, 214, frame)
+      if (blink(frame, 30)) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH START', 222, 'white')
+    },
+  }
+
   // ---------------------------------------------------------------- TV MODE
+  // ---------------------------------------------------------------- QR CODE (byte mode, ECC M/L, versions 1-6)
+  var QR = (function () {
+    var TAB = { // [ec codewords per block, blocks, data codewords per block]
+      L: [null, [7, 1, 19], [10, 1, 34], [15, 1, 55], [20, 1, 80], [26, 1, 108], [18, 2, 68]],
+      M: [null, [10, 1, 16], [16, 1, 28], [26, 1, 44], [18, 2, 32], [24, 2, 43], [16, 4, 27]],
+    }
+    var FMT = { L: 1, M: 0 }
+    var ALIGN = [null, [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34]]
+    function gmul(x, y) { var z = 0; for (var i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11d); z ^= ((y >>> i) & 1) * x } return z & 255 }
+    function rsDiv(deg) {
+      var r = [], i, j, root = 1
+      for (i = 0; i < deg - 1; i++) r.push(0)
+      r.push(1)
+      for (i = 0; i < deg; i++) {
+        for (j = 0; j < r.length; j++) { r[j] = gmul(r[j], root); if (j + 1 < r.length) r[j] ^= r[j + 1] }
+        root = gmul(root, 2)
+      }
+      return r
+    }
+    function rsRem(data, div) {
+      var r = div.map(function () { return 0 })
+      data.forEach(function (b) { var f = b ^ r.shift(); r.push(0); div.forEach(function (c, i) { r[i] ^= gmul(c, f) }) })
+      return r
+    }
+    function utf8(str) { var e = unescape(encodeURIComponent(str)), out = []; for (var i = 0; i < e.length; i++) out.push(e.charCodeAt(i)); return out }
+    function formatBits(ecl, mask) {
+      var data = (FMT[ecl] << 3) | mask, rem = data
+      for (var i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537)
+      return ((data << 10) | rem) ^ 0x5412
+    }
+    function maskFn(k, x, y) {
+      switch (k) {
+        case 0: return (x + y) % 2 === 0
+        case 1: return y % 2 === 0
+        case 2: return x % 3 === 0
+        case 3: return (x + y) % 3 === 0
+        case 4: return (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0
+        case 5: return ((x * y) % 2) + ((x * y) % 3) === 0
+        case 6: return (((x * y) % 2) + ((x * y) % 3)) % 2 === 0
+        default: return (((x + y) % 2) + ((x * y) % 3)) % 2 === 0
+      }
+    }
+    function encode(text, ecl) {
+      var bytes = utf8(text), ver = 0, t = null, v, i, j
+      for (v = 1; v <= 6; v++) { t = TAB[ecl][v]; if (t[1] * t[2] * 8 >= 12 + bytes.length * 8) { ver = v; break } }
+      if (!ver) return null
+      var cap = t[1] * t[2], bits = []
+      var put = function (val, n) { for (var q = n - 1; q >= 0; q--) bits.push((val >>> q) & 1) }
+      put(4, 4); put(bytes.length, 8); bytes.forEach(function (bb) { put(bb, 8) })
+      put(0, Math.min(4, cap * 8 - bits.length))
+      while (bits.length % 8) bits.push(0)
+      var data = []
+      for (i = 0; i < bits.length; i += 8) { var by = 0; for (j = 0; j < 8; j++) by = (by << 1) | bits[i + j]; data.push(by) }
+      for (var padb = 0xec; data.length < cap; padb ^= 0xec ^ 0x11) data.push(padb)
+      var div = rsDiv(t[0]), blocks = [], ecs = [], all = []
+      for (i = 0; i < t[1]; i++) { var blk = data.slice(i * t[2], (i + 1) * t[2]); blocks.push(blk); ecs.push(rsRem(blk, div)) }
+      for (i = 0; i < t[2]; i++) for (j = 0; j < t[1]; j++) all.push(blocks[j][i])
+      for (i = 0; i < t[0]; i++) for (j = 0; j < t[1]; j++) all.push(ecs[j][i])
+      var n = ver * 4 + 17, mod = [], fn = []
+      for (i = 0; i < n; i++) { mod.push(new Array(n).fill(false)); fn.push(new Array(n).fill(false)) }
+      var set = function (x, y, d) { mod[y][x] = d; fn[y][x] = true }
+      for (i = 0; i < n; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0) }
+      var finder = function (cx, cy) {
+        for (var dy = -4; dy <= 4; dy++) for (var dx = -4; dx <= 4; dx++) {
+          var d = Math.max(Math.abs(dx), Math.abs(dy)), xx = cx + dx, yy = cy + dy
+          if (xx >= 0 && xx < n && yy >= 0 && yy < n) set(xx, yy, d !== 2 && d !== 4)
+        }
+      }
+      finder(3, 3); finder(n - 4, 3); finder(3, n - 4)
+      var al = ALIGN[ver]
+      for (i = 0; i < al.length; i++) for (j = 0; j < al.length; j++) {
+        if ((i === 0 && j === 0) || (i === 0 && j === al.length - 1) || (i === al.length - 1 && j === 0)) continue
+        for (var ay = -2; ay <= 2; ay++) for (var ax = -2; ax <= 2; ax++) set(al[i] + ax, al[j] + ay, Math.max(Math.abs(ax), Math.abs(ay)) !== 1)
+      }
+      var drawFormat = function (mask) {
+        var fb = formatBits(ecl, mask), bit = function (k) { return ((fb >>> k) & 1) !== 0 }, k
+        for (k = 0; k <= 5; k++) set(8, k, bit(k))
+        set(8, 7, bit(6)); set(8, 8, bit(7)); set(7, 8, bit(8))
+        for (k = 9; k < 15; k++) set(14 - k, 8, bit(k))
+        for (k = 0; k < 8; k++) set(n - 1 - k, 8, bit(k))
+        for (k = 8; k < 15; k++) set(8, n - 15 + k, bit(k))
+        set(8, n - 8, true)
+      }
+      drawFormat(0)
+      var bi = 0
+      for (var right = n - 1; right >= 1; right -= 2) {
+        if (right === 6) right = 5
+        for (var vert = 0; vert < n; vert++) for (j = 0; j < 2; j++) {
+          var x = right - j, up = ((right + 1) & 2) === 0, y = up ? n - 1 - vert : vert
+          if (!fn[y][x] && bi < all.length * 8) { mod[y][x] = ((all[bi >>> 3] >>> (7 - (bi & 7))) & 1) !== 0; bi++ }
+        }
+      }
+      var applyMask = function (k) { for (var yy = 0; yy < n; yy++) for (var xx = 0; xx < n; xx++) if (!fn[yy][xx] && maskFn(k, xx, yy)) mod[yy][xx] = !mod[yy][xx] }
+      var best = 0, bestP = 1e9
+      for (var mk = 0; mk < 8; mk++) {
+        applyMask(mk); drawFormat(mk)
+        var pn = penalty(mod, n)
+        if (pn < bestP) { bestP = pn; best = mk }
+        applyMask(mk)
+      }
+      applyMask(best); drawFormat(best)
+      return { size: n, mod: mod, version: ver, mask: best, ecl: ecl }
+    }
+    function penalty(mod, n) {
+      var p = 0, x, y, run, dark = 0
+      for (var pass = 0; pass < 2; pass++) {
+        for (y = 0; y < n; y++) {
+          run = 1
+          for (x = 1; x <= n; x++) {
+            var cur = x < n ? (pass ? mod[x][y] : mod[y][x]) : null, prev = pass ? mod[x - 1][y] : mod[y][x - 1]
+            if (cur === prev) run++
+            else { if (run >= 5) p += 3 + run - 5; run = 1 }
+          }
+          for (x = 0; x + 10 < n; x++) {
+            var g = function (k) { return pass ? mod[x + k][y] : mod[y][x + k] }
+            var a1 = g(0) && !g(1) && g(2) && g(3) && g(4) && !g(5) && g(6)
+            if (a1 && !g(7) && !g(8) && !g(9) && !g(10)) p += 40
+            var a2 = !g(0) && !g(1) && !g(2) && !g(3) && g(4) && !g(5) && g(6) && g(7) && g(8) && !g(9) && g(10)
+            if (a2) p += 40
+          }
+        }
+      }
+      for (y = 0; y < n - 1; y++) for (x = 0; x < n - 1; x++) {
+        var c = mod[y][x]
+        if (c === mod[y][x + 1] && c === mod[y + 1][x] && c === mod[y + 1][x + 1]) p += 3
+      }
+      for (y = 0; y < n; y++) for (x = 0; x < n; x++) if (mod[y][x]) dark++
+      p += (Math.ceil(Math.abs(dark * 20 - n * n * 10) / (n * n)) - 1) * 10
+      return p
+    }
+    return { encode: function (text) { return encode(text, 'M') || encode(text, 'L') }, _encode: encode, _rsDiv: rsDiv, _rsRem: rsRem, _formatBits: formatBits }
+  })()
+  var qrCache = null
+  function playUrl() {
+    try {
+      if (location.protocol === 'http:' || location.protocol === 'https:') return location.origin + location.pathname
+      return location.href.split('?')[0].split('#')[0]
+    } catch (e) { return '' }
+  }
+  function drawQR(x, y, maxPx) {
+    var url = playUrl()
+    if (!qrCache || qrCache.url !== url) { var q = null; try { q = QR.encode(url) } catch (e) {} qrCache = { url: url, q: q } }
+    var q = qrCache.q
+    if (!q) return 0
+    var quiet = 2, sc = Math.max(2, Math.floor(maxPx / (q.size + quiet * 2))), tot = (q.size + quiet * 2) * sc
+    rect(x, y, tot, tot, 'white')
+    ctx.fillStyle = col('black')
+    for (var yy = 0; yy < q.size; yy++) for (var xx = 0; xx < q.size; xx++) if (q.mod[yy][xx]) ctx.fillRect(x + (xx + quiet) * sc, y + (yy + quiet) * sc, sc, sc)
+    return tot
+  }
+
+  // ---------------------------------------------------------------- TV MODE (party TV: leaderboard + QR)
+  var wakeLock = null
+  function requestWake() {
+    try {
+      if (navigator.wakeLock && navigator.wakeLock.request && !wakeLock) {
+        navigator.wakeLock.request('screen').then(function (l) {
+          wakeLock = l
+          try { l.addEventListener('release', function () { wakeLock = null }) } catch (e) {}
+        }, function () {})
+      }
+    } catch (e) {}
+  }
+  function rowKey(r) { return (r.id || '') + '|' + r.name + '|' + r.score + '|' + (r.ts || 0) }
   STATES.tv = {
-    enter: function () { S.rows = null; S.load = 0; music('scores'); loadTv() },
+    enter: function () { S.rows = null; S.all = null; S.load = 0; S.seen = null; S.fresh = {}; S.freshT = 0; music('scores'); loadTv(); requestWake() },
     update: function () {
       S.load++
-      if (S.load >= 600) { S.load = 0; loadTv() }
-      if (pr('start')) go('title')
+      if (S.load >= 600) { S.load = 0; loadTv() } // refresh every 10 s
+      if (S.freshT > 0) S.freshT--
+      if (S.t % 1800 === 0) requestWake()
+      // TV mode never leaves on its own (START / taps are ignored on the party TV)
     },
     draw: function () {
       rect(0, 0, W, H, 'black')
-      drawScoreTable(S.rows, 0, S.t)
-      if (blink(frame, 24)) TC('PLAY ON YOUR PHONE!', 198, 'gold', true)
-      var url = ''
-      try { url = (location.host + location.pathname).replace(/index\.html$/, '') } catch (e) {}
-      if (!url || location.protocol === 'file:') url = 'ASK THE HOST FOR THE LINK'
-      url = url.toUpperCase()
-      if (url.length > 31) { TC(url.slice(0, 31), 212, 'white'); TC(url.slice(31, 62), 222, 'white') }
-      else TC(url, 214, 'white')
+      BIG('HIGH SCORES', 128, 4, 'gold', 2)
+      TC(scoresMode() + ' RANKING', 23, scoresMode() === 'GLOBAL' ? 'cyan' : 'lgray')
+      box(2, 33, 152, 154, 'default')
+      T('RK', 8, 40, 'red'); T('NAME', 30, 40, 'red'); TR('SCORE', 148, 40, 'red')
+      var rows = S.rows
+      if (!rows) { if (blink(frame, 10)) T('LOADING...', 30, 100, 'white') }
+      else if (!rows.length) { T('NO SCORES', 40, 96, 'white'); T('YET! BE THE', 32, 108, 'gold'); T('FIRST!', 56, 120, 'gold') }
+      else for (var i = 0; i < 10 && i < rows.length; i++) {
+        var r = rows[i], y = 54 + i * 13
+        var c = i === 0 ? 'gold' : i === 1 ? 'lgray' : i === 2 ? 'orange' : 'white'
+        if (S.fresh[rowKey(r)] && S.freshT > 0) { if (!blink(frame, 6)) continue; c = 'cyan' }
+        if (i === 0) BP.Art.drawIcon(ctx, 'crown', 4, y)
+        TR(String(i + 1), 28, y, c)
+        T(String(r.name || '???').toUpperCase().slice(0, 8), 30 + 4, y, c)
+        TR(pad(r.score || 0, 6), 148, y, c)
+      }
+      // QR + call to action
+      box(158, 33, 96, 112, 'gold')
+      var qs = drawQR(162, 37, 88)
+      if (!qs) { T('PLAY', 186, 70, 'white'); T('ON YOUR', 178, 82, 'white'); T('PHONE!', 182, 94, 'white') }
+      if (blink(frame, 20)) T('SCAN TO', 178, 128, 'gold'); else T('PLAY!', 186, 128, 'gold')
+      // latest submission ticker
+      if (S.latest) {
+        var lt = 'LATEST: ' + String(S.latest.name).toUpperCase().slice(0, 8) + ' ' + pad(S.latest.score || 0, 6)
+        rect(0, 191, W, 11, 'navy')
+        TC(lt, 193, S.freshT > 0 && blink(frame, 6) ? 'cyan' : 'white')
+      }
+      if (blink(frame, 30)) TC('PLAY ON YOUR PHONE!', 206, 'gold', true)
+      var url = playUrl().replace(/^https?:\/\//, '').replace(/index\.html$/, '').toUpperCase()
+      if (location.protocol === 'file:') url = 'ASK THE HOST FOR THE LINK'
+      if (url.length > 31) { TC(url.slice(0, 31), 218, 'white'); TC(url.slice(31, 62), 228, 'white') }
+      else TC(url, 222, 'white')
     },
   }
   function loadTv() {
     var self = S
-    try { Promise.resolve(BP.Scores.top(10)).then(function (r) { if (S === self) self.rows = Array.isArray(r) ? r : [] }, function () {}) } catch (e) {}
+    try {
+      Promise.resolve(BP.Scores.top(50)).then(function (r) {
+        if (S !== self || !Array.isArray(r)) return
+        var keys = {}, fresh = {}, any = false, latest = null
+        r.forEach(function (row) {
+          var k = rowKey(row); keys[k] = 1
+          if (self.seen && !self.seen[k]) { fresh[k] = 1; any = true }
+          if (!latest || (row.ts || 0) > (latest.ts || 0)) latest = row
+        })
+        if (any) { self.fresh = fresh; self.freshT = 60 * 8; sfx('tally') }
+        self.seen = keys
+        self.rows = r.slice(0, 10)
+        self.latest = latest
+      }, function () { if (S === self && !self.rows) self.rows = [] })
+    } catch (e) {}
     refreshHi()
   }
 
@@ -1825,6 +2147,7 @@
   }
   function onShow() {
     last = null
+    if (S && S.name === 'tv') requestWake()
     if (!(S && S.name === 'match' && paused)) { try { BP.Audio.resume() } catch (e) {} }
   }
 
@@ -1884,6 +2207,8 @@
   }
   var debugTools = {
     autoplay: false,
+    qr: QR,
+    playUrl: playUrl,
     step: function (n) { for (var i = 0; i < (n || 1); i++) tick() },
     press: function (b) { virt[b] = true },
     render: function () { render() },

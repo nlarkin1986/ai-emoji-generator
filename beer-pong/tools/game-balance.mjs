@@ -10,7 +10,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 const args = process.argv.slice(2)
 const opt = (k, d) => { const i = args.indexOf(k); return i < 0 ? d : args[i + 1] }
 const skill = +opt("--skill", 0.6), N = +opt("--n", 10), buzz = +opt("--buzz", 0), loop = +opt("--loop", 0)
-const url = pathToFileURL(join(here, "..", "..", "public", "beerpong", "index.html")).href + "?seed=" + opt("--seed", "7")
+const url = pathToFileURL(join(here, "..", "..", "public", "beerpong", "index.html")).href + "?debug&seed=" + opt("--seed", "7")
 const browser = await chromium.launch()
 const page = await (await browser.newContext()).newPage()
 const errs = []
