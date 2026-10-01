@@ -25,6 +25,7 @@ const only = opt("--only", "")
 
 const browser = await chromium.launch()
 let fails = 0
+const BP_side = (v) => (v ? "/right" : "/below")
 const ok = (cond, msg, extra) => { if (cond) console.log("  ok  ", msg); else { fails++; console.log("  FAIL", msg, extra !== undefined ? JSON.stringify(extra) : "") } }
 
 // ------------------------------------------------------------------ input tests
@@ -145,9 +146,10 @@ if (runTests || has("--audit")) {
   const url = pathToFileURL(file).href
   const names = ["iPhone SE", "iPhone SE (3rd gen)", "iPhone 13 Mini", "iPhone 13", "iPhone 15 Pro Max", "Pixel 5", "Pixel 7", "Galaxy S9+", "Galaxy S5", "Galaxy S8", "iPad Mini", "iPad (gen 7)"]
   console.log("\n[audit] toolbar/pad/canvas overlap + pixel uniformity")
-  for (const base of names) for (const dev of [base, base + " landscape"]) {
-    if (!devices[dev]) continue
-    const ctx = await browser.newContext({ ...devices[dev], hasTouch: true })
+  const desk = [[1024, 768], [1280, 800], [1366, 768], [1440, 900], [1920, 1080], [2560, 1440], [1280, 650]].map(([w, h]) => [`desktop ${w}x${h}`, { viewport: { width: w, height: h } }])
+  const list = [...names.flatMap((b) => [b, b + " landscape"]).filter((d) => devices[d]).map((d) => [d, { ...devices[d], hasTouch: true }]), ...desk]
+  for (const [dev, cOpts] of list) {
+    const ctx = await browser.newContext(cOpts)
     const page = await ctx.newPage()
     await page.goto(url); await page.waitForTimeout(150)
     const r = await page.evaluate(() => {
@@ -162,11 +164,26 @@ if (runTests || has("--audit")) {
       const bad = []
       for (const i of icons) { for (const c of ctl) if (hit(i, c, 4)) bad.push(`icon ${i.id}~${c.id}`); if (hit(i, cv)) bad.push(`icon ${i.id}~canvas`) }
       for (let i = 0; i < ctl.length; i++) { if (hit(ctl[i], cv)) bad.push(`${ctl[i].id}~canvas`); for (let j = i + 1; j < ctl.length; j++) if (hit(ctl[i], ctl[j])) bad.push(`${ctl[i].id}~${ctl[j].id}`) }
+      const tvEl = document.getElementById("tv"), padbg = document.getElementById("padbg")
+      if (vis(tvEl) && vis(padbg) && hit(box(tvEl), box(padbg))) bad.push("tv~pad")
+      if (vis(padbg)) { const pb = box(padbg); if (pb.l < -0.5 || pb.t < -0.5 || pb.r > innerWidth + 0.5 || pb.b > innerHeight + 0.5) bad.push("pad offscreen") }
+      if (vis(tvEl)) { const tb = box(tvEl); if (tb.t < -0.5 || tb.b > innerHeight + 0.5) bad.push("tv offscreen") }
+      const hn = document.getElementById("hint"); if (vis(hn) && hn.getBoundingClientRect().bottom > innerHeight + 0.5) bad.push("hint offscreen")
+      if (document.documentElement.scrollHeight > innerHeight || document.documentElement.scrollWidth > innerWidth) bad.push("page scroll")
       for (const e of [...icons, ...ctl, cv]) if (e.l < -0.5 || e.t < -0.5 || e.r > innerWidth + 0.5 || e.b > innerHeight + 0.5) bad.push(`${e.id} offscreen`)
       const s = BP.Shell.state.s, dpp = s * devicePixelRatio
       const A = ctl.find((c) => c.id === "sA")
       return { bad, mode: BP.Shell.state.mode, dpp: +dpp.toFixed(3), uniform: Math.abs(dpp - Math.round(dpp)) < 0.01, cv: `${Math.round(cv.w)}x${Math.round(cv.h)}`, A: A ? Math.round(A.w) : 0, n: icons.length }
     })
+    if (dev.startsWith("desktop")) { // mouse on the on-screen pad: press, pressed visual, release
+      const a = await page.evaluate(() => { const b = document.getElementById("sA").getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 } })
+      await page.mouse.move(a.x, a.y); await page.mouse.down()
+      const on = await page.evaluate(() => [BP.Input.held("a"), document.querySelector("#sA .btn").classList.contains("on")])
+      await page.mouse.up()
+      const off = await page.evaluate(() => BP.Input.held("a"))
+      if (!(on[0] && on[1] && !off)) r.bad.push(`mouse A press failed ${on} ${off}`)
+      r.mode += BP_side(await page.evaluate(() => BP.Shell.state.deskSide))
+    }
     ok(r.bad.length === 0, `${dev.padEnd(30)} ${r.mode.padEnd(9)} screen ${r.cv.padEnd(8)} ${r.dpp} dev-px/px ${r.uniform ? "UNIFORM" : "fit    "} A ${r.A}px icons ${r.n}`, r.bad)
     await ctx.close()
   }
@@ -198,6 +215,11 @@ if (runShots) {
     ["desktop-1920", { viewport: { width: 1920, height: 1080 } }],
     ["desktop-1366", { viewport: { width: 1366, height: 768 } }],
     ["desktop-pad", { viewport: { width: 1280, height: 800 } }, { pad: true }],
+    ["deskpad-1024x768", { viewport: { width: 1024, height: 768 } }],
+    ["deskpad-1366x768", { viewport: { width: 1366, height: 768 } }],
+    ["deskpad-1440x900", { viewport: { width: 1440, height: 900 } }],
+    ["deskpad-2560x1440", { viewport: { width: 2560, height: 1440 } }],
+    ["desktop-nopad-1280", { viewport: { width: 1280, height: 800 } }, { nopad: true }],
     ["desktop-crt", { viewport: { width: 1280, height: 800 } }, { crt: true }],
     ["iphone13-pressed", D("iPhone 13"), { press: true }],
     ["iphone13-landscape-pressed", D("iPhone 13 landscape"), { press: true }],
@@ -211,6 +233,7 @@ if (runShots) {
     await page.goto(url + (o.query || ""))
     if (o.inset) { await page.addStyleTag({ content: `#sa{padding:${o.inset} !important}` }); await page.evaluate(() => BP.Shell.layout()) }
     if (o.pad) await page.evaluate(() => BP.Shell.setPad(true, false))
+    if (o.nopad) await page.evaluate(() => BP.Shell.setPad(false, false))
     if (o.crt) await page.evaluate(() => BP.Shell.setCrt(true))
     await page.waitForTimeout(700)
     if (o.press) {

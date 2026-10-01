@@ -96,7 +96,7 @@ body.m-desktop #hint{display:block}
 body.tvmode #hint{display:none}
 #thint{position:absolute;display:none;text-align:center;white-space:nowrap;color:#5f5f6c;font-size:11px;line-height:16px;letter-spacing:.12em;pointer-events:none}
 #thint b{color:var(--red);font-weight:900}
-body.m-portrait #thint.show{display:block}
+body.m-portrait:not(.m-deskpad) #thint.show{display:block}
 #hint kbd{display:inline-block;min-width:18px;padding:0 4px;margin:0 1px;border:1px solid #3c3c46;border-bottom-width:2px;border-radius:4px;
   font:inherit;line-height:15px;color:#c9c9d2;background:#121218;text-align:center}
 #hint i{font-style:normal;color:#9b9ba8;margin-right:10px}
@@ -106,6 +106,8 @@ body.m-portrait #thint.show{display:block}
 .pad{display:none}
 body.m-portrait .pad,body.m-landscape .pad{display:block}
 body.m-landscape .po,body.m-portrait .lo{display:none}
+body.m-deskpad .pill,body.m-deskpad .sock,body.m-deskpad #dpad{cursor:pointer}
+body.m-deskpad #padbg{box-shadow:0 5px 0 #6c6c6c,0 18px 40px rgba(0,0,0,.75),inset 0 2px 0 #f2f2f2,inset 0 -2px 0 #9a9a9a}
 #padbg{border-radius:4.2%/8.6%;
   background:linear-gradient(180deg,#dadada 0,#c6c6c6 6%,#bdbdbd 60%,#acacac 100%);
   box-shadow:0 5px 0 #6c6c6c,0 9px 22px rgba(0,0,0,.7),inset 0 2px 0 #f2f2f2,inset 0 -2px 0 #9a9a9a}
@@ -317,18 +319,79 @@ body.m-landscape #dpad .plate{display:block}
     var ax = ins.l, ay = ins.t, aw = Math.max(200, w - ins.l - ins.r), ah = Math.max(200, h - ins.t - ins.b)
     var plan
     if (!S.pad) plan = { mode: 'desktop' }
+    else if (!S.coarse && !S.tv) plan = { mode: 'deskpad' } // web: CRT TV + the whole NES pad
     else {
       var p = planPortrait(ax, ay, aw, ah), l = planLandscape(ax, ay, aw, ah)
       plan = l.sMax > p.sMax * 1.04 ? l : p
     }
     S.mode = plan.mode
-    body.className = body.className.replace(/\bm-\w+/g, '').trim() + ' m-' + plan.mode + (S.tv ? ' tvmode' : '') + (S.crt ? ' crt' : '')
+    var mcls = plan.mode === 'deskpad' ? ' m-desktop m-portrait m-deskpad' : ' m-' + plan.mode
+    body.className = body.className.replace(/\bm-\w+/g, '').trim() + mcls + (S.tv ? ' tvmode' : '') + (S.crt ? ' crt' : '')
     body.className = body.className.replace(/\s+/g, ' ')
     var s, sw, sh, sx, sy, top = $('top'), hint = $('hint'), tv = $('tv')
     top.style.flexWrap = 'nowrap'
     ipx = 3
 
-    if (plan.mode === 'desktop') {
+    function placeTV(tx, ty, tw, th, bz, chin) {
+      tv.classList.add('show')
+      pos(tv, tx, ty, tw, th)
+      var br = $('brand')
+      br.style.fontSize = '13px'; br.style.bottom = '13px'; br.style.left = '22px'
+      $('led').style.bottom = '17px'; $('led').style.right = '20px'
+      tv.style.setProperty('--bz', bz - 3 + 'px'); tv.style.setProperty('--chin', chin - 3 + 'px')
+      tv.style.borderRadius = Math.round(bz * 1.3 + 6) + 'px'
+      ipx = 2
+      var tbw = 34 * nIcons() + 10
+      br.style.display = tw - tbw - 36 > 250 ? '' : 'none'
+      pos(top, tx + tw - tbw - 36, ty + th - chin + 5, tbw, chin - 10)
+    }
+    if (plan.mode === 'deskpad') {
+      // CRT TV is the hero; the complete NES-004 pad sits BELOW it (or to its RIGHT when the window is short)
+      var bz = Math.max(8, Math.min(22, Math.round(Math.min(aw, ah) * 0.022))), chin = 40
+      var m = Math.min(16, Math.round(ah * 0.02)), g = Math.max(12, Math.round(ah * 0.018)), g2 = 28
+      var hintH = aw >= 760 ? 26 : 0, ratio = PH / PW, K = 0.8, CAP = 620, KR = 0.5
+      var wMax = function (extra) { return (aw - 2 * m - 2 * bz - extra) / 256 }
+      // below: height = 2m + 240s + bz + chin + g + padH + hint, padW = min(CAP, K * tw)
+      var below = function (hh) {
+        var fixed = 2 * m + bz + chin + g + hh
+        var s1 = (ah - fixed - K * 2 * bz * ratio) / (240 + K * 256 * ratio)
+        if (K * (256 * s1 + 2 * bz) > CAP) s1 = (ah - fixed - CAP * ratio) / 240
+        return Math.min(s1, wMax(0))
+      }
+      // right: width = 2m + tw + g2 + padW, padW = clamp(KR * tw, 340, 520)
+      var right = function (hh) {
+        var sH = (ah - 2 * m - bz - chin - hh) / 240
+        var sW = (aw - 2 * m - g2 - 2 * bz * (1 + KR)) / (256 * (1 + KR))
+        var r1 = Math.min(sH, sW), pw = KR * (256 * r1 + 2 * bz)
+        if (pw < 340) r1 = Math.min(sH, (aw - 2 * m - g2 - 340 - 2 * bz) / 256)
+        else if (pw > 520) r1 = Math.min(sH, (aw - 2 * m - g2 - 520 - 2 * bz) / 256)
+        return r1
+      }
+      var sb = below(hintH)
+      if (sb < 1.6 && hintH) { hintH = 0; sb = below(0) }
+      var sr = right(hintH), side = sb < 2 && sr > sb * 1.15
+      s = snap(side ? sr : sb)
+      sw = R(256 * s); sh = R(240 * s)
+      var tw = sw + 2 * bz, th = sh + bz + chin, pW, pH, tx, ty, pxx, pyy
+      if (!side) {
+        pW = Math.min(CAP, K * tw); pH = pW * ratio
+        var blockH = th + g + pH + hintH
+        tx = ax + (aw - tw) / 2; ty = ay + Math.max(m, (ah - blockH) / 2)
+        pxx = ax + (aw - pW) / 2; pyy = ty + th + g
+        if (hintH) pos(hint, ax, pyy + pH + 4, aw, 22)
+      } else {
+        pW = Math.max(340, Math.min(520, 0.62 * tw, aw - 2 * m - g2 - tw)); pH = pW * ratio // use the spare width
+        var blockW = tw + g2 + pW
+        tx = ax + Math.max(m, (aw - blockW) / 2); ty = ay + Math.max(m, (ah - th - hintH) / 2)
+        pxx = tx + tw + g2; pyy = ty + (th - pH) / 2
+        if (hintH) pos(hint, ax, ty + th + 4, aw, 22)
+      }
+      hint.style.display = hintH ? '' : 'none'
+      sx = tx + bz; sy = ty + bz
+      placeTV(tx, ty, tw, th, bz, chin)
+      placePortraitPad(pxx, pyy, pW / PW)
+      S.deskSide = side
+    } else if (plan.mode === 'desktop') {
       var tvOn = !S.tv
       var bz = tvOn ? Math.max(8, Math.min(22, Math.round(Math.min(aw, ah) * 0.022))) : 0
       var chin = tvOn ? 40 : 0, hintH = tvOn && aw >= 640 ? 26 : 0, m = tvOn ? Math.min(16, Math.round(ah * 0.02)) : 0
@@ -341,15 +404,7 @@ body.m-landscape #dpad .plate{display:block}
       sx = tx + bz; sy = ty + bz
       tv.classList.toggle('show', tvOn)
       if (tvOn) {
-        pos(tv, tx, ty, tw, th)
-        $('brand').style.fontSize = '13px'; $('brand').style.bottom = '13px'; $('brand').style.left = '22px'
-        $('led').style.bottom = '17px'; $('led').style.right = '20px'
-        tv.style.setProperty('--bz', bz - 3 + 'px'); tv.style.setProperty('--chin', chin - 3 + 'px')
-        tv.style.borderRadius = Math.round(bz * 1.3 + 6) + 'px'
-        $('brand').style.display = tw > 420 ? '' : 'none'
-        ipx = 2
-        var tbw = 34 * 4 + 10
-        pos(top, tx + tw - tbw - 36, ty + th - chin + 5, tbw, chin - 10)
+        placeTV(tx, ty, tw, th, bz, chin)
         pos(hint, ax, ty + th + 4, aw, 22)
       } else {
         ipx = 2
@@ -505,7 +560,7 @@ body.m-landscape #dpad .plate{display:block}
 
   BP.Shell = {
     state: S, layout: layout, relayout: relayout, syncUI: syncUI,
-    setPad: setPad, togglePad: function () { setPad(!S.pad) }, padVisible: function () { return S.mode === 'portrait' || S.mode === 'landscape' },
+    setPad: setPad, togglePad: function () { setPad(!S.pad) }, padVisible: function () { return S.mode === 'portrait' || S.mode === 'landscape' || S.mode === 'deskpad' },
     setCrt: setCrt, toggleCrt: function () { setCrt(!S.crt) },
     toggleFullscreen: toggleFullscreen, fullscreenSupported: function () { return fsOK },
     toggleMute: toggleMute,
