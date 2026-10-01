@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url)
 export const { chromium, devices } = require(join(execSync("npm root -g").toString().trim(), "playwright"))
 export const OUT = "/tmp/claude-0/-home-user-ai-emoji-generator/882cccb5-0c44-5c24-8b34-6afc9a583ff8/scratchpad/qa"
 mkdirSync(OUT, { recursive: true })
-export const BASE = "http://localhost:8787/beerpong/"
+export const BASE = "http://localhost:8791/beerpong/"
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 export const DEV = {
   "iphone13": devices["iPhone 13"], "iphone13L": devices["iPhone 13 landscape"], "se": devices["iPhone SE"],
@@ -43,4 +43,4 @@ export async function hold(cdp, x, y, ms) { await touch(cdp, "touchStart", [{ x,
 export async function shot(page, name) { const p = join(OUT, name + ".png"); await page.screenshot({ path: p }); return p }
 export async function waitState(page, s, ms = 15000) { await page.waitForFunction((s) => BP.Game.debug.state === s, s, { timeout: ms }) }
 export const audioState = (page) => page.evaluate(() => (BP.Audio && BP.Audio._state ? BP.Audio._state() : null))
-export const dev = (path) => fetch("http://localhost:8787" + path, { method: "POST" }).then((r) => r.json())
+export const dev = (path) => fetch("http://localhost:8791" + path, { method: "POST" }).then((r) => r.json())

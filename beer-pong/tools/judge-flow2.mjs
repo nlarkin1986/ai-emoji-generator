@@ -1,0 +1,18 @@
+import { chromium, canvasShot, hookErrors, FILE } from "./judge-common.mjs"
+const browser = await chromium.launch()
+const page = await browser.newPage({ viewport: { width: 800, height: 800 } })
+const errors = []; hookErrors(page, errors)
+await page.goto(FILE + "?seed=9")
+await page.waitForTimeout(500)
+await page.evaluate(() => { const d = BP.Game.debug; d.startAt(0, 0, 0); d.autoplay = 0.97; d.setCups(1, 1); for (let i = 0; i < 6000 && d.state !== 'clear'; i++) d.step(1); d.step(150); d.render() })
+await canvasShot(page, "clear-tally")
+await page.evaluate(() => { const d = BP.Game.debug; d.step(200); d.render() })
+await canvasShot(page, "clear-tally2")
+// redemption
+const r = await page.evaluate(() => { const d = BP.Game.debug; d.startAt(0, 0, 0); d.autoplay = 0.05; d.setCups(0, 1); let i = 0; for (; i < 30000 && !d.redemption && d.state === 'match'; i++) d.step(1); d.step(20); d.render(); return { i, red: d.redemption, st: d.state } })
+console.log(r)
+await canvasShot(page, "redemption")
+await page.evaluate(() => { const d = BP.Game.debug; for (let i = 0; i < 20000 && d.state !== 'gameover'; i++) d.step(1); d.step(100); d.render() })
+await canvasShot(page, "gameover")
+console.log(await page.evaluate(() => [BP.Game.debug.state, BP.Game.debug.score]), errors)
+await browser.close()
