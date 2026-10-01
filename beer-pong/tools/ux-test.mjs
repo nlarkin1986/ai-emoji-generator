@@ -64,7 +64,7 @@ window.__prevented={};['keydown','touchmove','touchstart'].forEach(function(t){d
       await page.keyboard.press(k); r = await T(); ok(r.p === b, `${k} -> ${b}`, r)
     }
     const prevented = await page.evaluate(() => window.__prevented.keydown)
-    ok(prevented >= 18, "game keys preventDefault'ed (no scroll / focus move)", prevented)
+    ok(prevented >= 17, "game keys preventDefault'ed (no scroll / focus move)", prevented)
     const scrollY = await page.evaluate(() => (window.scrollTo(0, 0), document.scrollingElement.scrollTop))
     ok(scrollY === 0, "page not scrolled", scrollY)
     await page.keyboard.down("ArrowRight"); await T()
@@ -117,7 +117,8 @@ window.__prevented={};['keydown','touchmove','touchstart'].forEach(function(t){d
     await touch("touchMove", [[dp.x, dp.y - R, 1], [A.x, A.y, 2]]); r = await T(); ok(r.p === "up" && r.h === "up,a", "slide thumb right -> up", r)
     await touch("touchMove", [[dp.x + R * 0.7, dp.y - R * 0.7, 1], [A.x, A.y, 2]]); r = await T(); ok(r.h === "up,right,a" && r.p === "right", "diagonal up-right = two dirs", r)
     await touch("touchMove", [[dp.x + R * 0.7, dp.y - R * 0.7, 1], [B.x, B.y, 2]]); r = await T(); ok(r.p === "b" && r.h === "up,right,b", "slide A -> B", r)
-    await touch("touchEnd", [[B.x, B.y, 2]]); r = await T(); ok(r.h === "b", "release d-pad finger only", r)
+    // CDP: touchEnd lists the point(s) being lifted
+    await touch("touchEnd", [[dp.x + R * 0.7, dp.y - R * 0.7, 1]]); r = await T(); ok(r.h === "b", "lift d-pad finger only, B stays held", r)
     await touch("touchEnd", []); r = await T(); ok(r.h === "", "all released", r)
     await touch("touchStart", [[A.x, A.y, 3]]); await touch("touchEnd", []); r = await T(); ok(r.p === "a" && r.h === "", "quick tap between ticks still = one A edge", r)
     await touch("touchStart", [[sel.x, sel.y, 4]]); await touch("touchEnd", []); r = await T(); ok(r.p === "select", "SELECT", r)

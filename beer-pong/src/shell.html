@@ -32,7 +32,7 @@ body{position:fixed;left:0;top:0;right:0;bottom:0;height:100vh;height:100dvh;col
 body.m-desktop #app{background:radial-gradient(ellipse 80% 70% at 50% 42%,#14142a 0,#07070f 55%,#000 100%)}
 #sa{position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;
   padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
-.abs,#scr,#tv,#top,#hint,#padbg,#dpad,.sock,.pill,.well,.lbl,.stripe,#cord,#face,#logo{position:absolute}
+.abs,#scr,#tv,#top,#hint,#padbg,#dpad,.sock,.pill,.well,.lbl,.stripe,#face,#logo{position:absolute}
 img,svg,canvas{-webkit-user-drag:none;user-select:none}
 
 /* ---- game screen ---- */
@@ -120,12 +120,10 @@ body.m-landscape .po,body.m-portrait .lo{display:none}
 .sock{border-radius:13%;background:linear-gradient(180deg,#e6e6e6 0,#c8c8c8 40%,#a9a9a9 100%);
   box-shadow:inset 0 2px 0 #f7f7f7,inset 0 -2px 0 #888,0 1px 0 #0a0a0a,0 2px 4px rgba(0,0,0,.6)}
 .btn{position:absolute;left:7%;top:7%;width:86%;height:86%;border-radius:50%;
-  background:radial-gradient(circle at 50% 42%,#e8382a 0,#d62416 52%,#b3140b 78%,#7d0904 100%);
-  box-shadow:0 4px 0 #5a0703,0 6px 5px rgba(0,0,0,.55),inset 0 2px 1px rgba(255,170,150,.55),inset 0 -4px 6px rgba(70,0,0,.45);
+  background:radial-gradient(circle at 50% 62%,#ea3426 0,#d8261a 45%,#c01a10 72%,#93100a 100%);
+  box-shadow:0 3px 0 #5a0703,0 5px 5px rgba(0,0,0,.5),inset 0 4px 5px rgba(80,0,0,.55),inset 0 -2px 1px rgba(255,150,130,.45),inset 0 0 0 1px #7a0a05;
   transition:transform .03s}
-.btn::after{content:"";position:absolute;left:24%;top:16%;width:30%;height:18%;border-radius:50%;
-  background:radial-gradient(ellipse at 50% 50%,rgba(255,220,210,.55),rgba(255,220,210,0) 70%)}
-.btn.on{transform:translateY(4px);background:radial-gradient(circle at 50% 45%,#b81c11 0,#a3140a 60%,#6c0703 100%);
+.btn.on{transform:translateY(3px);background:radial-gradient(circle at 50% 45%,#b81c11 0,#a3140a 60%,#6c0703 100%);
   box-shadow:0 0 0 #5a0703,inset 0 3px 6px rgba(40,0,0,.7)}
 #dpad{--rx:0deg;--ry:0deg}
 #dpad svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;display:block}
@@ -135,14 +133,11 @@ body.m-landscape .po,body.m-portrait .lo{display:none}
 #dpad.u .au,#dpad.d .ad,#dpad.l .al,#dpad.r .ar{opacity:.55}
 #dpad .plate{display:none}
 body.m-landscape #dpad .plate{display:block}
-#cord{display:none;pointer-events:none;overflow:visible}
-body.m-portrait #cord.show{display:block}
 </style>
 </head>
 <body>
 <div id="sa"></div>
 <div id="app">
-  <svg id="cord" class="pad" aria-hidden="true"><path id="cordp" fill="none" stroke="#000" stroke-width="7" stroke-linecap="round"/><path id="cordq" fill="none" stroke="#3a3a3a" stroke-width="4" stroke-linecap="round"/></svg>
   <div id="tv" aria-hidden="true"><div id="brand"><b>PARTY</b>VISION</div><i id="led"></i></div>
   <div id="scr"><canvas id="screen" width="256" height="240" aria-label="Super Beer Pong game screen" tabindex="-1"></canvas><div id="crt"></div></div>
 
@@ -216,7 +211,7 @@ body.m-portrait #cord.show{display:block}
     crtOn: ['..#...#....', '...#.#.....', '###########', '#.#######.#', '#.......###', '#.#######.#', '#.......###', '###########', '.#.......#.'],
     fs: ['###...###', '#.......#', '#.......#', '.........', '.........', '.........', '#.......#', '#.......#', '###...###'],
     fsx: ['..#...#..', '..#...#..', '###...###', '.........', '.........', '.........', '###...###', '..#...#..', '..#...#..'],
-    pad: ['.............', '#############', '#.#.......#.#', '###.##.##.#.#', '#.#.......#.#', '#############', '.............']
+    pad: ['##############', '#..#.........#', '#.###.##.#.#.#', '#..#.........#', '##############']
   }
   function icon(name, px) {
     var rows = ICONS[name], h = rows.length, w = rows[0].length, d = ''
@@ -306,7 +301,7 @@ body.m-portrait #cord.show{display:block}
     return { mode: 'portrait', sMax: sMax, topH: topH, gap: gap, bot: bot, padW: padW, padH: padH }
   }
   function planLandscape(ax, ay, aw, ah) {
-    var side = Math.max(118, Math.min(190, ah * 0.36))
+    var side = Math.max(118, Math.min(150, ah * 0.3))
     var sMax = Math.min(ah / 240, (aw - 2 * side) / 256)
     return { mode: 'landscape', sMax: sMax }
   }
@@ -364,15 +359,6 @@ body.m-portrait #cord.show{display:block}
       var free = remain - padH
       var px0 = ax + (aw - padW) / 2, py0 = sy + sh + plan.gap + free * 0.55
       placePortraitPad(px0, py0, padW / PW)
-      // controller cord curling up behind the TV
-      var cord = $('cord'), g = py0 - (sy + sh)
-      if (g > 30) {
-        var cx0 = px0 + padW * 0.5, x1 = sx + sw * 0.5
-        pos(cord, 0, 0, w, h); cord.setAttribute('width', w); cord.setAttribute('height', h)
-        var dpath = 'M' + cx0 + ' ' + (py0 + 2) + ' C' + cx0 + ' ' + (py0 - g * 0.55) + ' ' + (x1 + sw * 0.22) + ' ' + (sy + sh + g * 0.6) + ' ' + (x1 + sw * 0.08) + ' ' + (sy + sh - 2)
-        $('cordp').setAttribute('d', dpath); $('cordq').setAttribute('d', dpath)
-        cord.classList.add('show')
-      } else cord.classList.remove('show')
     } else { // landscape
       s = snap(plan.sMax, false)
       sw = R(256 * s); sh = R(240 * s)
@@ -399,8 +385,9 @@ body.m-portrait #cord.show{display:block}
     P($('face'), 8, 8, PW - 16, PH - 16); $('face').style.borderRadius = 9 * u + 'px'
     var stripes = ['st1', 'st2', 'st3', 'st4'], ys = [26, 41, 56, 160]
     for (var i = 0; i < 4; i++) P($(stripes[i]), 134, ys[i], 92, 8)
-    var lg = $('logo'); P(lg, 230, 20, 156, 18); lg.style.fontSize = 13 * u + 'px'; lg.style.textAlign = 'right'
-    P($('well1'), 132, 100, 96, 46); $('well1').style.borderRadius = 9 * u + 'px'
+    var lg = $('logo'); P(lg, 230, 20, 156, 18); lg.style.fontSize = 14 * u + 'px'; lg.style.textAlign = 'right'
+    lg.textContent = 'PARTY SOFT'; lg.style.display = ''
+    P($('well1'), 134, 100, 92, 46); $('well1').style.borderRadius = 9 * u + 'px'
     PC($('pSel'), 158, 123, 36, 15); PC($('pSt'), 202, 123, 36, 15)
     var fs = 9.5 * u + 'px'
     PC($('lSel'), 158, 87, 50, 11); PC($('lSt'), 202, 87, 50, 11)
@@ -414,38 +401,47 @@ body.m-portrait #cord.show{display:block}
   }
 
   function placeLandscapePad(lx, y0, lw, rx, rw, ah) {
-    var cy = y0 + ah * 0.53
-    var dz = Math.max(96, Math.min(lw * 0.84, ah * 0.46, 190))
     var lcx = lx + lw / 2, rcx = rx + rw / 2
-    PCx($('dpad'), lcx, cy, dz, dz)
+    // SELECT / START at the bottom of each side, labels above them
+    var pw = Math.max(40, Math.min(lw * 0.42, rw * 0.42, 62)), ph = pw * 0.38, bottomY = y0 + ah - Math.max(12, ah * 0.045) - ph / 2 - 6
+    var lfs = Math.max(9, pw * 0.2), lblY = bottomY - ph / 2 - 6 - lfs * 0.6
+    PCx($('pSel'), lcx, bottomY, pw, ph); PCx($('pSt'), rcx, bottomY, pw, ph)
+    PCx($('well1'), lcx, bottomY, pw + 12, ph + 12); PCx($('well2'), rcx, bottomY, pw + 12, ph + 12)
+    $('well1').style.borderRadius = $('well2').style.borderRadius = (ph + 12) / 2 + 'px'
+    $('lSel').style.fontSize = $('lSt').style.fontSize = lfs + 'px'
+    PCx($('lSel'), lcx, lblY, pw * 1.6, lfs); PCx($('lSt'), rcx, lblY, pw * 1.6, lfs)
+    var bandTop = y0 + 48, bandBot = lblY - lfs - 8, cy = (bandTop + bandBot) / 2 + ah * 0.02
+    // D-pad: as big as the column / band allows
+    var dz = Math.max(90, Math.min(lw * 0.84, (bandBot - bandTop) * 1.0, 190))
+    PCx($('dpad'), lcx, Math.min(cy, bandBot - dz / 2 + dz * 0.04), dz, dz)
     // A / B: level like the NES pad when there is room, otherwise a thumb-friendly diagonal
-    var d = Math.max(56, Math.min(rw * 0.44, ah * 0.22, 96)), sk = d * 1.14, gap = Math.max(8, d * 0.12)
-    var bx, by, axx, ayy
-    if (rw >= 2 * sk + 3 * gap) { bx = rcx - (sk + gap) / 2; axx = rcx + (sk + gap) / 2; by = cy + d * 0.08; ayy = cy - d * 0.08 }
-    else {
-      var dx = Math.max(sk * 0.3, (rw - sk - 2 * 6) / 2), need = sk + gap
-      var dy = Math.sqrt(Math.max(0, need * need - 4 * dx * dx)) / 2
-      bx = rcx - dx; axx = rcx + dx; by = cy + dy; ayy = cy - dy
+    var d = Math.max(52, Math.min(rw * 0.44, ah * 0.22, 96)), sk, gap, bx, by, axx, ayy, diag = false
+    sk = d * 1.14; gap = Math.max(8, d * 0.12)
+    if (rw >= 2 * sk + 3 * gap) { bx = rcx - (sk + gap) / 2; axx = rcx + (sk + gap) / 2; by = cy + d * 0.06; ayy = cy - d * 0.06 }
+    else { // diagonal: B low-left, A high-right; squares never overlap vertically
+      diag = true
+      var band = bandBot - (y0 + 10)
+      if (2 * sk + gap > band) { d = Math.max(48, (band - gap) / 2 / 1.14); sk = d * 1.14 }
+      var dx = Math.max(0, (rw - sk) / 2 - 6), dy = (sk + gap) / 2
+      var c2 = Math.max(y0 + 10 + dy + sk / 2, Math.min(cy, bandBot - dy - sk / 2))
+      bx = rcx - dx; axx = rcx + dx; by = c2 + dy; ayy = c2 - dy
     }
     PCx($('sB'), bx, by, sk, sk); PCx($('sA'), axx, ayy, sk, sk)
     var lf = Math.max(12, d * 0.2)
     $('lB').style.fontSize = $('lA').style.fontSize = lf + 'px'
     $('lB').style.textAlign = $('lA').style.textAlign = 'center'
-    PCx($('lB'), bx - sk * 0.5 - lf * 0.2, by + sk * 0.5 + lf * 0.1, lf, lf)
-    PCx($('lA'), axx + sk * 0.5 + lf * 0.2, ayy + sk * 0.5 + lf * 0.1, lf, lf)
-    // SELECT / START at the bottom of each side
-    var pw = Math.max(40, Math.min(lw * 0.42, 62)), ph = pw * 0.38, bottomY = y0 + ah - Math.max(14, ah * 0.05) - ph / 2 - 6
-    var lfs = Math.max(9, pw * 0.2)
-    PCx($('pSel'), lcx, bottomY, pw, ph); PCx($('pSt'), rcx, bottomY, pw, ph)
-    PCx($('well1'), lcx, bottomY, pw + 12, ph + 12); PCx($('well2'), rcx, bottomY, pw + 12, ph + 12)
-    $('well1').style.borderRadius = $('well2').style.borderRadius = (ph + 12) / 2 + 'px'
-    $('lSel').style.fontSize = $('lSt').style.fontSize = lfs + 'px'
-    PCx($('lSel'), lcx, bottomY - ph / 2 - 6 - lfs * 0.6, pw * 1.6, lfs)
-    PCx($('lSt'), rcx, bottomY - ph / 2 - 6 - lfs * 0.6, pw * 1.6, lfs)
-    var lg = $('logo'), lgf = Math.max(10, Math.min(16, rw * 0.085))
+    if (diag) { // labels in the empty corners of the diagonal
+      PCx($('lB'), bx + sk / 2 + lf * 0.8, by + sk * 0.3, lf * 1.2, lf)
+      PCx($('lA'), axx - sk / 2 - lf * 0.8, ayy - sk * 0.3, lf * 1.2, lf)
+    } else {
+      PCx($('lB'), bx + sk * 0.36, by + sk * 0.5 + lf * 0.75, lf * 1.2, lf)
+      PCx($('lA'), axx + sk * 0.36, ayy + sk * 0.5 + lf * 0.75, lf * 1.2, lf)
+    }
+    var lg = $('logo'); lg.textContent = 'SUPER BEER PONG'
+    var lgf = Math.max(10, Math.min(16, rw * 0.085))
     lg.style.fontSize = lgf + 'px'; lg.style.textAlign = 'center'
     PCx(lg, rcx, y0 + 22, rw - 8, lgf + 2)
-    lg.style.display = (ayy - sk / 2) - (y0 + 22 + lgf) > 8 ? '' : 'none'
+    lg.style.display = (ayy - sk / 2) - (y0 + 22 + lgf) > 6 ? '' : 'none'
   }
   function PCx(el, cx, cy, w, h) { posC(el, cx, cy, w, h) }
 
