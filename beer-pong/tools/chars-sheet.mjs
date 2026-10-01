@@ -25,7 +25,7 @@ if (only !== "game") {
   const sheets = await page.evaluate(() => {
     const A = BP.Art; A.init()
     const WHO = ["hero", "chad", "tank", "sky", "brody", "kegmaster"]
-    const FR = [["idle", 0], ["idle", 32], ["aim", 0], ["throw", 0], ["cheer", 0], ["cheer", 16], ["drink", 0], ["sad", 0], ["walk", 0], ["walk", 8]]
+    const FR = [["idle", 0], ["idle", 32], ["aim", 0], ["throw", 0], ["cheer", 0], ["cheer", 16], ["drink", 0], ["drink", 10], ["sad", 0], ["walk", 0], ["walk", 8]]
     const CW = 44, CH = 58
     function sheet(flipAll, bg) {
       const c = document.createElement("canvas"); c.width = FR.length * CW; c.height = WHO.length * CH
@@ -55,7 +55,7 @@ if (only !== "game") {
   save("detail.png", det)
   // bounds: every sprite drawn where the game draws it (hero x=16, CPU x=240, feet 228) must stay on the 256x240 screen
   const bounds = await page.evaluate(() => {
-    const A = BP.Art, WHO = ["hero", "chad", "tank", "sky", "brody", "kegmaster"], P = { idle: [0, 32], aim: [0], throw: [0], cheer: [0, 16], drink: [0], sad: [0], walk: [0, 8] }
+    const A = BP.Art, WHO = ["hero", "chad", "tank", "sky", "brody", "kegmaster"], P = { idle: [0, 32], aim: [0], throw: [0], cheer: [0, 16], drink: [0, 10], sad: [0], walk: [0, 8] }
     const c = document.createElement("canvas"); c.width = 320; c.height = 240; const x = c.getContext("2d", { willReadFrequently: true }), bad = [], ext = {}
     for (const w of WHO) for (const p in P) for (const t of P[p]) for (const px of w === "hero" ? [16] : [240]) {
       x.clearRect(0, 0, 320, 240); A.drawPlayer(x, w, p, px + 32, 228, t)

@@ -15,13 +15,12 @@
   var PAL = A.PAL, baseInit = A.init, baseDraw = A.drawPlayer;
 
   // ---------------------------------------------------------------- heads (20 wide, facing right)
-  // shared lower face (rows 8..15); eyes rows 9-10 (near eye e+E at 11-12, far eye E at 15), mouth row 12
+  // shared lower face (rows 8..14); eyes rows 8-9 (near eye e+E at 11-12, far eye E at 15), nose row 10, mouth row 11
   var FACE = [
-    '..KHHHHSSSSSSSSSSK',
     '..KHHHSSSSSeESSESK',
-    '..KHKSKSSSSeESSESSK',
-    '..KHSSKSSSSSSSSSSK',
-    '...KHSSSSSSSSMMMSK',
+    '..KHKSKSSSSeESSESK',
+    '..KHSSKSSSSSSSSSSSK',
+    '...KHSSSSSSSSMMSSK',
     '...KKsSSSSSSSSSSK',
     '.....KKssSSSSSKK',
     '.......KKKKKKK'];
@@ -69,8 +68,8 @@
       '...KXXXKXJXKXXXK',
       '...KxxxxxxxxxxxxK',
       '..KHHHHSSSSSSSSSK',
-      '..KHHHSSSSSSSSSSSK',
-      '..KHHSSSSSKKKSKKSK']
+      '..KHHHSSSSSKKSSKSK',
+      '..KHHSSSSSSSSSSSSK']
   };
   // wide build (TANK / KEGMASTER): face template widened by 2 (col 8 duplicated)
   var TOPS_W = {
@@ -81,22 +80,22 @@
       '..KHHHHHHHHHHHHHHK',
       '..KHHHHHHHHHHHHHHHK',
       '..KHHHSSSSSSSSSSSHK',
-      '..KHHSSSSSSSSSSSSSK',
-      '..KHHSSSSKKSSSSKKSK']
+      '..KHHSSSSSSSSKKSSKSK',
+      '..KHHSSSSSSSSSSSSSSK']
   };
   // per-head overlays (rows from 8 onward), eye/mouth anchors for expressions
   var OVER = {
-    sky: [null, '.......KKKKGGGGGGK', '...........GgGKGgG'],
-    brody: [null, '.......KKKKGGGGGGK', '...........GgGKGgG'],
-    kegmaster: [null, null, null,
-      '..KHDDKDSSSSdddddK',
-      '...KDDDDDDDDDMMMDK',
-      '...KDDDDDDDDDDDDDK',
+    sky: ['.......KKKKGgGGGGK', '...........qqqKqqK'],
+    brody: ['.......KKKKGgGGGGK', '...........qqqKqqK'],
+    kegmaster: [null, null,
+      '..KHDDKSSSSSSSSSSSK',
+      '...KDDDDDDDDdddddK',
+      '...KDDDDDDDDDMMDDK',
       '....KDDDDDDDDDDDK',
       '.....KDDDDDDDDDK',
       '......KKDDDDDKK',
       '........KKKKK'],
-    chad: [null, null, null, '..KHSSKSSSSSSSSSMK', '...KHSSSSSSSSSMMSK']
+    chad: [null, null, '..KHSSKSSSSSSSSMSSK']
   };
   var HEADS = {
     hero: { top: 'hero' }, chad: { top: 'chad' }, sky: { top: 'sky', shades: 1 }, brody: { top: 'brody', shades: 1 },
@@ -115,22 +114,15 @@
     for (y = 0; y < 18; y++) { rows.push([]); for (x = 0; x < W; x++) rows[y].push('.'); }
     function put(r, oy) { for (var i = 0; i < r.length; i++) if (r[i]) for (var j = 0; j < r[i].length; j++) { var c = r[i].charAt(j); if (c !== '.' && rows[oy + i]) rows[oy + i][j] = c; } }
     put(face, 8); put(top, 0); if (OVER[who]) put(OVER[who], 8);
-    var ex = 11 + wide, fx = 15 + wide, mx = 13 + wide;
+    var ex = 11 + wide, fx = 15 + wide, mx = 13 + wide, my = hd.beard ? 12 : 11, sk = hd.beard ? 'D' : 'S';
     function px(x, y, c) { if (rows[y] && x >= 0 && x < W) rows[y][x] = c; }
     if (!hd.shades) {
-      if (expr === 'c') { px(ex, 9, 'S'); px(ex + 1, 9, 'S'); px(fx, 9, 'S'); px(ex, 10, 'K'); px(ex + 1, 10, 'K'); px(fx, 10, 'K'); }
-      if (expr === 's') { px(ex, 9, 'K'); px(ex + 1, 9, 'K'); px(fx, 9, 'K'); }
+      if (expr === 'c') { px(ex, 8, 'S'); px(ex + 1, 8, 'S'); px(fx, 8, 'S'); px(ex, 9, 'K'); px(ex + 1, 9, 'K'); px(fx, 9, 'K'); }
+      if (expr === 's') { px(ex, 8, 'K'); px(ex + 1, 8, 'K'); px(fx, 8, 'K'); }
     }
-    if (expr === 'h') { // open shout
-      var my = 12;
-      px(mx, my, 'K'); px(mx + 1, my, 'K'); px(mx + 2, my, 'K'); px(mx, my + 1, 'K'); px(mx + 1, my + 1, 'M'); px(mx + 2, my + 1, 'K');
-      if (who === 'chad') px(mx + 3, 11, 'S');
-    } else if (expr === 's') { // frown
-      var sy = 12;
-      for (var i = 0; i < 4; i++) px(mx - 1 + i, sy, hd.beard ? 'D' : 'S');
-      if (who === 'chad') px(mx + 3, 11, 'S');
-      px(mx, sy, 'M'); px(mx + 1, sy, 'M'); px(mx + 2, sy, 'M'); px(mx - 1, sy + 1, 'M'); px(mx + 3, sy + 1, 'M');
-    }
+    if (expr === 'h' || expr === 's') { if (who === 'chad') px(mx + 2, 10, 'S'); px(mx, my, sk); px(mx + 1, my, sk); }
+    if (expr === 'h') { px(mx - 1, my, 'K'); px(mx, my, 'K'); px(mx + 1, my, 'K'); px(mx - 1, my + 1, 'K'); px(mx, my + 1, 'M'); px(mx + 1, my + 1, 'K'); }
+    if (expr === 's') { px(mx, my + 1, 'M'); px(mx + 1, my + 1, 'M'); }
     return { rows: rows, w: W, h: 18 };
   }
 
@@ -179,13 +171,11 @@
       '...KsSSSK',
       '...KsSSSK',
       '....KKKK'] },
-    up: { a: [1, 19], m: [
+    up: { a: [1, 17], m: [
       '.....KKKK',
       '....KSSSSK',
       '....KSSSSK',
       '....KsSSSK',
-      '....KsSSK',
-      '...KsSSK',
       '...KsSSK',
       '...KsSSK',
       '..KsSSK',
@@ -289,6 +279,8 @@
       '..........KsSSK..KsSSK',
       '..........KsSSK..KsSSK',
       '..........KsSSK..KsSSK',
+      '..........KsSSK..KsSSK',
+      '..........KsSSK..KsSSK',
       '..........KoooK..KoooK',
       '..........KOOOK..KOOOK',
       '..........KOOOOK.KOOOOK',
@@ -305,6 +297,8 @@
       '.........KpPPPKKKpPPPPK',
       '.........KpPPPK.KpPPPPK',
       '.........KKKKKK.KKKKKKK',
+      '.........KsSSK...KsSSK',
+      '.........KsSSK...KsSSK',
       '.........KsSSK...KsSSK',
       '........KsSSK....KsSSK',
       '........KsSSK.....KsSSK',
@@ -327,16 +321,19 @@
   var POSES = {
     idle0: { l: 'stand', h: [6, 3], f: ['hang'], b: ['hang'], lg: [14, 21] },
     idle1: { l: 'stand', u: [0, 1], h: [6, 4], f: ['hang'], b: ['hang'], lg: [14, 22] },
-    aim: { l: 'stride', h: [6, 3], f: ['aim'], b: ['hang'], lg: [14, 21] },
-    'throw': { l: 'stride', u: [1, 0], h: [8, 4], f: ['throw', -1, 0], b: ['swing'], lg: [15, 21], fb: 1 },
+    aim: { l: 'stride', h: [6, 3], f: ['aim', 0, 1], b: ['hang'], lg: [14, 21] },
+    'throw': { l: 'stride', u: [1, 0], h: [8, 4], f: ['throw', -1, 2], b: ['swing'], lg: [15, 21], fb: 1 },
+    recover: { l: 'stride', u: [0, 1], h: [7, 4], f: ['swing'], b: ['hang'], lg: [14, 22] },
     cheer0: { l: 'stand', h: [6, 3], f: ['up'], b: ['up'], lg: [14, 21], e: 'h', fb: 1 },
-    cheer1: { l: 'stand', u: [0, 1], h: [6, 4], f: ['pump'], b: ['pump'], lg: [14, 22], e: 'h' },
-    drink: { l: 'stand', h: [5, 2], f: ['cup'], b: ['hip'], lg: [14, 21], e: 'c' },
-    sad: { l: 'stand', u: [0, 2], h: [7, 6], f: ['hang', 0, 2], b: ['hang', 0, 2], lg: [14, 23], e: 's' },
+    cheer1: { l: 'stand', u: [0, 1], h: [6, 4], f: ['up'], b: ['hip'], lg: [14, 22], e: 'h', fb: 1 },
+    drink0: { l: 'stand', h: [5, 2], f: ['cup'], b: ['hip'], lg: [14, 21], e: 'c' },
+    drink1: { l: 'stand', h: [4, 2], f: ['cup', 0, -1], b: ['hip'], lg: [14, 21], e: 'c', tilt: 1 },
+    sad: { l: 'stand', u: [0, 1], h: [8, 5], f: ['hang', 0, 2], b: ['hang', 0, 2], lg: [14, 22], e: 's' },
     walk0: { l: 'stride', h: [6, 3], f: ['swing'], b: ['swing'], lg: [14, 21] },
     walk1: { l: 'stand', u: [0, 1], h: [6, 4], f: ['hang'], b: ['hang'], lg: [14, 22] }
   };
-  var FRAMES = { idle: ['idle0', 'idle1'], aim: ['aim'], 'throw': ['throw'], cheer: ['cheer0', 'cheer1'], drink: ['drink'], sad: ['sad'], walk: ['walk0', 'walk1'] };
+  var FRAMES = { idle: ['idle0', 'idle1'], aim: ['aim'], 'throw': ['throw'], cheer: ['cheer0', 'cheer1'], drink: ['drink0', 'drink1'], sad: ['sad'], walk: ['walk0', 'walk1'] };
+  var UY = -2; // body rows shifted up 2 to make room for 2 px longer legs
 
   var LOGOS = {
     W: ['Y...Y', 'Y.Y.Y', 'YYYYY', '.Y.Y.'],
@@ -345,14 +342,14 @@
     K: ['Y..Y', 'Y.Y.', 'YY..', 'Y.Y.', 'Y..Y']
   };
   var CHARS = {
-    hero: { logo: 'W', pal: { S: 'skin', s: 'tan', H: 'brown', h: 'dred', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', v: 'dred', k: 'black', Y: 'white', P: 'tan', p: 'gold', O: 'white', o: 'red' } },
-    chad: { logo: 'W', pal: { S: 'skin', s: 'tan', H: 'brown', h: 'dred', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', v: 'lgray', k: 'black', Y: 'red', P: 'red', p: 'dred', O: 'white', o: 'red' } },
-    tank: { logo: 'N8', wide: 4, pal: { S: 'brown', s: 'dred', H: 'dbrown', h: 'dbrown', z: 'brown', T: 'green', t: 'dgreen', V: 'green', v: 'dgreen', k: 'black', Y: 'white', P: 'lgray', p: 'gray', O: 'white', o: 'gray', e: 'white' } },
-    sky: { logo: 'bolt', pal: { S: 'skin', s: 'tan', H: 'navy', h: 'purple', G: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', v: 'dpurple', k: 'black', Y: 'gold', P: 'dgray', p: 'black', O: 'white', o: 'purple' } },
-    brody: { logo: null, pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'black', g: 'white', T: 'cyan', t: 'blue', V: 'orange', v: 'brown', k: 'brown', Y: 'white', P: 'rose', p: 'dmagenta', O: 'orange', o: 'dbrown' } },
-    kegmaster: { logo: 'K', wide: 4, belly: 1, pal: { S: 'skin', s: 'tan', H: 'brown', h: 'dred', D: 'brown', d: 'brown', X: 'gold', x: 'brown', J: 'red', T: 'blue', t: 'dblue', V: 'blue', v: 'dblue', k: 'black', Y: 'gold', P: 'navy', p: 'black', O: 'white', o: 'gold' } }
+    hero: { logo: 'W', pal: { S: 'skin', s: 'salmon', H: 'maroon', h: 'dbrown', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', v: 'dred', k: 'black', Y: 'white', P: 'tan', p: 'gold', O: 'white', o: 'red' } },
+    chad: { logo: 'W', pal: { S: 'skin', s: 'salmon', H: 'maroon', h: 'dbrown', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', v: 'lgray', k: 'black', Y: 'red', P: 'red', p: 'dred', O: 'white', o: 'red' } },
+    tank: { logo: 'N8', wide: 4, pal: { S: 'brown', s: 'maroon', H: 'dbrown', h: 'black', z: 'brown', T: 'green', t: 'dgreen', V: 'green', v: 'dgreen', k: 'black', Y: 'white', P: 'lgray', p: 'gray', O: 'white', o: 'gray', e: 'white' } },
+    sky: { logo: 'bolt', pal: { S: 'skin', s: 'salmon', H: 'blue', h: 'lblue', G: 'black', q: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', v: 'dpurple', k: 'black', Y: 'gold', P: 'dgray', p: 'black', O: 'white', o: 'purple' } },
+    brody: { logo: null, pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'red', q: 'gold', g: 'white', T: 'cyan', t: 'blue', V: 'orange', v: 'brown', k: 'brown', Y: 'white', P: 'rose', p: 'dmagenta', O: 'orange', o: 'dbrown' } },
+    kegmaster: { logo: 'K', wide: 4, belly: 1, pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', D: 'brown', d: 'maroon', X: 'gold', x: 'orange', J: 'red', T: 'blue', t: 'dblue', V: 'blue', v: 'dblue', k: 'black', Y: 'gold', P: 'navy', p: 'black', O: 'white', o: 'gold' } }
   };
-  var BASE = { K: 'black', E: 'black', e: 'white', M: 'dred', B: 'white', b: 'lgray', R: 'red', r: 'white', Q: 'dred' };
+  var BASE = { K: 'black', E: 'black', e: 'white', M: 'maroon', B: 'white', b: 'lgray', R: 'red', r: 'white', Q: 'dred' };
   var DARKEN = { S: 'z', V: 'v', T: 't' };
 
   // ---------------------------------------------------------------- composition
@@ -385,7 +382,7 @@
     for (var i = 0; i < m.length; i++) mw = Math.max(mw, m[i].length);
     var mirror = front ? !!spec[3] : !spec[3];
     var ax = mirror ? mw - 1 - A2.a[0] : A2.a[0];
-    var sx = front ? 21 : 10, sy = 20;
+    var sx = front ? 21 : 10, sy = 20 + UY;
     stamp(g, m, sx - ax + (spec[1] || 0) + ux, sy - A2.a[1] + (spec[2] || 0) + uy, mirror, front ? null : DARKEN);
     return g;
   }
@@ -394,14 +391,14 @@
     var ch = CHARS[who] || CHARS.chad, P = POSES[pk] || POSES.idle0, k = ch.wide || 0;
     var u = P.u || [0, 0], W = 32;
     var back = armLayer(P.b, false, W, u[0], u[1]), front = armLayer(P.f, true, W, u[0], u[1]);
-    var legs = new Grid(W, 52); stamp(legs, LEGS[P.l] || LEGS.stand, 0, 30);
-    var torso = new Grid(W, 52); stamp(torso, TORSO, u[0], 18 + u[1]);
+    var legs = new Grid(W, 52); stamp(legs, LEGS[P.l] || LEGS.stand, 0, 30 + UY);
+    var torso = new Grid(W, 52); stamp(torso, TORSO, u[0], 18 + UY + u[1]);
     var split = 15;
     if (k) {
       back = widen(back, split, function () { return k; });
       front = widen(front, split, function () { return k; });
       legs = widen(legs, split, function () { return k; });
-      var bt = 18 + u[1];
+      var bt = 18 + UY + u[1];
       torso = widen(torso, split + u[0], function (y) {
         if (!ch.belly) return k; var r = y - bt; return k + (r >= 6 && r <= 11 ? 2 : r === 5 || r === 12 ? 1 : 0);
       });
@@ -409,20 +406,20 @@
     var GW = W + k, out = new Grid(GW, 52);
     over(out, back); over(out, legs); over(out, torso); if (P.fb) over(out, front);
     // head
-    var hg = headGrid(who, P.e || 'n'), hx = P.h[0] + k - (hg.w - 20), hy = P.h[1];
+    var hg = headGrid(who, P.e || 'n'), hx = P.h[0] + k - (hg.w - 20), hy = P.h[1] - 1;
     if (k) hx -= (k >> 1) - (hg.w - 20); // centre wider head on widened torso
     for (var y = 0; y < hg.h; y++) for (var x = 0; x < hg.w; x++) {
       var c = hg.rows[y][x]; if (c === '.') continue;
-      out.set(hx + x, hy + y, c);
+      out.set(hx + x + (P.tilt && y < 6 ? -1 : 0), hy + y, c);
     }
     if (!P.fb) over(out, front);
-    return { g: out, k: k, logo: P.lg ? [P.lg[0] + (k >> 1) + (u[0] || 0), P.lg[1]] : null };
+    return { g: out, k: k, logo: P.lg ? [P.lg[0] + (k >> 1) + (u[0] || 0), P.lg[1] + UY] : null };
   }
 
   function render(who, pk, mirror) {
     var ch = CHARS[who] || CHARS.chad, b = build(who, pk), g = b.g;
     var map = {}, key; for (key in BASE) map[key] = BASE[key]; for (key in ch.pal) map[key] = ch.pal[key]; if (!map.z) map.z = map.s;
-    if (ch.logo && b.logo && LOGOS[ch.logo] && pk !== 'drink') {
+    if (ch.logo && b.logo && LOGOS[ch.logo] && pk.indexOf('drink')) {
       var L = LOGOS[ch.logo], lw = L[0].length;
       var lx = mirror ? g.w - b.logo[0] - lw : b.logo[0];
       // stamp unmirrored after flip: pre-mirror the logo so the final image reads correctly
@@ -453,13 +450,18 @@
     try { prerender(); } catch (e) { if (window.console) console.warn('ArtChars.init', e); }
     return r;
   };
-  var warned = false;
+  var warned = false, last = {};
   A.drawPlayer = function (ctx, who, pose, x, feetY, t, flip) {
     if (!ctx) return 0;
     try {
       if (!CHARS[who]) who = who === 'p1' || who === 'player' ? 'hero' : 'chad';
-      var fr = FRAMES[pose] || FRAMES.idle; t = t | 0;
-      var f = fr.length > 1 ? fr[(pose === 'walk' ? t >> 3 : pose === 'cheer' ? t >> 4 : t >> 5) & 1] : fr[0];
+      if (!FRAMES[pose]) pose = 'idle'; t = t | 0;
+      // remember each on-screen player's last pose so a throw eases out through a 4-frame recovery
+      var key = who + '|' + Math.round(x), st = last[key];
+      if (!st || st.p !== pose) st = last[key] = { p: pose, t0: t, prev: st ? st.p : '' };
+      var fr = FRAMES[pose], dt = t - st.t0;
+      var f = fr.length > 1 ? fr[(pose === 'walk' ? t >> 3 : pose === 'cheer' ? t >> 4 : pose === 'drink' ? (t / 10 | 0) : t >> 5) & 1] : fr[0];
+      if (st.prev === 'throw' && pose !== 'throw' && dt >= 0 && dt < 4) f = 'recover';
       var mirror = (who !== 'hero') !== !!flip, cv = sprite(who, f, mirror);
       ctx.drawImage(cv, Math.round(x) - (cv.width >> 1), Math.round(feetY) - 52);
     } catch (e) {

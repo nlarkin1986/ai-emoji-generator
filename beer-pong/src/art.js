@@ -44,7 +44,7 @@
                     BG3 navy blue green                SP3 TANK  brown green dgreen (+dbrown hair)
        2 ROOFTOP    BG0 navy slate dgray | BG1 windows cream gold gray | BG2 lgray white red
                     BG3 neon magenta purple dpurple    SP3 SKY   purple dpurple navy
-       3 BEACH      BG0 sky navy dpurple dmagenta | BG1 rose cream gold | BG2 sea dblue blue white
+       3 BEACH      BG0 sky navy dmagenta rose | BG1 rose cream gold | BG2 sea dblue blue white
                     BG3 sand olive orange dbrown       SP3 BRO-DY orange cyan rose (+blue/dmagenta)
        4 ARENA      BG0 navy dblue blue | BG1 dgray gray lgray | BG2 cream gold white | BG3 red dred brown
                     SP3 KEGMASTER blue dblue gold (+brown/navy)
@@ -53,14 +53,14 @@
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'forest', 'dgreen', 'green', 'brown'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'maroon', 'dbrown', 'olive', 'gray', 'dgray', 'navy', 'blue', 'brown', 'green', 'dgreen'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'magenta', 'purple', 'dpurple', 'cyan', 'brown'],
-    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'dpurple', 'rose', 'cream', 'dblue', 'blue', 'olive', 'orange', 'dbrown', 'cyan', 'brown'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'dmagenta', 'rose', 'cream', 'dblue', 'blue', 'olive', 'orange', 'dbrown', 'cyan', 'brown'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'dgray', 'gray', 'cream', 'navy', 'dblue', 'blue', 'brown']
   ];
   var STAGE_OVR = [
     { maroon: 'dred', olive: 'dgray', orange: 'gold', salmon: 'red', xlgray: 'lgray', lime2: 'gold', yellow: 'gold', blue: 'slate', dbrown: 'dgray', skin2: 'tan', skin3: 'brown', sky: 'white' },
     { orange: 'gold', salmon: 'red', purple: 'blue', magenta: 'blue', sky: 'white', cream: 'white', forest: 'dgreen', slate: 'navy', skin2: 'tan', skin3: 'brown', cyan: 'white', lgreen: 'green' },
     { orange: 'gold', salmon: 'red', teal: 'slate', blue: 'slate', green: 'cyan', dbrown: 'dgray', olive: 'dgray', dmagenta: 'dpurple', skin2: 'tan', skin3: 'dred', sky: 'cyan', maroon: 'dred' },
-    { salmon: 'rose', dmagenta: 'dpurple', pblue: 'white', forest: 'dbrown', gray: 'dbrown', teal: 'blue', pink: 'rose', lgreen: 'cyan', green: 'cyan', yellow: 'gold', skin2: 'orange', skin3: 'brown', maroon: 'dred' },
+    { salmon: 'rose', dpurple: 'dmagenta', purple: 'dmagenta', pblue: 'white', forest: 'dbrown', gray: 'dbrown', teal: 'blue', pink: 'rose', lgreen: 'cyan', green: 'cyan', yellow: 'gold', skin2: 'orange', skin3: 'brown', maroon: 'dred' },
     { lblue: 'blue', purple: 'navy', dpurple: 'navy', orange: 'gold', salmon: 'red', green: 'blue', maroon: 'dred', dbrown: 'brown', skin2: 'tan', skin3: 'brown', slate: 'navy', yellow: 'gold' }
   ];
   var subCache = [];
@@ -1289,8 +1289,8 @@
     var cv = mk(W, H), c = cv._x, x, y, i;
     R(c, 0, 0, W, H, 'black');
     R(c, 0, 24, W, 40, 'navy'); dith(c, 0, 24, W, 10, 'black');
-    R(c, 0, 64, W, 26, 'dpurple'); dith(c, 0, 60, W, 8, 'dpurple'); dith(c, 0, 64, W, 6, 'navy');
-    dith4(c, 0, 92, W, 6, 'rose'); dith(c, 0, 98, W, 6, 'rose'); R(c, 0, 104, W, 6, 'rose'); // dpurple->rose in 3 dither steps (frees dmagenta) R(c, 0, 109, W, 1, 'salmon');
+    R(c, 0, 64, W, 40, 'dmagenta'); dith(c, 0, 60, W, 8, 'dmagenta'); dith(c, 0, 64, W, 6, 'navy');
+    dith4(c, 0, 92, W, 6, 'rose'); dith(c, 0, 98, W, 6, 'rose'); R(c, 0, 104, W, 6, 'rose'); // dmagenta->rose in 3 dither steps (no dpurple: frees a color) R(c, 0, 109, W, 1, 'salmon');
     STAR_SETS[3] = stars(c, 51, 70, 26, 70);
     // big moon
     disc(c, 186, 54, 12, 'cream'); disc(c, 189, 51, 3, 'yellow'); disc(c, 181, 58, 2, 'yellow'); P1(c, 191, 60, 'yellow');
