@@ -285,7 +285,17 @@
         if (!c.alive) continue
         var dx = b.x - c.x, dz = b.z - c.z, d = Math.sqrt(dx * dx + dz * dz)
         if (d > CUP_R + BALL_R + 1) continue
-        if (d < CUP_R && b.y < RIM_H - 1.5 && b.y > 0) { resolveSink(c); return }
+        // a ball only counts once it entered the rim circle from ABOVE the rim (never through the side wall)
+        if (d < CUP_R && b.y >= RIM_H - 1) b.enter = c
+        if (d < CUP_R && b.y < RIM_H - 1.5 && b.y > 0 && b.enter === c) { resolveSink(c); return }
+        // cup side wall (below the rim): solid from the outside
+        if (b.y < RIM_H - 1 && b.y > -1 && b.enter !== c && d < CUP_R + BALL_R) {
+          var wx = d > 1e-4 ? dx / d : 1, wz = d > 1e-4 ? dz / d : 0
+          var vw = b.vx * wx + b.vz * wz
+          if (vw < 0) { b.vx -= 1.4 * vw * wx; b.vz -= 1.4 * vw * wz; sfx('rim') }
+          b.x = c.x + wx * (CUP_R + BALL_R); b.z = c.z + wz * (CUP_R + BALL_R)
+          continue
+        }
         if (b.y > RIM_H - 4 && b.y < RIM_H + 4) {
           if (d < 1e-4) continue
           var nx = dx / d, nz = dz / d
@@ -307,11 +317,6 @@
             }
             b.x = rx + ux * BALL_R; b.y = RIM_H + uy * BALL_R; b.z = rz + uz * BALL_R
           }
-        } else if (b.y < RIM_H - 1 && b.y > -1 && d >= CUP_R && d < CUP_R + BALL_R) {
-          var n2x = dx / d, n2z = dz / d
-          var vn2 = b.vx * n2x + b.vz * n2z
-          if (vn2 < 0) { b.vx -= 1.4 * vn2 * n2x; b.vz -= 1.4 * vn2 * n2z; sfx('rim') }
-          b.x = c.x + n2x * (CUP_R + BALL_R); b.z = c.z + n2z * (CUP_R + BALL_R)
         }
       }
       // ---- table
@@ -343,7 +348,7 @@
     if (b.t > 240 || b.rim > 14) {
       // failsafe: a ball balanced on / circling a rim drops in, anything else is a miss
       var tc = m.sides[tgt].cups
-      for (var q = 0; q < tc.length; q++) if (tc[q].alive && Math.hypot(b.x - tc[q].x, b.z - tc[q].z) < CUP_R && b.y > 0 && b.y < RIM_H + 3) { resolveSink(tc[q]); return }
+      for (var q = 0; q < tc.length; q++) if (tc[q].alive && b.enter === tc[q] && Math.hypot(b.x - tc[q].x, b.z - tc[q].z) < CUP_R && b.y > 0 && b.y < RIM_H + 3) { resolveSink(tc[q]); return }
       resolveMiss(); return
     }
     // a ball that has dropped below the table edge is a miss: resolve now, let a visual-only "dead ball" keep falling
@@ -548,7 +553,7 @@
     var bounce = st.bounce > 0 && cs.length >= 2 && rnd() < st.bounce
     var make = rnd() < acc
     var tx = c.x, tz = c.z, dirX = side === 0 ? 1 : -1, longShort = 0
-    if (make) { tx += gauss() * 0.4; tz += gauss() * 0.4 }
+    if (make) { tx += gauss() * 0.25; tz += gauss() * 0.25 }
     else {
       var minD = rnd() < 0.7 ? 6.6 : 5.2 // mostly clean misses, sometimes a rim scare
       var found = false
@@ -1136,6 +1141,11 @@
       rect(fx, fy + fh - hh, fw, hh, inZone ? 'lgreen' : v > sc ? 'red' : 'orange')
       if (M.phase === 'power' || blink(frame, 4)) rect(fx - 2, R(fy + fh - hh) - 1, fw + 4, 2, 'white')
     }
+    if (M.phase !== 'aim') { // the green zone stays visible over the fill: outline + brackets outside the bar
+      var zy0 = R(fy + fh * (1 - (sc + bw))), zy1 = R(fy + fh * (1 - (sc - bw)))
+      rect(fx, zy0, fw, 1, 'lgreen'); rect(fx, zy1, fw, 1, 'lgreen')
+      rect(fx - 3, zy0, 2, zy1 - zy0 + 1, 'lgreen'); rect(fx + fw + 1, zy0, 2, zy1 - zy0 + 1, 'lgreen')
+    }
     // hint for first-timers
     if (human && run && run.hints < 4 && !M.demo) {
       var hint = M.phase === 'aim' ? 'TAP OR A: LOCK AIM' : M.phase === 'power' ? 'TAP IN THE GREEN!' : ''
@@ -1304,11 +1314,17 @@
       rect(0, 0, W, H, 'black')
       drawScoreTable(S.rows, S.hlRank, S.t, S.board ? S.label : null, S.board ? S.myRank : 0)
       if (S.board && S.myRank > 10 && !S.hlRank) {
-        box(16, 196, 224, 16, 'gold')
-        if (blink(frame, 8)) drawScoreRow(S.myRank, { name: S.myName, score: S.myScore, stage: S.myStage, round: S.myRound }, 200, 'gold')
+        // your row when you are outside the top 10: its own strip, text inset 8 px, any rank width
+        box(8, 192, 240, 22, 'gold')
+        if (blink(frame, 8)) {
+          var rk = '#' + S.myRank, nmx = String(S.myName || '').toUpperCase().slice(0, 8)
+          T(rk, 18, 199, 'gold')
+          T(nmx, 18 + Math.max(5, rk.length + 1) * 8, 199, 'white')
+          TR(pad(S.myScore || 0, 7), 238, 199, 'gold')
+        }
       }
       if (S.attract) { if (blink(frame, 30)) TC('PUSH START', 208, 'white') }
-      else if (S.t > (S.board ? 120 : 40) && blink(frame, 30)) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH A', 208, 'lgray')
+      else if (S.t > (S.board ? 120 : 40) && blink(frame, 30)) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH A', S.myRank > 10 && !S.hlRank ? 216 : 208, 'lgray')
     },
   }
   function drawScoreRow(rank, r, y, c) {
@@ -1447,6 +1463,7 @@
   STATES.vs = {
     enter: function () {
       run.stage = S.stage
+      run.stageT0 = ticks // a stage (VS card + match + tally) never takes < 45 s, even for a perfect player
       S.dur = FAST ? 24 : 230
       music('vs', true)
     },
@@ -1632,7 +1649,12 @@
       }
       S.wait++
       run.disp = run.score
-      if ((skip && S.wait > 10) || S.wait > (FAST ? 30 : 200)) nextStage()
+      if (!S.cp) { // anti-cheat checkpoint at each stage clear (after the tally)
+        S.cp = true
+        try { if (BP.Scores && BP.Scores.checkpoint) Promise.resolve(BP.Scores.checkpoint({ round: run.loop + 1, stage: run.stage, score: run.score, makes: run.makes, shots: run.shots })).then(null, function () {}) } catch (e) {}
+      }
+      var minOk = FAST || run.stageT0 == null || ticks - run.stageT0 >= 45 * 60
+      if (minOk && ((skip && S.wait > 10) || S.wait > (FAST ? 30 : 200))) nextStage()
     },
     draw: function () {
       if (m) drawMatch(false)
@@ -1705,7 +1727,7 @@
     'UVWXYZ0123'.split(''),
     '456789.-! '.split(''),
   ]
-  var GX = 28, GY = 104, GCW = 20, GCH = 18
+  var GX = 28, GY = 98, GCW = 20, GCH = 18
   var sessionName = '' // only pre-fill a name typed earlier in THIS page session (shared party phones)
   STATES.entry = {
     enter: function () {
@@ -1721,7 +1743,7 @@
       S.idle = anyPr() || tap() ? 0 : S.idle + 1
       if (S.msg > 0) S.msg--
       if (S.confirm) {
-        var r = yesNo(S.confirm, 76, 146)
+        var r = yesNo(S.confirm, 92, 146)
         if (r === 'yes') finishEntry()
         else if (r === 'no') { S.confirm = null; sfx('cancel') }
         return
@@ -1732,7 +1754,8 @@
         if (hit) { S.cx = hit.cx; S.cy = hit.cy; S.end = hit.end; activate() }
         return
       }
-      if (pr('start')) { askEnd(); return }
+      // START never submits: it only jumps the cursor to END (and is locked for the first second)
+      if (pr('start')) { if (S.t > 60) { S.cy = 4; S.end = true; sfx('select') } return }
       if (pr('b')) { delLetter(); return }
       if (pr('left')) { mv(-1, 0) } else if (pr('right')) { mv(1, 0) } else if (pr('up')) { mv(0, -1) } else if (pr('down')) { mv(0, 1) }
       if (pr('a') && ticks - lastTapTick > 10) activate()
@@ -1767,11 +1790,11 @@
         box(56, 116, 144, 44, 'gold')
         TC('NAME: ' + S.nm, 124, 'white')
         T('OK?', 64, 146, 'gold')
-        drawYesNo(S.confirm, 76 + 16, 146)
+        drawYesNo(S.confirm, 92, 146)
       }
       if (S.sent) { box(64, 116, 128, 32, 'gold'); if (blink(frame, 8)) TC('SENDING...', 128, 'white') }
-      TC('A:ADD  B:DEL  START:END', 208, 'lgray')
-      TC('OR TAP THE LETTERS', 216, 'gray')
+      TC('A:ADD  B:DEL  START:GO TO END', 202, 'lgray')
+      TC('OR TAP THE LETTERS', 214, 'gray')
     },
   }
   function cellAt(x, y) {
@@ -1801,7 +1824,7 @@
   }
   function askEnd() {
     if (!S.nm.trim().length) { sfx('error'); S.msg = 120; return }
-    S.confirm = { sel: 0, t: 0 }
+    S.confirm = { sel: S.fresh ? 1 : 0, t: 0 } // a pre-filled (previous player's) name defaults to NO
     sfx('select')
   }
   function activate() {
@@ -1853,11 +1876,16 @@
   // ---------------------------------------------------------------- ENDING (beat Round 2's KEGMASTER)
   var CREDITS = [
     ['SUPER BEER PONG', 'gold'], ['', ''], ['- STAFF -', 'red'], ['', ''],
-    ['PIXEL ART ........ ART', 'white'], ['SOUND & MUSIC .. SOUND', 'white'], ['GAME DESIGN ..... GAME', 'white'],
-    ['CONTROLS .......... UX', 'white'], ['LEADERBOARD ..... NET', 'white'], ['', ''],
-    ['- STARRING -', 'red'], ['YOU', 'gold'], ['', ''], ['- WITH -', 'red'],
-    ['CHAD', 'white'], ['TANK', 'white'], ['SKY', 'white'], ['BRO-DY', 'white'], ['THE KEGMASTER', 'white'], ['', ''],
+    ['PRODUCER', 'gold'], ['BIG KEG KENJI', 'white'], ['', ''],
+    ['DIRECTOR', 'gold'], ['SPLASH-SAN', 'white'], ['', ''],
+    ['PROGRAM', 'gold'], ['MR. RATTLE', 'white'], ['NETWORK NED', 'white'], ['', ''],
+    ['GRAPHIC DESIGN', 'gold'], ['PIXEL PATTY', 'white'], ['', ''],
+    ['SOUND COMPOSER', 'gold'], ['CHIPTUNE CHUCK', 'white'], ['', ''],
+    ['PLAY TESTERS', 'gold'], ['THE WHOLE BACKYARD', 'white'], ['', ''],
+    ['- CAST -', 'red'], ['CHAD', 'white'], ['TANK', 'white'], ['SKY', 'white'], ['BRO-DY', 'white'], ['THE KEGMASTER', 'white'], ['AND YOU', 'gold'], ['', ''],
+    ['SPECIAL THANKS', 'gold'], ['ALL PARTY PEOPLE', 'white'], ['', ''],
     ['NO CUPS WERE HARMED', 'lgray'], ['IN THE MAKING OF', 'lgray'], ['THIS GAME.', 'lgray'], ['', ''],
+    ['PRESENTED BY', 'gold'], ['PARTY SOFT', 'white'], ['', ''],
     ['THANKS FOR PLAYING!', 'gold'],
   ]
   function continueGauntlet() {
@@ -2075,12 +2103,13 @@
       return location.href.split('?')[0].split('#')[0]
     } catch (e) { return '' }
   }
-  function drawQR(x, y, maxPx) {
+  function drawQR(x, y, maxPx, center) {
     var url = playUrl()
     if (!qrCache || qrCache.url !== url) { var q = null; try { q = QR.encode(url) } catch (e) {} qrCache = { url: url, q: q } }
     var q = qrCache.q
     if (!q) return 0
     var quiet = 2, sc = Math.max(2, Math.floor(maxPx / (q.size + quiet * 2))), tot = (q.size + quiet * 2) * sc
+    if (center) { x += Math.floor((maxPx - tot) / 2); y += Math.floor((maxPx - tot) / 2) }
     rect(x, y, tot, tot, 'white')
     ctx.fillStyle = col('black')
     for (var yy = 0; yy < q.size; yy++) for (var xx = 0; xx < q.size; xx++) if (q.mod[yy][xx]) ctx.fillRect(x + (xx + quiet) * sc, y + (yy + quiet) * sc, sc, sc)
@@ -2113,25 +2142,25 @@
       rect(0, 0, W, H, 'black')
       BIG('HIGH SCORES', 128, 8, 'gold', 2)
       TC(scoresMode() + ' RANKING', 25, scoresMode() === 'GLOBAL' ? 'cyan' : 'lgray')
-      box(2, 33, 152, 154, 'default')
-      T('RK', 8, 40, 'red'); T('NAME', 30, 40, 'red'); TR('SCORE', 148, 40, 'red')
+      box(0, 36, 157, 151, 'default')
+      T('RK', 6, 43, 'red'); T('NAME', 28, 43, 'red'); TR('SCORE', 152, 43, 'red')
       var rows = S.rows
       if (!rows) { if (blink(frame, 10)) T('LOADING...', 30, 100, 'white') }
       else if (!rows.length) { T('NO SCORES', 40, 96, 'white'); T('YET! BE THE', 32, 108, 'gold'); T('FIRST!', 56, 120, 'gold') }
       else for (var i = 0; i < 10 && i < rows.length; i++) {
-        var r = rows[i], y = 54 + i * 13
+        var r = rows[i], y = 56 + i * 13
         var c = i === 0 ? 'gold' : i === 1 ? 'lgray' : i === 2 ? 'orange' : 'white'
         if (S.fresh[rowKey(r)] && S.freshT > 0) { if (!blink(frame, 6)) continue; c = 'cyan' }
         if (i === 0) BP.Art.drawIcon(ctx, 'crown', 4, y)
-        TR(String(i + 1), 28, y, c)
-        T(String(r.name || '???').toUpperCase().slice(0, 8), 30 + 4, y, c)
-        TR(pad(r.score || 0, 6), 148, y, c)
+        TR(String(i + 1), 22, y, c)
+        T(String(r.name || '???').toUpperCase().slice(0, 8), 26, y, c)
+        TR(pad(r.score || 0, 7), 152, y, c) // 8-char name (26..90) + 7-digit score (96..152) never touch
       }
       // QR + call to action
-      box(158, 33, 96, 112, 'gold')
-      var qs = drawQR(162, 37, 88)
+      box(158, 36, 98, 112, 'gold')
+      var qs = drawQR(162, 40, 90, true)
       if (!qs) { T('PLAY', 186, 70, 'white'); T('ON YOUR', 178, 82, 'white'); T('PHONE!', 182, 94, 'white') }
-      if (blink(frame, 20)) T('SCAN TO', 178, 128, 'gold'); else T('PLAY!', 186, 128, 'gold')
+      if (blink(frame, 20)) T('SCAN TO', 180, 133, 'gold'); else T('PLAY!', 188, 133, 'gold')
       // latest submission ticker
       if (S.latest) {
         var lt = 'LATEST: ' + String(S.latest.name).toUpperCase().slice(0, 8) + ' ' + pad(S.latest.score || 0, 6)
@@ -2173,7 +2202,7 @@
     var n = S.name
     if (n === 'title') { if (S.t % 60 === 30) { titleCursor = 0; virt.a = true } return }
     if (n === 'vs' || n === 'clear' || n === 'gameover' || n === 'ending') { if (S.t % 40 === 39) virt.a = true; return }
-    if (n === 'entry') { if (S.t === 35) virt.a = true; if (S.t === 40) virt.start = true; if (S.t === 70) virt.a = true; return }
+    if (n === 'entry') { if (S.t === 32) virt.b = true; if (S.t === 35) virt.a = true; if (S.t === 70) virt.start = true; if (S.t === 75) virt.a = true; if (S.t === 100) virt.a = true; return }
     if (n === 'scores' || n === 'howto') { if (S.t === 130) virt.start = true; if (S.t === 132) virt.a = true; return }
     if (n !== 'match' || !m || paused) return
     if (m.ctrl[m.turn] !== 'human') return
@@ -2301,7 +2330,8 @@
     started = true
     canvas = cv || document.getElementById('screen')
     if (!canvas) { canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H; document.body.appendChild(canvas) }
-    ctx = canvas.getContext('2d')
+    try { ctx = canvas.getContext('2d', { willReadFrequently: true }) } catch (e) { ctx = null }
+    if (!ctx) ctx = canvas.getContext('2d')
     ctx.imageSmoothingEnabled = false
     try { BP.Art.init() } catch (e) { logErr(e) }
     try { BP.Input.init(canvas) } catch (e) { logErr(e) }

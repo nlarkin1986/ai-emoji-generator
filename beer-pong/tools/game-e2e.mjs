@@ -86,14 +86,14 @@ function trackErrors(p) { const e = []; p.on("pageerror", (x) => e.push(x.messag
   await page.waitForTimeout(300)
   await page.waitForTimeout(600) // entry input lock
   await tapAt(128, 30) // tap off-grid: must not type anything
-  const cell = (ch) => { const rows = ["ABCDEFGHIJ", "KLMNOPQRST", "UVWXYZ0123", "456789.-! "]; for (let r = 0; r < 4; r++) { const c = rows[r].indexOf(ch); if (c >= 0) return [28 + c * 20 + 4, 104 + r * 18 + 4] } }
+  const cell = (ch) => { const rows = ["ABCDEFGHIJ", "KLMNOPQRST", "UVWXYZ0123", "456789.-! "]; for (let r = 0; r < 4; r++) { const c = rows[r].indexOf(ch); if (c >= 0) return [28 + c * 20 + 4, 98 + r * 18 + 4] } }
   for (const ch of "NICK") await tapAt(...cell(ch))
   const nm = await page.evaluate(() => "x")
   void nm
-  await tapAt(28 + 124 + 12, 104 + 72 + 4)
+  await tapAt(28 + 124 + 12, 98 + 72 + 4)
   await page.waitForTimeout(400)
   ok((await dbg(page)).state === "entry", "END opens OK? confirm (no instant submit)")
-  await tapAt(102, 150)
+  await tapAt(118, 150)
   ok(await waitFor(page, () => BP.Game.debug.state === "scores", 8000), "tap YES submits -> leaderboard")
   await tapAt(128, 120); await page.waitForTimeout(300)
   ok((await dbg(page)).state === "scores", "leaderboard holds a 2 s input lock")

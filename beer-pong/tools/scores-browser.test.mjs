@@ -67,20 +67,33 @@ async function open(port, pre = "", ctx, cookie = true) {
 const ev = (page, fn, arg) => page.evaluate(fn, arg)
 const legit = (o = {}) => ({ name: "ace", score: 1000, stage: 1, round: 1, cups: 2, accuracy: 55.55, shots: 30, makes: 12, durationMs: 200000, ...o })
 // In-page: start a run, let (server) time pass, submit. Mirrors what the game does.
-const PLAY = `window.__play = async function (e) { await BP.Scores.startRun(); await window.__adv(); return BP.Scores.submit(e) };`
+// A run as the game plays it: startRun, a checkpoint per cleared stage (45 s of server time each),
+// 30 s into the last stage, submit. Totals are split evenly across stages.
+const PLAY = `window.__play = async function (e, noStart) {
+  if (!noStart) await BP.Scores.startRun()
+  var S = ((e.round || 1) - 1) * 5 + (e.stage || 0) + 1
+  for (var k = 0; k < S - 1; k++) {
+    await window.__adv(45000)
+    await BP.Scores.checkpoint({ round: Math.floor(k / 5) + 1, stage: k % 5, score: Math.floor(e.score * (k + 1) / S), makes: Math.floor(e.makes * (k + 1) / S), shots: Math.floor(e.shots * (k + 1) / S) })
+  }
+  await window.__adv(30000)
+  return BP.Scores.submit(e)
+};`
+// single-stage run (no checkpoints needed)
+const legit0 = (o = {}) => ({ name: "ace", score: 1000, stage: 0, round: 1, cups: 2, accuracy: 50, shots: 10, makes: 6, durationMs: 60000, ...o })
 const waitFor = async (page, fn, ms = 20000) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await page.evaluate(fn)) return true; await new Promise((r) => setTimeout(r, 200)) } return false }
 
 let passed = 0
 const t = async (name, fn) => { try { await fn(); passed++; console.log("ok  ", name) } catch (e) { console.log("FAIL", name); throw e } }
 
 try {
-  await t("global: init/startRun/submit/rank/top/best", async () => {
+  await t("global: init/startRun/checkpoint/submit/rank/top/best", async () => {
     const page = await open(PORT, PLAY)
     const r = await ev(page, async (e) => {
       await BP.Scores.init()
       const mode = BP.Scores.mode()
       const a = await __play(e[0]), b = await __play(e[1]), c = await __play(e[2])
-      return { mode, a, b, c, top: await BP.Scores.top(10), best: await BP.Scores.best(), local: JSON.parse(localStorage.bp_scores).length }
+      return { mode, a, b, c, top: await BP.Scores.top(10), best: await BP.Scores.best(), local: JSON.parse(localStorage.bp_scores).length, st: BP.Scores.status() }
     }, [legit({ name: "nick♥", score: 5000 }), legit({ name: "<b>bob</b>", score: 7000 }), legit({ name: "", score: 100 })])
     assert.equal(r.mode, "global")
     assert.equal(r.a.mode, "global", JSON.stringify(r.a)); assert.equal(r.a.rank, 1); assert.equal(r.b.rank, 1); assert.equal(r.c.rank, 3)
@@ -90,9 +103,15 @@ try {
     assert.equal((await serverTop(PORT)).length, 3)
   })
 
-  await t("works without startRun (token pre-armed at init / after each submit)", async () => {
-    const page = await open(PORT)
-    const r = await ev(page, async (e) => { await BP.Scores.init(); await new Promise((r) => setTimeout(r, 300)); await __adv(); const a = await BP.Scores.submit(e[0]); await new Promise((r) => setTimeout(r, 300)); await __adv(); const b = await BP.Scores.submit(e[1]); return [a.mode, b.mode] }, [legit({ name: "NORUN1" }), legit({ name: "NORUN2" })])
+  await t("long chained run (Round 2, 9 checkpoints) is global", async () => {
+    const page = await open(PORT, PLAY)
+    const r = await ev(page, async (e) => { await BP.Scores.init(); return __play(e) }, legit({ name: "R2RUN", stage: 4, round: 2, score: 200000, makes: 90, shots: 150, durationMs: 600000 }))
+    assert.equal(r.mode, "global", JSON.stringify(r))
+  })
+
+  await t("works without startRun (chain start pre-armed at init / after each submit)", async () => {
+    const page = await open(PORT, PLAY)
+    const r = await ev(page, async (e) => { await BP.Scores.init(); await new Promise((r) => setTimeout(r, 300)); const a = await __play(e[0], true); await new Promise((r) => setTimeout(r, 300)); const b = await __play(e[1], true); return [a.mode, b.mode] }, [legit({ name: "NORUN1" }), legit({ name: "NORUN2" })])
     assert.deepEqual(r, ["global", "global"])
   })
 
@@ -101,45 +120,71 @@ try {
     const r = await ev(page, async () => {
       await BP.Scores.init()
       const lead = await __play({ score: 9999999, round: 9, stage: 4, makes: 5000, shots: 5000, durationMs: 86400000 })
-      // plausible-looking but the token is fresh (no real time passed)
-      await BP.Scores.startRun()
-      const quick = await BP.Scores.submit({ name: 'HAX', score: 600000, round: 2, stage: 4, makes: 110, shots: 120, durationMs: 1200000 })
-      return { lead, quick }
+      await BP.Scores.startRun(); await __adv(3600000)
+      const nocp = await BP.Scores.submit({ name: 'HAX', score: 600000, round: 2, stage: 4, makes: 110, shots: 120, durationMs: 1200000 })
+      // fake checkpoints: per-stage ceiling + 40 s of server time per link
+      await BP.Scores.startRun(); await __adv(45000)
+      await BP.Scores.checkpoint({ round: 1, stage: 0, score: 90000, makes: 12, shots: 12 })
+      await __adv(30000)
+      const fat = await BP.Scores.submit({ name: 'HAX', score: 120000, round: 1, stage: 1, makes: 20, shots: 24, durationMs: 80000 })
+      await BP.Scores.startRun(); await BP.Scores.checkpoint({ round: 1, stage: 0, score: 20000, makes: 8, shots: 10 })
+      return { lead, nocp, fat, quickSt: BP.Scores.status() }
     })
-    assert.equal(r.lead.mode, "local"); assert.equal(r.lead.rejected, "too_many_makes")
-    assert.equal(r.quick.mode, "local"); assert.equal(r.quick.rejected, "token_too_young")
-    assert.ok(!(await serverTop(PORT)).some((e) => e.score >= 600000))
+    assert.equal(r.lead.mode, "local"); assert.ok(r.lead.rejected)
+    assert.equal(r.nocp.mode, "local"); assert.equal(r.nocp.rejected, "no_checkpoints")
+    assert.equal(r.fat.mode, "local"); assert.equal(r.fat.rejected, "stage_score_too_high")
+    assert.equal(r.quickSt.cpPending, 1) // checkpoint too soon: kept and retried, not accepted
+    assert.ok(!(await serverTop(PORT)).some((e) => e.name === "HAX"))
   })
 
   await t("implausible score rejected -> local result", async () => {
     const page = await open(PORT, PLAY)
     const r = await ev(page, (e) => __play(e), legit({ score: 9_999_999, makes: 3 }))
-    assert.equal(r.mode, "local"); assert.equal(r.rejected, "score_too_high"); assert.equal(r.rank, 1)
+    assert.equal(r.mode, "local"); assert.ok(r.rejected); assert.equal(r.rank, 1)
     assert.ok(!(await serverTop(PORT)).some((e) => e.score === 9_999_999))
   })
 
-  await t("network drop -> queued (mode local), merged into top, delivered on next load", async () => {
+  await t("network drop at submit -> queued (mode local), merged into top, delivered on next load", async () => {
     const ctx = await browser.newContext()
     let page = await open(PORT, PLAY, ctx)
-    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv() })
+    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv(45000); await BP.Scores.checkpoint({ round: 1, stage: 0, score: 3000, makes: 6, shots: 15 }); await __adv(30000) })
     await ctl(PORT, "/__dev/net?down=1")
     const r = await ev(page, async (e) => { const s = await BP.Scores.submit(e); return { s, top: await BP.Scores.top(10), st: BP.Scores.status() } }, legit({ name: "WIFI", score: 6000 }))
     assert.equal(r.s.queued, true); assert.equal(r.s.mode, "local")
     assert.ok(r.top.some((e) => e.name === "WIFI")); assert.equal(r.st.pending, 1)
     assert.ok(!(await serverTop(PORT)).some((e) => e.name === "WIFI"))
     await ctl(PORT, "/__dev/net?down=0")
-    await ctl(PORT, "/__dev/clock?advance=" + 5 * 3600000) // delivered hours later: token still valid
+    await ctl(PORT, "/__dev/clock?advance=" + 5 * 3600000) // delivered hours later: chain token still valid
     page = await open(PORT, "", ctx) // new page load, same localStorage
     await ev(page, () => BP.Scores.init())
     assert.ok(await waitFor(page, () => BP.Scores.status().pending === 0, 5000))
     assert.equal((await serverTop(PORT)).filter((e) => e.name === "WIFI").length, 1)
   })
 
+  await t("checkpoint lost to wifi -> replayed in order from the queue, verified later", async () => {
+    const page = await open(PORT, PLAY)
+    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv(45000) })
+    await ctl(PORT, "/__dev/net?down=1")
+    const r = await ev(page, async (e) => {
+      await BP.Scores.checkpoint({ round: 1, stage: 0, score: 3000, makes: 6, shots: 15 })
+      const st = BP.Scores.status()
+      return { st, s: await BP.Scores.submit(e) }
+    }, legit({ name: "REPLAY", score: 6000 }))
+    assert.equal(r.st.cpPending, 1); assert.equal(r.s.queued, true); assert.equal(r.s.mode, "local")
+    await ctl(PORT, "/__dev/net?down=0")
+    // replay: checkpoint accepted now, final link then needs >= 10 s server time -> next retry tick
+    await ev(page, () => window.dispatchEvent(new Event("online")))
+    await new Promise((r) => setTimeout(r, 2500))
+    await ctl(PORT, "/__dev/clock?advance=20000")
+    assert.ok(await waitFor(page, () => BP.Scores.status().pending === 0, 40000), "not delivered")
+    assert.equal((await serverTop(PORT)).filter((e) => e.name === "REPLAY").length, 1)
+  })
+
   await t("background retry timer delivers the queue with no further calls (~15 s)", async () => {
     const page = await open(PORT, PLAY)
-    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv() })
+    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv(30000) })
     await ctl(PORT, "/__dev/net?down=1")
-    const r = await ev(page, (e) => BP.Scores.submit(e), legit({ name: "TIMER", score: 333 }))
+    const r = await ev(page, (e) => BP.Scores.submit(e), legit0({ name: "TIMER", score: 333 }))
     assert.equal(r.queued, true)
     await ctl(PORT, "/__dev/net?down=0")
     const t0 = Date.now()
@@ -151,11 +196,11 @@ try {
   await t("phone offline (navigator.onLine=false): no requests, no console spam; delivered on 'online'", async () => {
     const ctx = await browser.newContext()
     const page = await open(PORT, PLAY, ctx)
-    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv() })
+    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv(30000) })
     let hits = 0; page.on("request", (rq) => { if (rq.url().includes("/api/")) hits++ })
     const before = errors.length
     await ctx.setOffline(true)
-    const r = await ev(page, (e) => BP.Scores.submit(e), legit({ name: "PLANE", score: 444 }))
+    const r = await ev(page, (e) => BP.Scores.submit(e), legit0({ name: "PLANE", score: 444 }))
     assert.equal(r.queued, true); assert.equal(r.mode, "local")
     await ev(page, () => { window.dispatchEvent(new Event("pageshow")); document.dispatchEvent(new Event("visibilitychange")) })
     await new Promise((r) => setTimeout(r, 500))
@@ -168,30 +213,30 @@ try {
 
   await t("visibilitychange -> visible flushes immediately; never double-submits", async () => {
     const page = await open(PORT, PLAY)
-    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv() })
+    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv(30000) })
     await ctl(PORT, "/__dev/net?down=1")
-    await ev(page, (e) => BP.Scores.submit(e), legit({ name: "VIS", score: 555 }))
+    await ev(page, (e) => BP.Scores.submit(e), legit0({ name: "VIS", score: 555 }))
     await ctl(PORT, "/__dev/net?down=0")
     await ev(page, () => { for (let i = 0; i < 3; i++) { document.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("pageshow")); window.dispatchEvent(new Event("online")) } })
     assert.ok(await waitFor(page, () => BP.Scores.status().pending === 0, 3000))
     assert.equal((await serverTop(PORT)).filter((e) => e.name === "VIS").length, 1)
   })
 
-  await t("API down at page load -> degraded; scores queued then delivered", async () => {
+  await t("API down at page load -> degraded; next run is global", async () => {
     await ctl(PORT, "/__dev/net?down=1")
     const page = await open(PORT, PLAY)
     const r = await ev(page, async () => { await BP.Scores.init(); return BP.Scores.status() })
     assert.equal(r.mode, "local"); assert.equal(r.backend, "http"); assert.equal(r.degraded, true)
     await ctl(PORT, "/__dev/net?down=0")
-    const s = await ev(page, async (e) => { await BP.Scores.startRun(); await __adv(); return BP.Scores.submit(e) }, legit({ name: "LATE", score: 777 }))
+    const s = await ev(page, (e) => __play(e), legit({ name: "LATE", score: 777 }))
     assert.equal(s.mode, "global", JSON.stringify(s))
   })
 
   await t("server 500 (KV down) -> queued, delivered on next submit", async () => {
     const page = await open(PORT, PLAY)
-    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv() })
+    await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await __adv(30000) })
     await ctl(PORT, "/__dev/kv?fail=1")
-    const a = await ev(page, (e) => BP.Scores.submit(e), legit({ name: "KVDOWN", score: 50 }))
+    const a = await ev(page, (e) => BP.Scores.submit(e), legit0({ name: "KVDOWN", score: 50 }))
     assert.equal(a.queued, true); assert.equal(a.mode, "local")
     await ctl(PORT, "/__dev/kv?fail=0")
     const b = await ev(page, async (e) => { const r = await __play(e); await new Promise((r) => setTimeout(r, 500)); return { r, st: BP.Scores.status() } }, legit({ name: "KVUP", score: 60 }))
@@ -200,10 +245,10 @@ try {
     assert.ok(names.includes("KVDOWN") && names.includes("KVUP"))
   })
 
-  await t("503 unconfigured -> local mode, startRun no-op", async () => {
+  await t("503 unconfigured -> local mode, startRun/checkpoint no-op", async () => {
     const page = await open(PORT503)
-    const r = await ev(page, async (e) => { await BP.Scores.init(); const sr = await BP.Scores.startRun(); const s = await BP.Scores.submit(e); return { sr, mode: BP.Scores.mode(), s, top: await BP.Scores.top(), best: await BP.Scores.best(), pend: BP.Scores.status().pending } }, legit({ score: 4321 }))
-    assert.equal(r.sr, false); assert.equal(r.mode, "local"); assert.equal(r.s.mode, "local"); assert.equal(r.s.rank, 1); assert.equal(r.top[0].score, 4321); assert.equal(r.best, 4321); assert.equal(r.pend, 0)
+    const r = await ev(page, async (e) => { await BP.Scores.init(); const sr = await BP.Scores.startRun(); const c = await BP.Scores.checkpoint({ round: 1, stage: 0, score: 1 }); const s = await BP.Scores.submit(e); return { sr, c: c === undefined, mode: BP.Scores.mode(), s, top: await BP.Scores.top(), best: await BP.Scores.best(), pend: BP.Scores.status().pending } }, legit({ score: 4321 }))
+    assert.equal(r.sr, false); assert.equal(r.c, true); assert.equal(r.mode, "local"); assert.equal(r.s.mode, "local"); assert.equal(r.s.rank, 1); assert.equal(r.top[0].score, 4321); assert.equal(r.best, 4321); assert.equal(r.pend, 0)
   })
 
   await t("slow server -> init gives up in ~4 s", async () => {
@@ -219,7 +264,7 @@ try {
     page.on("pageerror", (e) => errors.push(e.message))
     let fetched = 0; page.on("request", (rq) => { if (rq.url().includes("/api/")) fetched++ })
     await page.goto(pathToFileURL(f).href)
-    const r = await ev(page, async () => { await BP.Scores.init(); const sr = await BP.Scores.startRun(); const a = await BP.Scores.submit({ name: "file", score: 10 }); const b = await BP.Scores.submit({ name: "file2", score: 20 }); return { sr, mode: BP.Scores.mode(), a, b, best: await BP.Scores.best() } })
+    const r = await ev(page, async () => { await BP.Scores.init(); const sr = await BP.Scores.startRun(); await BP.Scores.checkpoint({ round: 1, stage: 0 }); const a = await BP.Scores.submit({ name: "file", score: 10 }); const b = await BP.Scores.submit({ name: "file2", score: 20 }); return { sr, mode: BP.Scores.mode(), a, b, best: await BP.Scores.best() } })
     assert.equal(r.sr, false); assert.equal(r.mode, "local"); assert.equal(r.b.rank, 1); assert.equal(r.best, 20); assert.equal(fetched, 0)
   })
 
@@ -230,6 +275,7 @@ try {
     const r = await ev(page, async (e) => {
       await BP.Scores.init()
       const sr = await BP.Scores.startRun()
+      await BP.Scores.checkpoint({ round: 1, stage: 0, score: 100, makes: 3, shots: 5 })
       const a = await BP.Scores.submit(e[0]), b = await BP.Scores.submit(e[1])
       const forged = await BP.Scores.submit({ score: 9999999, round: 9, stage: 4, makes: 5000, shots: 5000, durationMs: 86400000 })
       return { sr, mode: BP.Scores.mode(), st: BP.Scores.status(), a, b, forged, top: await BP.Scores.top(5), docs: Object.keys(window.__dbDocs).length }
@@ -267,10 +313,11 @@ try {
       const out = []
       out.push(await BP.Scores.submit(undefined)); out.push(await BP.Scores.submit({ score: "abc", name: 42 })); out.push(await BP.Scores.submit({ score: 1e12, stage: -5 }))
       out.push(await BP.Scores.top("x")); out.push(await BP.Scores.top(1000)); out.push(await BP.Scores.startRun())
-      return out.map((o) => (Array.isArray(o) ? "list" + o.length : typeof o === "boolean" ? "bool" : o.mode + ":" + o.rank + ":" + (o.rejected || "")))
+      out.push(await BP.Scores.checkpoint(undefined)); out.push(await BP.Scores.checkpoint({ round: "x" }))
+      return out.map((o) => (o === undefined ? "void" : Array.isArray(o) ? "list" + o.length : typeof o === "boolean" ? "bool" : o.mode + ":" + o.rank + ":" + (o.rejected || "")))
     })
-    assert.deepEqual(r.slice(0, 3).map((x) => x.replace(/:\d+:/, ":N:")), ["local:N:missing_stats", "local:N:missing_stats", "local:N:missing_stats"])
-    assert.equal(r[5], "bool")
+    assert.ok(r.slice(0, 3).every((x) => /^local:\d+:\w+/.test(x)), JSON.stringify(r))
+    assert.equal(r[5], "bool"); assert.equal(r[6], "void"); assert.equal(r[7], "void")
   })
 
   await t("static host (no bp_api cookie) -> local, never fetches the API", async () => {
@@ -278,15 +325,15 @@ try {
     let hits = 0
     const page = await open(PORT, "", ctx, false)
     page.on("request", (rq) => { if (rq.url().includes("/api/")) hits++ })
-    const r = await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await BP.Scores.submit({ name: "gh", score: 5 }); return BP.Scores.mode() })
+    const r = await ev(page, async () => { await BP.Scores.init(); await BP.Scores.startRun(); await BP.Scores.checkpoint({ round: 1, stage: 0 }); await BP.Scores.submit({ name: "gh", score: 5 }); return BP.Scores.mode() })
     assert.equal(r, "local"); assert.equal(hits, 0)
   })
 
   await t("real devserver page sets the cookie (built game -> global)", async () => {
     const page = await (await browser.newContext()).newPage()
     await page.goto(`http://localhost:${PORT}/beerpong/`)
-    const r = await page.evaluate(async () => { await BP.Scores.init(); return { mode: BP.Scores.mode(), c: document.cookie } })
-    assert.equal(r.mode, "global"); assert.match(r.c, /bp_api=1/)
+    const r = await page.evaluate(async () => { await BP.Scores.init(); return { mode: BP.Scores.mode(), c: document.cookie, cp: typeof BP.Scores.checkpoint } })
+    assert.equal(r.mode, "global"); assert.match(r.c, /bp_api=1/); assert.equal(r.cp, "function")
   })
 
   // Only genuine network failures (simulated wifi drop) may log; HTTP errors are "soft" (200 + ok:false).

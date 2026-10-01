@@ -1,6 +1,6 @@
 // Local dev server for SUPER BEER PONG with a working GLOBAL leaderboard.
 //   node beer-pong/build.mjs && node beer-pong/tools/devserver.mjs   ->  http://localhost:8787/beerpong/
-// Serves public/ and runs the REAL Next routes (src/app/api/beerpong/{scores,run}/route.ts) against an
+// Serves public/ and runs the REAL Next routes (src/app/api/beerpong/{scores,run,run/checkpoint}/route.ts) against an
 // in-memory fake KV, so validation / anti-cheat / ranking behave exactly as in production.
 // Options:
 //   --port N          (default 8787, or $PORT)
@@ -38,7 +38,7 @@ try {
   console.error("Could not load the API routes (needs Node >= 22.18 for TS type stripping, and `bun install` for zod/@vercel/kv):\n", e.message)
   process.exit(1)
 }
-const API = { "/api/beerpong/scores": routes.scores, "/api/beerpong/run": routes.run }
+const API = { "/api/beerpong/scores": routes.scores, "/api/beerpong/run": routes.run, "/api/beerpong/run/checkpoint": routes.checkpoint }
 // Server clock offset (QA: /__dev/clock?advance=ms lets tests "wait" for run-token age checks).
 let skew = 0
 const realNow = Date.now

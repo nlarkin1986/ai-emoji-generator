@@ -25,23 +25,28 @@ const totalTicks = minutes * 3600
 let t = 0, lastKey = "", sameFor = 0, maxStall = 0, stallAt = ""
 const runs = []
 let cur = null
-let prevState = ""
+let prevState = "", vsT = 0
+const stageTimes = []
 while (t < totalTicks) {
-  const d = await page.evaluate(() => { BP.Game.debug.step(120); const g = BP.Game.debug; return { state: g.state, phase: g.phase, score: g.score, stage: g.stage, round: g.round, cups: g.cups, shots: g.shots, makes: g.makes, ticks: g.ticks, buzz: g.buzz, r0: g.runTick0, cpuAcc: g.cpuAcc, errors: g.errors } })
-  t += 120
+  const d = await page.evaluate(() => { BP.Game.debug.step(30); const g = BP.Game.debug; return { state: g.state, phase: g.phase, score: g.score, stage: g.stage, round: g.round, cups: g.cups, shots: g.shots, makes: g.makes, ticks: g.ticks, buzz: g.buzz, r0: g.runTick0, cpuAcc: g.cpuAcc, errors: g.errors } })
+  t += 30
   const key = d.state + "/" + d.phase + "/" + JSON.stringify(d.cups) + "/" + d.score + "/" + d.shots
-  if (key === lastKey) { sameFor += 120; if (sameFor > maxStall) { maxStall = sameFor; stallAt = key } } else sameFor = 0
+  if (key === lastKey) { sameFor += 30; if (sameFor > maxStall) { maxStall = sameFor; stallAt = key } } else sameFor = 0
   lastKey = key
   if (d.r0 >= 0 && (!cur || cur.start !== d.r0)) { cur = { start: d.r0, stages: [] }; runs.push(cur) }
   if (cur && d.state === "match") cur.lastStage = d.stage + (d.round - 1) * 5, cur.score = d.score, cur.shots = d.shots, cur.makes = d.makes, cur.cpuAcc = d.cpuAcc
-  if (cur && (d.state === "gameover" || d.state === "ending") && !cur.end) { cur.end = d.ticks; cur.score = d.score; cur.how = d.state }
+  if (cur && d.state === "gameover" && !cur.end) { cur.end = d.ticks; cur.score = d.score; cur.how = "gameover" }
+  if (cur && d.state === "ending") cur.champ = true
+  if (d.state === "vs" && prevState !== "vs") vsT = d.ticks
+  if (d.state === "clear" && prevState !== "clear" && vsT) { stageTimes.push((d.ticks - vsT) / 60); vsT = 0 }
   prevState = d.state
   if (d.errors.length) { errors.push(...d.errors); break }
 }
 for (const r of runs) {
   const dur = r.end ? ((r.end - r.start) / 60).toFixed(0) + "s" : "(unfinished)"
-  console.log(`run: reached stage ${r.lastStage + 1}  score ${r.score}  acc ${r.shots ? Math.round(100 * r.makes / r.shots) : 0}% (${r.makes}/${r.shots})  time ${dur} ${r.how || ''}  cpuAcc ${r.cpuAcc}%`)
+  console.log(`run: reached stage ${r.lastStage + 1}  score ${r.score}  acc ${r.shots ? Math.round(100 * r.makes / r.shots) : 0}% (${r.makes}/${r.shots})  time ${dur} ${r.champ ? 'CHAMPION' : ''}  cpuAcc ${r.cpuAcc}%`)
 }
+if (stageTimes.length) console.log(`VS->clear seconds: min ${Math.min(...stageTimes).toFixed(1)} median ${stageTimes.sort((a,b)=>a-b)[stageTimes.length>>1].toFixed(1)} (n=${stageTimes.length})`)
 console.log(`max stall: ${(maxStall / 60).toFixed(1)}s at ${stallAt}`)
 console.log(errors.length ? "ERRORS:\n" + [...new Set(errors)].join("\n") : "no errors")
 await browser.close()

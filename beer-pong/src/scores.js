@@ -15,8 +15,13 @@
  * API (SPEC section 3 + startRun):
  *   init()            Promise; detects the backend.
  *   mode()            'global' | 'local'
- *   startRun()        call when a run starts (leaving the title). Fetches a signed run token from
- *                     the server (global HTTP mode only; no-op otherwise). Promise<boolean>, never rejects.
+ *   startRun()        call when a run starts (leaving the title). Fetches a signed chain-start token
+ *                     (global HTTP mode only; no-op otherwise). Promise<boolean>, never rejects.
+ *   checkpoint({round, stage, score, makes, shots})
+ *                     call after EVERY stage clear (after the clear tally is added): round/stage of
+ *                     the stage just cleared, whole-run totals so far. Trades the token for the next
+ *                     link of the chain (server needs >= 40 s between links). Promise<void>, never
+ *                     rejects; retried/queued on network trouble; no-op in local / artifact mode.
  *   top(n=10)         Promise<[{id,name,score,stage,round,ts}]>
  *   best()            Promise<number>
  *   submit(entry)     entry = {name, score, stage, round, cups, accuracy, shots, makes, durationMs}
@@ -26,14 +31,14 @@
  *                       score is on the shared board; queued/rejected results are 'local' with the
  *                       on-device table. The caller's row in `top` has `you: true`.
  *
- * Anti-cheat: names sanitised, numbers clamped, plausible() (mirrored from the server), a run
- * token whose age must cover the claimed play time, and an FNV-1a checksum with a STATIC salt
+ * Anti-cheat: names sanitised, numbers clamped, plausible() (mirrored from the server), the
+ * server-timed checkpoint chain (see _lib.ts), and an FNV-1a checksum with a STATIC salt
  * (a speed bump only — anyone reading this file can compute it). Keep SALT / checksum() /
  * plausible() identical to src/app/api/beerpong/_lib.ts.
  */
 BP.Scores = (function () {
   'use strict'
-  var API = '/api/beerpong/scores', RUN_API = '/api/beerpong/run'
+  var API = '/api/beerpong/scores', RUN_API = '/api/beerpong/run', CP_API = '/api/beerpong/run/checkpoint'
   var SALT = 'SBP-1989-PARTYSOFT'
   var K_SCORES = 'bp_scores', K_PENDING = 'bp_pending'
   var TIMEOUT = 4000, DB_WAIT = 3000, LOCAL_KEEP = 50, PENDING_KEEP = 30
@@ -45,7 +50,10 @@ BP.Scores = (function () {
   var cache = null        // last good global top list
   var globalBest = 0      // best global score ever seen this session
   var initP = null, flushP = null, lastFlush = 0, lastError = null
-  var run = { token: null, tokenAt: 0, start: 0 }, armP = null, armRetry = null
+  // Current run's token chain: token = latest link, cps = checkpoints not yet accepted (in order),
+  // links = checkpoints accepted this run, broken = reason the chain can no longer be verified.
+  var run = { token: null, start: 0, cps: [], links: 0, broken: null }, armP = null, armRetry = null
+  var drainP = null, drainTimer = null
   var retryTimer = null, retryFails = 0
 
   // ------------------------------------------------------------- utils ----
@@ -82,15 +90,16 @@ BP.Scores = (function () {
     for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0 }
     return ('0000000' + h.toString(16)).slice(-8)
   }
-  var SUM_FIELDS = ['v', 'id', 'name', 'score', 'stage', 'round', 'cups', 'accuracy', 'shots', 'makes', 'durationMs', 'ts', 'token', 'lag']
+  var SUM_FIELDS = ['v', 'id', 'name', 'score', 'stage', 'round', 'cups', 'accuracy', 'shots', 'makes', 'durationMs', 'ts', 'token', 'lag'] // lag: legacy, no longer sent or used
   function checksum(p) {
     return fnv1a(SALT + '|' + SUM_FIELDS.map(function (k) { return p[k] === undefined || p[k] === null ? '' : String(p[k]) }).join('|'))
   }
 
   // Plausibility ceiling — identical to _lib.ts. Returns null when OK, else a reason.
   //   round in 1..30 (multiplier = round), stage in 0..4, S = (round-1)*5 + stage + 1
-  //   makes <= shots; (S-1)*3 <= makes <= S*10+10; score <= (makes*1500 + S*15000)*round + 10000
-  //   S*20000 <= durationMs <= 3 h; shots <= durationMs/700 + 20
+  //   makes <= shots; (S-1)*3 <= makes <= S*10+10; score <= (makes*1400 + S*15000)*round + 10000
+  //   S*20000 <= durationMs <= 12 h; shots <= durationMs/700 + 20
+  // (The server's checkpoint chain additionally enforces the per-stage rule in real server time.)
   function plausible(p) {
     if (p.makes == null || p.shots == null || p.durationMs == null) return 'missing_stats'
     if (!(p.round % 1 === 0 && p.round >= 1 && p.round <= 30)) return 'bad_round'
@@ -99,14 +108,15 @@ BP.Scores = (function () {
     if (p.makes > p.shots) return 'makes_gt_shots'
     if (p.makes > S * 10 + 10) return 'too_many_makes'
     if (p.makes < (S - 1) * 3) return 'too_few_makes'
-    if (p.score > (p.makes * 1500 + S * 15000) * p.round + 10000) return 'score_too_high'
+    if (p.score > (p.makes * 1400 + S * 15000) * p.round + 10000) return 'score_too_high'
     if (p.durationMs < S * 20000) return 'too_short'
-    if (p.durationMs > 3 * 3600000) return 'too_long'
+    if (p.durationMs > 12 * 3600000) return 'too_long'
     if (p.shots > p.durationMs / 700 + 20) return 'too_fast'
     return null
   }
 
-  function buildPayload(e, tok) {
+  // Unsigned run summary (fixed id + ts so retries are byte-identical); sign() adds token + checksum.
+  function buildBase(e) {
     e = e || {}
     var p = {
       v: 1, id: rid(), name: sanitizeName(e.name),
@@ -118,7 +128,11 @@ BP.Scores = (function () {
     var makes = int(e.makes, 0, 100000, null); if (makes !== null) p.makes = makes
     var dur = int(e.durationMs, 0, 86400000, null); if (dur !== null) p.durationMs = dur
     p.ts = Date.now()
-    if (tok && tok.token) { p.token = tok.token; p.lag = Math.max(0, Math.round(tok.lag || 0)) }
+    return p
+  }
+  function sign(base, token) {
+    var p = {}; for (var k in base) p[k] = base[k]
+    if (token) p.token = token
     p.sum = checksum(p)
     return p
   }
@@ -144,11 +158,14 @@ BP.Scores = (function () {
   }
   function pending() { var a = lsGet(K_PENDING, []); return Array.isArray(a) ? a : [] }
   function setPending(a) { lsSet(K_PENDING, a.slice(-PENDING_KEEP)) }
+  // Queue item: {id, base, token, cps:[...]} (older builds queued the signed payload itself).
+  function pendingEntries() { return clean(pending().map(function (x) { return x && x.base ? x.base : x })) }
+  function savePending(item) { var a = pending(); for (var i = 0; i < a.length; i++) if (a[i] && a[i].id === item.id) { a[i] = item; setPending(a) } }
   function enqueue(p) { var a = pending().filter(function (x) { return x && x.id !== p.id }); a.push(p); setPending(a); scheduleRetry() }
   // Global list as the player should see it: last good list + their not-yet-delivered scores.
   function mergedGlobal(list, extra) {
     var seen = {}, out = []
-    var all = (list || []).concat(clean(pending()), extra ? [norm(extra)] : [])
+    var all = (list || []).concat(pendingEntries(), extra ? [norm(extra)] : [])
     for (var i = 0; i < all.length; i++) { var e = all[i]; if (!e || (e.id && seen[e.id])) continue; if (e.id) seen[e.id] = 1; out.push(e) }
     return sortList(out)
   }
@@ -181,17 +198,20 @@ BP.Scores = (function () {
     })
   }
   function unconfigured(r) { return r.status === 503 && r.json && r.json.error === 'leaderboard_unconfigured' }
-  function transient(r) { return r.status === 0 || r.status === 429 || (r.status >= 500 && !unconfigured(r)) }
+  function tooSoon(r) { return !!(r.json && r.json.error === 'too_soon') }
+  function transient(r) { return r.status === 0 || r.status === 429 || tooSoon(r) || (r.status >= 500 && !unconfigured(r)) }
 
   // ---------------------------------------------------------- run token ----
-  // Single-flight token fetch. Keeps the previous token if the fetch fails.
+  // Single-flight fetch of a fresh chain start. Only installed while no checkpoint has been accepted
+  // this run (never replaces a mid-run chain link). Keeps the previous token if the fetch fails.
   function arm() {
     if (backend !== 'http' || !online()) return Promise.resolve(false)
     if (armP) return armP
     armP = req('POST', RUN_API).then(function (r) {
       armP = null
       if (r.status === 200 && r.json && r.json.ok && typeof r.json.token === 'string') {
-        run.token = r.json.token; run.tokenAt = Date.now(); return true
+        if (run.links === 0) { run.token = r.json.token; if (run.cps.length) drain() }
+        return true
       }
       if (unconfigured(r)) backend = null
       return false
@@ -208,11 +228,37 @@ BP.Scores = (function () {
       return ok || !!run.token
     })
   }
-  function takeToken() {
-    if (!run.token) return null
-    var t = { token: run.token, lag: run.start && run.tokenAt > run.start ? run.tokenAt - run.start : 0 }
-    run.token = null; run.tokenAt = 0
-    return t
+  // One chain link: -> {status:'ok', token} | {status:'retry', wait} | {status:'rejected', reason}
+  function postCp(token, c) {
+    if (!online()) return Promise.resolve({ status: 'retry', reason: 'offline', wait: 10000 })
+    return req('POST', CP_API, { token: token, round: c.round, stage: c.stage, score: c.score, makes: c.makes, shots: c.shots }).then(function (r) {
+      var j = r.json || {}
+      if (r.status === 200 && j.ok && typeof j.token === 'string') return { status: 'ok', token: j.token }
+      if (transient(r)) return { status: 'retry', reason: j.reason || j.error || ('http_' + r.status), wait: Math.max(2000, (j.retryInMs || 10000) + 500) }
+      return { status: 'rejected', reason: j.reason || j.error || ('http_' + r.status) }
+    })
+  }
+  // Push this run's queued checkpoints in order. Single-flight; a 'too soon' / network failure
+  // schedules another attempt; a rejection breaks the chain (the run can't be verified any more).
+  function drain() {
+    if (drainP) return drainP
+    if (drainTimer) { clearTimeout(drainTimer); drainTimer = null }
+    drainP = (function next() {
+      if (!run.cps.length || !run.token || run.broken) return Promise.resolve()
+      var tok = run.token
+      return postCp(tok, run.cps[0]).then(function (r) {
+        if (run.token !== tok) return // run was reset meanwhile
+        if (r.status === 'ok') { run.token = r.token; run.links++; run.cps.shift(); return next() }
+        if (r.status === 'retry') { drainTimer = setTimeout(function () { drainTimer = null; drain() }, r.wait); return }
+        run.broken = r.reason; lastError = r.reason
+      })
+    })().then(function () { drainP = null }, function () { drainP = null })
+    return drainP
+  }
+  function resetRun() {
+    run = { token: null, start: 0, cps: [], links: 0, broken: null }
+    if (drainTimer) { clearTimeout(drainTimer); drainTimer = null }
+    if (armRetry) { clearTimeout(armRetry); armRetry = null }
   }
 
   // ---------------------------------------------------------------- db ----
@@ -275,6 +321,20 @@ BP.Scores = (function () {
     return Promise.resolve({ status: 'retry', reason: 'no_backend' })
   }
 
+  // Deliver one queued item: replay its remaining checkpoints in order, then the signed summary.
+  function deliver(item) {
+    if (!item.base) return push(item) // legacy queue entry (already signed)
+    if (!item.token) return Promise.resolve({ status: 'rejected', reason: 'no_token' })
+    if (item.cps && item.cps.length) {
+      return postCp(item.token, item.cps[0]).then(function (r) {
+        if (r.status !== 'ok') return r
+        item.token = r.token; item.cps.shift(); savePending(item)
+        return deliver(item)
+      })
+    }
+    return push(sign(item.base, item.token))
+  }
+
   // Deliver queued scores, oldest first. Single-flight; stops at the first transient failure.
   // -> Promise<boolean> queue empty
   function flush() {
@@ -286,7 +346,7 @@ BP.Scores = (function () {
       var item = pending()[0]
       if (!item) return true
       if (!backend) return false
-      return push(item).then(function (r) {
+      return deliver(item).then(function (r) {
         if (r.status === 'retry') { lastError = r.reason; return false }
         setPending(pending().filter(function (x) { return x && x.id !== item.id }))
         if (r.status === 'ok') { cache = r.top; seeBest(r.top) } else lastError = r.reason
@@ -364,10 +424,24 @@ BP.Scores = (function () {
 
   // ------------------------------------------------------------ public ----
   function startRun() {
+    var keep = run.links === 0 ? run.token : null // an unused chain start (pre-armed) stays usable
+    resetRun()
     var startedAt = Date.now()
-    run.start = startedAt
+    run.start = startedAt; run.token = keep
     return init().then(function () { return backend === 'http' ? armWithRetry(startedAt) : false })
       .catch(function () { return false })
+  }
+
+  // Call after every stage clear (after the tally bonus is added), with the stage just cleared and
+  // whole-run totals so far. Promise<void>; never rejects; no-op in local / artifact mode.
+  function checkpoint(cp) {
+    return init().then(function () {
+      if (backend !== 'http' || run.broken) return
+      cp = cp || {}
+      run.cps.push({ round: int(cp.round, 1, 30, 1), stage: int(cp.stage, 0, 4, 0), score: int(cp.score, 0, MAX_SCORE, 0),
+        makes: int(cp.makes, 0, 100000, 0), shots: int(cp.shots, 0, 100000, 0) })
+      return drain()
+    }).then(function () { }, function () { })
   }
 
   function top(n) {
@@ -391,55 +465,65 @@ BP.Scores = (function () {
       if (!backend) return lb
       return fetchTop(1).then(function (list) {
         if (list) seeBest(list)
-        var pb = 0; clean(pending()).forEach(function (e) { if (e.score > pb) pb = e.score })
+        var pb = 0; pendingEntries().forEach(function (e) { if (e.score > pb) pb = e.score })
         return Math.max(lb, globalBest, pb)
       })
     }).catch(function () { var l = localList(); return l.length ? l[0].score : 0 })
   }
 
   function submit(entry) {
-    var p = null, local = []
+    var base = null, local = []
     var localResult = function (extra) {
-      var res = { rank: rankIn(local, p), top: withYou(local.slice(0, 10), p.id), mode: 'local', id: p.id }
+      var res = { rank: rankIn(local, base), top: withYou(local.slice(0, 10), base.id), mode: 'local', id: base.id }
       for (var k in extra) res[k] = extra[k]
       return res
     }
+    var globalResult = function (r) {
+      kick() // deliver older queued scores in the background
+      cache = r.top; seeBest(r.top)
+      return { rank: r.rank, top: withYou(mergedGlobal(r.top).slice(0, 10), base.id), mode: 'global', id: base.id }
+    }
+    try { base = buildBase(entry) } catch (e) { base = buildBase({}) }
+    local = saveLocal(base)
     return init().then(function () {
-      // No token yet (wifi was down at run start)? One last try; the server allows a capped lag.
-      return backend === 'http' && !run.token ? arm() : null
-    }).then(function () {
-      var tok = backend === 'http' ? takeToken() : null
-      try { p = buildPayload(entry, tok) } catch (e) { p = buildPayload({}, tok) }
-      local = saveLocal(p)
-      if (backend === 'http') arm() // pre-arm the next run's token in the background
       if (!backend) return localResult({})
-      return push(p).then(function (r) {
-        if (r.status === 'ok') {
-          kick() // deliver older queued scores in the background
-          cache = r.top; seeBest(r.top)
-          return { rank: r.rank, top: withYou(mergedGlobal(r.top).slice(0, 10), p.id), mode: 'global', id: p.id }
-        }
-        lastError = r.reason
-        if (r.status === 'retry') { enqueue(p); return localResult({ queued: true }) }
-        return localResult({ rejected: r.reason })
+      if (backend === 'db') {
+        return push(sign(base)).then(function (r) {
+          if (r.status === 'ok') return globalResult(r)
+          lastError = r.reason
+          if (r.status === 'retry') { enqueue(sign(base)); return localResult({ queued: true }) }
+          return localResult({ rejected: r.reason })
+        })
+      }
+      // HTTP: finish this run's chain (one pass), then hand the run over as a queue-able item.
+      return (run.cps.length && run.token && !run.broken ? drain() : Promise.resolve()).then(function () {
+        var why = run.broken || (run.token ? null : 'no_token')
+        var item = { id: base.id, base: base, token: run.token, cps: run.cps.slice() }
+        resetRun()
+        arm() // pre-arm the next run's chain start in the background
+        if (why) { lastError = why; return localResult({ rejected: why }) }
+        return deliver(item).then(function (r) {
+          if (r.status === 'ok') return globalResult(r)
+          lastError = r.reason
+          if (r.status === 'retry') { enqueue(item); return localResult({ queued: true }) }
+          return localResult({ rejected: r.reason })
+        })
       })
-    }).catch(function () {
-      if (!p) { try { p = buildPayload(entry) } catch (e) { p = buildPayload({}) } local = saveLocal(p) }
-      return localResult({})
-    })
+    }).catch(function () { return localResult({}) })
   }
 
   return {
     init: init,
     mode: function () { return backend && !degraded ? 'global' : 'local' },
     startRun: startRun,
+    checkpoint: checkpoint,
     top: top,
     best: best,
     submit: submit,
     // extras (not in SPEC; handy for UI / QA)
     sanitizeName: sanitizeName,
     plausible: plausible,
-    status: function () { return { mode: backend && !degraded ? 'global' : 'local', backend: backend, degraded: degraded, pending: pending().length, hasToken: !!run.token, lastError: lastError } },
+    status: function () { return { mode: backend && !degraded ? 'global' : 'local', backend: backend, degraded: degraded, pending: pending().length, hasToken: !!run.token, links: run.links, cpPending: run.cps.length, broken: run.broken, lastError: lastError } },
     _checksum: checksum,
   }
 })()

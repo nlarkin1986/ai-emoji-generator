@@ -18,10 +18,11 @@ process.removeAllListeners("warning")
 process.on("warning", (w) => { if (w.code !== "MODULE_TYPELESS_PACKAGE_JSON") console.warn(w.message) })
 
 const root = join(fileURLToPath(import.meta.url), "..", "..", "..")
-/** Import both route modules -> { scores, run } */
+/** Import the route modules -> { scores, run, checkpoint } */
 export async function loadRoutes() {
   return {
     scores: await import(join(root, "src/app/api/beerpong/scores/route.ts")),
     run: await import(join(root, "src/app/api/beerpong/run/route.ts")),
+    checkpoint: await import(join(root, "src/app/api/beerpong/run/checkpoint/route.ts")),
   }
 }
