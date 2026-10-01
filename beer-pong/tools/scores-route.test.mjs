@@ -92,7 +92,7 @@ await t("token checks: missing / forged / too young / expired / lag cap", async 
 })
 await t("lead's console forgery is rejected", async () => {
   const forged = await run({ score: 9_999_999, round: 9, stage: 4, makes: 5000, shots: 5000, durationMs: 86_400_000 })
-  const r = await J(await post(forged)); assert.equal(r.status, 400) // round 9 out of range
+  assert.equal(await reason(forged), "too_many_makes") // round 9 is a legal GAUNTLET round, but S=45 -> makes <= 460
   const f2 = await run({ score: 9_999_999, round: 2, stage: 4, makes: 110, shots: 120, durationMs: 3 * 3_600_000 })
   assert.equal(await reason(f2), "score_too_high")
   const f3 = await run({ score: 9_999_999, round: 4, stage: 4, makes: 200, shots: 220, durationMs: 3_000_000 })
@@ -129,7 +129,7 @@ await t("plausibility rejects", async () => {
   ]
   for (const [o, why] of bad) assert.equal(await reason(await run(o)), why, JSON.stringify(o))
 })
-await t("plausibility accepts legit maxima (<=1500/make, <=15000/stage, Round 2 x2)", async () => {
+await t("plausibility accepts legit maxima (<=1500/make, <=15000/stage, x round incl. GAUNTLET)", async () => {
   const ok = [
     { stage: 0, round: 1, makes: 20, shots: 20, durationMs: 20_000, score: 20 * 1500 + 15000 + 10000 },
     { stage: 4, round: 1, makes: 60, shots: 60, durationMs: 100_000, score: 60 * 1500 + 5 * 15000 },

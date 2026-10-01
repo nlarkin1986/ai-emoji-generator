@@ -106,7 +106,7 @@ try {
       const quick = await BP.Scores.submit({ name: 'HAX', score: 600000, round: 2, stage: 4, makes: 110, shots: 120, durationMs: 1200000 })
       return { lead, quick }
     })
-    assert.equal(r.lead.mode, "local"); assert.equal(r.lead.rejected, "bad_round")
+    assert.equal(r.lead.mode, "local"); assert.equal(r.lead.rejected, "too_many_makes")
     assert.equal(r.quick.mode, "local"); assert.equal(r.quick.rejected, "token_too_young")
     assert.ok(!(await serverTop(PORT)).some((e) => e.score >= 600000))
   })
@@ -161,7 +161,8 @@ try {
     await new Promise((r) => setTimeout(r, 500))
     assert.equal(hits, 0); assert.equal(errors.length, before)
     await ctx.setOffline(false) // fires 'online'
-    assert.ok(await waitFor(page, () => BP.Scores.status().pending === 0, 5000))
+    const ok = await waitFor(page, () => BP.Scores.status().pending === 0, 5000)
+    assert.ok(ok, JSON.stringify(await ev(page, () => [BP.Scores.status(), navigator.onLine])))
     assert.equal((await serverTop(PORT)).filter((e) => e.name === "PLANE").length, 1)
   })
 

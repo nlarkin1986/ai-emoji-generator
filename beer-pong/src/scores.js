@@ -350,7 +350,8 @@ BP.Scores = (function () {
     if (!initP) {
       initP = detect().catch(function () { backend = null }).then(function () {
         try {
-          window.addEventListener('online', kick)
+          // network may not be fully usable the instant 'online' fires: try now and again shortly
+          window.addEventListener('online', function () { kick(); setTimeout(kick, 1500) })
           window.addEventListener('pageshow', kick)
           document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') kick() })
         } catch (e) { }

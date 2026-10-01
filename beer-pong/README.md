@@ -55,7 +55,7 @@ Storage:
    - `now − iat + min(lag, 120 s) + 15 s ≥ max(durationMs, S·20 s)`.
 
    So a console forger needs a token **and** must wait as long as the run they claim. `lag` covers a token fetched late on flaky wifi.
-2. **Plausibility.** `round ∈ {1,2}`, `stage ∈ 0..4`, `S = (round−1)·5 + stage + 1`, and:
+2. **Plausibility.** `round ∈ 1..30` (3+ = CHAMPION'S GAUNTLET, multiplier = round), `stage ∈ 0..4`, `S = (round−1)·5 + stage + 1`, and:
    ```
    makes ≤ shots;   (S−1)·3 ≤ makes ≤ S·10 + 10
    score ≤ (makes·1500 + S·15000)·round + 10000

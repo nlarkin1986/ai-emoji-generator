@@ -111,9 +111,10 @@ function checksum(p: Record<string, unknown>): string {
 }
 
 /**
- * Plausibility ceiling. Mirrors scores.js plausible(). Game: 2 rounds x 5 stages (stage 0-4),
- * <= 1,500 pts per make before the Round-2 x2, <= 15,000 bonus per stage.
- *   round in {1,2}, stage in 0..4, S = (round-1)*5 + stage + 1   (stages reached, 1..10)
+ * Plausibility ceiling. Mirrors scores.js plausible(). Game: rounds of 5 stages (stage 0-4); rounds
+ * 1-2 then the endless CHAMPION'S GAUNTLET (round 3, 4, ...) with score multiplier = round.
+ * <= 1,500 pts per make before the round multiplier, <= 15,000 bonus per stage.
+ *   round in 1..30, stage in 0..4, S = (round-1)*5 + stage + 1   (stages reached, 1..10)
  *   makes <= shots;  (S-1)*3 <= makes <= S*10 + 10
  *   score <= (makes*1500 + S*15000) * round + 10000
  *   S*20000 <= durationMs <= 3 h;  shots <= durationMs/700 + 20
@@ -123,7 +124,7 @@ function minRunMs(stage: number, round: number) {
   return ((round - 1) * 5 + stage + 1) * 20_000
 }
 function plausible(p: Summary): string | null {
-  if (p.round !== 1 && p.round !== 2) return "bad_round"
+  if (!(Number.isInteger(p.round) && p.round >= 1 && p.round <= 30)) return "bad_round"
   if (!(p.stage >= 0 && p.stage <= 4)) return "bad_stage"
   const S = (p.round - 1) * 5 + p.stage + 1
   if (p.makes > p.shots) return "makes_gt_shots"
@@ -238,7 +239,7 @@ const Body = z.object({
   name: z.string().max(64),
   score: int(0, 9_999_999),
   stage: int(0, 4),
-  round: int(1, 2),
+  round: int(1, 30),
   cups: int(0, 9999).optional(),
   accuracy: z.number().min(0).max(100).optional(),
   shots: int(0, 100_000),
