@@ -97,7 +97,7 @@ BP.Scores = (function () {
 
   // Plausibility ceiling — identical to _lib.ts. Returns null when OK, else a reason.
   //   round in 1..30 (multiplier = round), stage in 0..4, S = (round-1)*5 + stage + 1
-  //   makes <= shots; (S-1)*3 <= makes <= S*10+10; score <= (makes*1400 + S*15000)*round + 10000
+  //   makes <= shots; (S-1)*3 <= makes <= S*10+10; score <= (makes*1400 + S*17000)*round + 10000
   //   S*20000 <= durationMs <= 12 h; shots <= durationMs/700 + 20
   // (The server's checkpoint chain additionally enforces the per-stage rule in real server time.)
   function plausible(p) {
@@ -108,7 +108,7 @@ BP.Scores = (function () {
     if (p.makes > p.shots) return 'makes_gt_shots'
     if (p.makes > S * 10 + 10) return 'too_many_makes'
     if (p.makes < (S - 1) * 3) return 'too_few_makes'
-    if (p.score > (p.makes * 1400 + S * 15000) * p.round + 10000) return 'score_too_high'
+    if (p.score > (p.makes * 1400 + S * 17000) * p.round + 10000) return 'score_too_high'
     if (p.durationMs < S * 20000) return 'too_short'
     if (p.durationMs > 12 * 3600000) return 'too_long'
     if (p.shots > p.durationMs / 700 + 20) return 'too_fast'

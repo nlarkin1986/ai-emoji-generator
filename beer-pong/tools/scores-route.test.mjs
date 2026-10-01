@@ -37,7 +37,7 @@ async function run(o = {}) {
   const S = (round - 1) * 5 + stage + 1
   let token = "token" in o ? o.token : await mint()
   let score = 0, makes = 0, shots = 0
-  const stageScore = (r) => Math.floor((dM * 1400 + 15000) * r * fill)
+  const stageScore = (r) => Math.floor((dM * 1400 + 17000) * r * fill)
   for (let k = 0; k < S - 1 && !skip; k++) {
     const r = Math.floor(k / 5) + 1
     advance(gap); score += stageScore(r); makes += dM; shots += dSh
@@ -83,7 +83,7 @@ await t("legit chained runs pass: R1 stage 4, R2 ENDING (S == checkpoints), GAUN
   assert.equal(await reason(await run({ stage: 4, round: 2, fill: 1, dM: 10, dSh: 20 })), "ok") // every stage at the per-stage score max
   // ENDING: the 10th stage was cleared + checkpointed, then submit right away (S == st)
   let token = await mint(), score = 0, makes = 0, shots = 0
-  for (let k = 0; k < 10; k++) { advance(45_000); const r = Math.floor(k / 5) + 1; score += (8 * 1400 + 15000) * r; makes += 8; shots += 12; token = (await cp(token, { round: r, stage: k % 5, score, makes, shots })).body.token }
+  for (let k = 0; k < 10; k++) { advance(45_000); const r = Math.floor(k / 5) + 1; score += (8 * 1400 + 17000) * r; makes += 8; shots += 12; token = (await cp(token, { round: r, stage: k % 5, score, makes, shots })).body.token }
   const end = resign({ v: 1, id: "ending-0001", name: "CHAMP", score, stage: 4, round: 2, shots, makes, durationMs: 450_000, ts: Date.now(), token })
   assert.equal(await reason(end), "ok")
   assert.equal(await reason(await run({ stage: 2, round: 4, dM: 10, dSh: 14, fill: 0.9 })), "ok")
@@ -102,7 +102,7 @@ await t("judge2-forge attacks fail", async () => {
   assert.equal(await reason(forge({ score: 500000, stage: 4, round: 2, shots: 300, makes: 110, durationMs: 600000, token: t4 })), "no_checkpoints")
   // stage-1 sized forgery with a fresh token: still bound by the one-stage rule
   const t3 = await mint(); advance(60_000)
-  assert.equal(await reason(forge({ score: 40000, stage: 0, round: 1, shots: 20, makes: 13, durationMs: 60000, token: t3 })), "stage_score_too_high") // 13*1400+15000 = 33,200
+  bad(await reason(forge({ score: 45_201, stage: 0, round: 1, shots: 20, makes: 13, durationMs: 60000, token: t3 }))) // a stage-1 forgery is capped at 13*1400+17000+10000 = 45,200
 })
 await t("checkpoint rules", async () => {
   const tok = await mint()
@@ -111,12 +111,12 @@ await t("checkpoint rules", async () => {
   assert.equal(soon.status, 425); assert.equal(soon.body.error, "too_soon"); assert.ok(soon.body.retryInMs > 0 && soon.body.retryInMs <= 1000)
   advance(2_000)
   assert.equal(await cpReason(tok, { round: 1, stage: 1, score: 5000, makes: 6, shots: 10 }), "out_of_order")
-  assert.equal(await cpReason(tok, { round: 1, stage: 0, score: 33_201, makes: 13, shots: 20 }), "stage_score_too_high")
+  assert.equal(await cpReason(tok, { round: 1, stage: 0, score: 35_201, makes: 13, shots: 20 }), "stage_score_too_high")
   assert.equal(await cpReason(tok, { round: 1, stage: 0, score: 5000, makes: 14, shots: 20 }), "stage_too_many_makes")
   assert.equal(await cpReason(tok, { round: 1, stage: 0, score: 5000, makes: 8, shots: 6 }), "makes_gt_shots")
   // the same checkpoint retried (lost response) gets the same next token; a different body is a fork
-  const a = await cp(tok, { round: 1, stage: 0, score: 33_200, makes: 13, shots: 20 }); assert.equal(a.body.ok, true)
-  const b = await cp(tok, { round: 1, stage: 0, score: 33_200, makes: 13, shots: 20 }); assert.equal(b.body.token, a.body.token)
+  const a = await cp(tok, { round: 1, stage: 0, score: 35_200, makes: 13, shots: 20 }); assert.equal(a.body.ok, true)
+  const b = await cp(tok, { round: 1, stage: 0, score: 35_200, makes: 13, shots: 20 }); assert.equal(b.body.token, a.body.token)
   assert.equal(await cpReason(tok, { round: 1, stage: 0, score: 1000, makes: 13, shots: 20 }), "token_used")
   // a used chain link can't be submitted either
   assert.equal(await reason(resign({ v: 1, id: "fork-00001", name: "F", score: 100, stage: 0, round: 1, shots: 20, makes: 13, durationMs: 60000, ts: Date.now(), token: tok })), "token_used")
@@ -131,7 +131,7 @@ await t("final submit: mismatch / too soon / delta too big / expired / lag ignor
   const q = await run({ stage: 1, finalGap: 5_000 }); const soon = await J(await post(q))
   assert.equal(soon.status, 425); assert.equal(soon.body.error, "too_soon")
   advance(6_000); assert.equal(await reason(q), "ok") // the same signed payload, retried later
-  const big = await run({ stage: 1 }); assert.equal(await reason(resign({ ...big, score: big.score + 20_000 })), "stage_score_too_high")
+  const big = await run({ stage: 1 }); assert.equal(await reason(resign({ ...big, score: big.score + 25_000 })), "stage_score_too_high")
   const old = await run(); advance(8 * 86_400_000); assert.equal(await reason(old), "token_expired")
   const l = await run({ finalGap: 3_000 }); l.lag = 120_000; resign(l); assert.equal((await J(await post(l))).body.error, "too_soon")
 })
@@ -149,7 +149,7 @@ await t("token reuse for a different entry -> token_used; duplicate id -> duplic
 })
 await t("whole-run plausibility (pre-filter)", async () => {
   assert.equal(await reason(await run({ round: 9, stage: 4, skip: true, score: 9_999_999, makes: 5000, shots: 5000, durationMs: 86_400_000 })), "too_many_makes")
-  assert.equal(await reason(await run({ skip: true, score: 30_000, makes: 3, shots: 10, durationMs: 60_000 })), "score_too_high") // (3*1400+15000)+10000
+  assert.equal(await reason(await run({ skip: true, score: 32_000, makes: 3, shots: 10, durationMs: 60_000 })), "score_too_high") // (3*1400+17000)+10000
   assert.equal(await reason(await run({ skip: true, durationMs: 19_000 })), "too_short")
   assert.equal(await reason(await run({ skip: true, durationMs: 12 * 3_600_000 + 1 })), "too_long")
 })

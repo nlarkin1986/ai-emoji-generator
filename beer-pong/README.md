@@ -62,22 +62,22 @@ Storage:
    - After every stage clear the game trades its current token for the next link. Each link requires:
      - the cleared stage is the next one in order, `(round−1)·5 + stage == st`;
      - **at least 40 s of server time** since the previous link;
-     - per-stage deltas `0 ≤ Δmakes ≤ 13`, `Δmakes ≤ Δshots`, `Δscore ≤ (Δmakes·1400 + 15000)·round`, and `Δshots ≤ elapsed/700 + 4`.
+     - per-stage deltas `0 ≤ Δmakes ≤ 13`, `Δmakes ≤ Δshots`, `Δscore ≤ (Δmakes·1400 + 17000)·round` (17,000 = 14,000 clear bonus + 2,000 redemption), and `Δshots ≤ elapsed/700 + 4`.
    - The final submit must carry the latest link:
      - `S == checkpoints + 1` (the run ended in the stage after the last clear), or `S == checkpoints` (submitted right after the final clear, as at the ENDING);
-     - the last stage obeys the same delta rule, with at least 10 s elapsed.
+     - the last stage obeys the same delta rule plus 10,000 slack (for the one-time 5,000 champion bonus), with at least 10 s elapsed.
    - Without checkpoints a submit can only be a stage-1 run. Every link is single-use, and the client's `lag` is ignored.
    - So a forger must spend real time on every stage and still can't beat the per-stage ceiling.
 2. **Plausibility.** `round ∈ 1..30` (3+ = CHAMPION'S GAUNTLET, multiplier = round), `stage ∈ 0..4`, `S = (round−1)·5 + stage + 1`, and:
    ```
    makes ≤ shots;   (S−1)·3 ≤ makes ≤ S·10 + 10
-   score ≤ (makes·1400 + S·15000)·round + 10000
+   score ≤ (makes·1400 + S·17000)·round + 10000
    S·20 s ≤ durationMs ≤ 12 h;   shots ≤ durationMs/700 + 20
    ```
    This whole-run check is a cheap pre-filter; the checkpoint chain is the real check.
 3. Sanitised names (A–Z 0–9 space . - ! ♥, 8 characters, plus a small bad-word filter), strict ranges, and an FNV-1a checksum with a *static* salt. The checksum is a speed bump only, because the salt ships in the page.
 
-What remains possible: a scripted forger who reads the source can still claim up to the per-stage ceiling, spending at least 40 s of real time per stage. That is about 33k per stage in Round 1 and about 66k per stage in Round 2. Compare `serverMs` and the score in `?admin=1` before handing out the prize, and remove anything suspicious.
+What remains possible: a scripted forger who reads the source can still claim up to the per-stage ceiling, spending at least 40 s of real time per stage. That is about 35k per stage in Round 1 and about 70k per stage in Round 2. Compare `serverMs` and the score in `?admin=1` before handing out the prize, and remove anything suspicious.
 
 ## 5. Local development
 ```sh

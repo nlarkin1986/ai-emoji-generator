@@ -1,6 +1,8 @@
-// SUPER BEER PONG — shared party leaderboard (logic shared by the two route files).
+// SUPER BEER PONG — shared party leaderboard (logic shared by the route files).
 //
 //   POST   /api/beerpong/run                     -> { ok, token }   (call at the start of every run)
+//   POST   /api/beerpong/run/checkpoint  {token, round, stage, score, makes, shots}  (after each
+//          stage clear) -> { ok, token }  — the next link of the run's token chain
 //   GET    /api/beerpong/scores?limit=10         -> { ok, top: Entry[], count }
 //   GET    /api/beerpong/scores?admin=1          (header x-admin-key) -> { ok, entries: all, count }
 //   POST   /api/beerpong/scores  (run summary)   -> { ok, rank, id, top }
@@ -11,11 +13,14 @@
 // answers 503 {error:"leaderboard_unconfigured"} and the game keeps scores on-device.
 //
 // Anti-cheat (a prize is at stake, but this is a party game — not a bank):
-//  * Run token: POST /run returns an HMAC-signed {iat, nonce}. A submit must carry it; the server
-//    checks the signature, that it was not used for a different entry, and that real wall-clock
-//    time since issue covers the claimed durationMs and the minimum plausible run time. Forging
-//    a big score from the console therefore needs a token AND real elapsed time.
-//  * plausible(): a ceiling derived from the game's scoring rules (mirrored in scores.js).
+//  * Token chain (server time only): POST /run issues an HMAC-signed token {iat, t0, st:0, sc, mk, sh}.
+//    Each stage clear trades the current token for the next one at /run/checkpoint, which needs
+//    >= 40 s of server time since the previous link and a per-stage delta within
+//    score <= (makes*1400 + 17000) * round, makes <= 13. The submit must chain from the latest
+//    link: stages reached S == checkpoints + 1 (or == checkpoints right after the final clear) and
+//    the last stage obeys the same delta rule with >= 10 s elapsed. Every token is single-use.
+//    So a forger needs real time per stage and still can't exceed a per-stage ceiling.
+//  * plausible(): a whole-run ceiling (mirrored in scores.js).
 //  * FNV-1a checksum with a static salt (speed bump only — the salt ships in the page source).
 //  * Sanitised names, strict ranges, per-IP rate limits, duplicate-id rejection.
 
@@ -25,13 +30,17 @@ import { z } from "zod"
 const KEY = "beerpong:scores"
 const KEEP = 500
 const RATE_LIMIT = 30 // submits per IP per minute (a whole party shares one NAT'd IP)
-const RUN_RATE_LIMIT = 60 // run tokens per IP per minute
+const RUN_RATE_LIMIT = 120 // run tokens + checkpoints per IP per minute
 const MAX_BODY = 4096
 const SALT = "SBP-1989-PARTYSOFT" // == scores.js SALT. Not a secret.
 const TOKEN_TTL_MS = 7 * 86_400_000 // queued offline scores may arrive days later
 const USED_TTL_S = 8 * 86_400 // remember used tokens / ids a bit longer than tokens live
-const DURATION_SLACK_MS = 15_000
-const MAX_LAG_MS = 120_000 // token fetched late (flaky wifi at run start): client-reported, capped
+const CP_MIN_MS = 40_000 // server time between chain links (a real stage incl. VS card + tally >= 45 s)
+const FINAL_MIN_MS = 10_000 // last (unfinished) stage
+const PER_MAKE = 1400 // real max <= 1,350 per make before the round multiplier
+const PER_STAGE = 17000 // real max: 14,000 clear bonus + 2,000 redemption per stage
+const FINAL_SLACK = 10000 // one-time 5,000 champion bonus at the ENDING (final summary only)
+const MAX_STAGE_MAKES = 13 // 10-cup rack + 3-cup overtime
 
 // ---------------------------------------------------------------- store ----
 // Minimal subset of the Upstash/Vercel KV client we use, so tests can inject a fake.
@@ -105,7 +114,7 @@ function fnv1a(str: string): string {
   }
   return ("0000000" + h.toString(16)).slice(-8)
 }
-const SUM_FIELDS = ["v", "id", "name", "score", "stage", "round", "cups", "accuracy", "shots", "makes", "durationMs", "ts", "token", "lag"] as const
+const SUM_FIELDS = ["v", "id", "name", "score", "stage", "round", "cups", "accuracy", "shots", "makes", "durationMs", "ts", "token", "lag"] as const // lag: legacy (ignored)
 function checksum(p: Record<string, unknown>): string {
   return fnv1a(SALT + "|" + SUM_FIELDS.map((k) => (p[k] === undefined || p[k] === null ? "" : String(p[k]))).join("|"))
 }
@@ -113,16 +122,14 @@ function checksum(p: Record<string, unknown>): string {
 /**
  * Plausibility ceiling. Mirrors scores.js plausible(). Game: rounds of 5 stages (stage 0-4); rounds
  * 1-2 then the endless CHAMPION'S GAUNTLET (round 3, 4, ...) with score multiplier = round.
- * <= 1,500 pts per make before the round multiplier, <= 15,000 bonus per stage.
- *   round in 1..30, stage in 0..4, S = (round-1)*5 + stage + 1   (stages reached, 1..10)
+ * <= 1,400 pts per make before the round multiplier, <= 17,000 bonus per stage (incl. redemption).
+ *   round in 1..30, stage in 0..4, S = (round-1)*5 + stage + 1   (stages reached)
  *   makes <= shots;  (S-1)*3 <= makes <= S*10 + 10
- *   score <= (makes*1500 + S*15000) * round + 10000
- *   S*20000 <= durationMs <= 3 h;  shots <= durationMs/700 + 20
+ *   score <= (makes*1400 + S*17000) * round + 10000
+ *   S*20000 <= durationMs <= 12 h;  shots <= durationMs/700 + 20
+ * (The token chain enforces the much tighter per-stage rule; this is the cheap pre-filter.)
  */
 type Summary = { score: number; stage: number; round: number; makes: number; shots: number; durationMs: number }
-function minRunMs(stage: number, round: number) {
-  return ((round - 1) * 5 + stage + 1) * 20_000
-}
 function plausible(p: Summary): string | null {
   if (!(Number.isInteger(p.round) && p.round >= 1 && p.round <= 30)) return "bad_round"
   if (!(p.stage >= 0 && p.stage <= 4)) return "bad_stage"
@@ -130,15 +137,15 @@ function plausible(p: Summary): string | null {
   if (p.makes > p.shots) return "makes_gt_shots"
   if (p.makes > S * 10 + 10) return "too_many_makes"
   if (p.makes < (S - 1) * 3) return "too_few_makes"
-  if (p.score > (p.makes * 1500 + S * 15000) * p.round + 10000) return "score_too_high"
+  if (p.score > (p.makes * PER_MAKE + S * PER_STAGE) * p.round + 10000) return "score_too_high"
   if (p.durationMs < S * 20_000) return "too_short"
-  if (p.durationMs > 3 * 3_600_000) return "too_long"
+  if (p.durationMs > 12 * 3_600_000) return "too_long"
   if (p.shots > p.durationMs / 700 + 20) return "too_fast"
   return null
 }
 
 // ------------------------------------------------------------ run token ----
-// token = base64url(JSON {iat, n}) + "." + base64url(HMAC-SHA256(secret, payload))
+// token = base64url(JSON Link) + "." + base64url(HMAC-SHA256(secret, payload))
 // Secret: BEERPONG_SECRET, else derived from BEERPONG_ADMIN_KEY, else from the KV token (always
 // present when the board works), else random per process (dev only).
 function secretMaterial(): string {
@@ -160,21 +167,41 @@ async function hmac(data: string): Promise<string> {
   for (let i = 0; i < sig.length; i++) bin += String.fromCharCode(sig[i])
   return b64url(bin)
 }
-async function issueToken(now: number): Promise<string> {
+/** One link of a run's token chain. Times are SERVER time. */
+type Link = { iat: number; n: string; t0: number; st: number; sc: number; mk: number; sh: number }
+async function issueToken(link: Omit<Link, "n">): Promise<string> {
   const n = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, "0")).join("")
-  const payload = b64url(JSON.stringify({ iat: now, n }))
+  const payload = b64url(JSON.stringify({ ...link, n }))
   return payload + "." + (await hmac(payload))
 }
-async function readToken(token: string): Promise<{ iat: number; n: string } | null> {
+async function readToken(token: string, now: number): Promise<Link | string> {
   const [payload, sig] = token.split(".")
-  if (!payload || !sig || !safeEqual(sig, await hmac(payload))) return null
+  if (!payload || !sig || !safeEqual(sig, await hmac(payload))) return "bad_token"
+  let o: Link
   try {
-    const o = JSON.parse(unb64url(payload))
-    return typeof o.iat === "number" && typeof o.n === "string" && /^[0-9a-f]{24}$/.test(o.n) ? o : null
+    o = JSON.parse(unb64url(payload))
   } catch {
-    return null
+    return "bad_token"
   }
+  if (![o.iat, o.t0, o.st, o.sc, o.mk, o.sh].every((v) => typeof v === "number") || !/^[0-9a-f]{24}$/.test(String(o.n))) return "bad_token"
+  if (o.iat > now + 60_000 || now - o.iat > TOKEN_TTL_MS) return "token_expired"
+  return o
 }
+/**
+ * Per-stage rule for one link: the stage(s) played since the previous link.
+ * Returns null when OK, else a reason. "too_soon" is retryable (the client waits and retries).
+ */
+function stageDelta(prev: Link, cur: { round: number; score: number; makes: number; shots: number }, elapsed: number, minMs: number, slack = 0): string | null {
+  const dS = cur.score - prev.sc, dM = cur.makes - prev.mk, dSh = cur.shots - prev.sh
+  if (dS < 0 || dM < 0 || dSh < 0) return "not_monotonic"
+  if (dM > dSh) return "makes_gt_shots"
+  if (dM > MAX_STAGE_MAKES) return "stage_too_many_makes"
+  if (dS > (dM * PER_MAKE + PER_STAGE) * cur.round + slack) return "stage_score_too_high"
+  if (elapsed < minMs) return "too_soon"
+  if (dSh > elapsed / 700 + 4) return "stage_too_fast"
+  return null
+}
+const retryAfter = (elapsed: number, minMs: number) => ({ "retry-after": String(Math.ceil((minMs - elapsed) / 1000)) })
 
 function parseEntry(m: unknown): Entry | null {
   try {
@@ -246,9 +273,16 @@ const Body = z.object({
   makes: int(0, 100_000),
   durationMs: int(0, 86_400_000),
   ts: z.number().int().optional(),
-  token: z.string().max(300).optional(),
-  lag: int(0, 86_400_000).optional(),
+  token: z.string().max(400).optional(),
   sum: z.string().max(16),
+})
+const CpBody = z.object({
+  token: z.string().max(400),
+  round: int(1, 30),
+  stage: int(0, 4),
+  score: int(0, 9_999_999),
+  makes: int(0, 100_000),
+  shots: int(0, 100_000),
 })
 
 // --------------------------------------------------------------- routes ----
@@ -271,9 +305,52 @@ export async function runPost(req: Request): Promise<Response> {
   try {
     if (await rateLimited(store, "rlrun", clientIp(req), RUN_RATE_LIMIT)) return json({ ok: false, error: "rate_limited" }, 429, { "retry-after": "60" })
     const now = Date.now()
-    return json({ ok: true, token: await issueToken(now), iat: now })
+    return json({ ok: true, token: await issueToken({ iat: now, t0: now, st: 0, sc: 0, mk: 0, sh: 0 }) })
   } catch (e) {
     return storeError("run", e)
+  }
+}
+
+/** Trade the current chain token for the next one after a stage clear. Idempotent for retries. */
+export async function checkpointPost(req: Request): Promise<Response> {
+  const store = getStore()
+  if (!store) return unconfigured()
+  let raw: unknown
+  try {
+    const text = await req.text()
+    if (text.length > MAX_BODY) return json({ ok: false, error: "too_large" }, 413)
+    raw = JSON.parse(text)
+  } catch {
+    return json({ ok: false, error: "bad_json" }, 400)
+  }
+  const parsed = CpBody.safeParse(raw)
+  if (!parsed.success) return json({ ok: false, error: "invalid" }, 400)
+  const c = parsed.data
+  const now = Date.now()
+  const prev = await readToken(c.token, now)
+  if (typeof prev === "string") return json({ ok: false, error: "unverified", reason: prev }, 422)
+  // The cleared stage must be the next one in order.
+  if ((c.round - 1) * 5 + c.stage !== prev.st) return json({ ok: false, error: "unverified", reason: "out_of_order" }, 422)
+  const elapsed = now - prev.iat
+  const why = stageDelta(prev, c, elapsed, CP_MIN_MS)
+  if (why === "too_soon") return json({ ok: false, error: "too_soon", reason: why, retryInMs: CP_MIN_MS - elapsed }, 425, retryAfter(elapsed, CP_MIN_MS))
+  if (why) return json({ ok: false, error: "unverified", reason: why }, 422)
+  try {
+    if (await rateLimited(store, "rlrun", clientIp(req), RUN_RATE_LIMIT)) return json({ ok: false, error: "rate_limited" }, 429, { "retry-after": "60" })
+    const h = fnv1a(JSON.stringify([c.round, c.stage, c.score, c.makes, c.shots]))
+    const next = await issueToken({ iat: now, t0: prev.t0, st: prev.st + 1, sc: c.score, mk: c.makes, sh: c.shots })
+    const k = `beerpong:tok:${prev.n}`
+    if (!(await store.set(k, JSON.stringify({ h, next }), { nx: true, ex: USED_TTL_S }))) {
+      // Already used: the same checkpoint retried (lost response) gets the same next token.
+      try {
+        const o = JSON.parse(String(await store.get(k)))
+        if (o && o.h === h && typeof o.next === "string") return json({ ok: true, token: o.next })
+      } catch {}
+      return json({ ok: false, error: "unverified", reason: "token_used" }, 422)
+    }
+    return json({ ok: true, token: next })
+  } catch (e) {
+    return storeError("checkpoint", e)
   }
 }
 
@@ -285,7 +362,12 @@ export async function scoresGet(req: Request): Promise<Response> {
     const a = isAdmin(req)
     if (a !== "ok") return adminFail(a)
     try {
-      const entries = (await readTop(store, KEEP)).map((e, i) => ({ rank: i + 1, ...e }))
+      const raw = await store.zrange(KEY, 0, KEEP - 1, { rev: true })
+      const entries = raw
+        .map((m) => { try { return (typeof m === "string" ? JSON.parse(m) : m) as Entry & Record<string, unknown> } catch { return null } })
+        .filter((e): e is Entry & Record<string, unknown> => !!e && typeof e.score === "number")
+        .sort((a, b) => b.score - a.score || a.ts - b.ts)
+        .map((e, i) => ({ rank: i + 1, ...e })) // incl. durationMs (client), serverMs, stagesCleared
       return json({ ok: true, entries, count: entries.length })
     } catch (e) {
       return storeError("admin GET", e)
@@ -325,18 +407,27 @@ export async function scoresPost(req: Request): Promise<Response> {
   const why = plausible(p)
   if (why) return json({ ok: false, error: "implausible", reason: why }, 422)
 
-  // Run token: signed by us, recent enough, and real time elapsed covers the claimed run.
+  // Token chain: the submit must continue from the latest checkpoint link (server time only).
   const now = Date.now()
-  const tok = p.token ? await readToken(p.token) : null
-  if (!tok) return json({ ok: false, error: "implausible", reason: p.token ? "bad_token" : "no_token" }, 422)
-  if (tok.iat > now + 60_000 || now - tok.iat > TOKEN_TTL_MS) return json({ ok: false, error: "implausible", reason: "token_expired" }, 422)
-  const elapsed = now - tok.iat + Math.min(p.lag || 0, MAX_LAG_MS)
-  if (elapsed + DURATION_SLACK_MS < Math.max(p.durationMs, minRunMs(p.stage, p.round))) return json({ ok: false, error: "implausible", reason: "token_too_young" }, 422)
+  if (!p.token) return json({ ok: false, error: "unverified", reason: "no_token" }, 422)
+  const tok = await readToken(p.token, now)
+  if (typeof tok === "string") return json({ ok: false, error: "unverified", reason: tok }, 422)
+  const S = (p.round - 1) * 5 + p.stage + 1
+  // S == st + 1: died / quit in the stage after the last clear. S == st: submitted right after the
+  // last clear (the ENDING). Anything else is a run that skipped checkpoints -> unverified.
+  if (S !== tok.st + 1 && S !== tok.st) return json({ ok: false, error: "unverified", reason: tok.st === 0 ? "no_checkpoints" : "checkpoint_mismatch" }, 422)
+  const elapsed = now - tok.iat
+  const minMs = S === tok.st + 1 ? FINAL_MIN_MS : 0
+  const dwhy = stageDelta(tok, p, elapsed, minMs, FINAL_SLACK)
+  if (dwhy === "too_soon") return json({ ok: false, error: "too_soon", reason: dwhy, retryInMs: minMs - elapsed }, 425, retryAfter(elapsed, minMs))
+  if (dwhy) return json({ ok: false, error: "unverified", reason: dwhy }, 422)
 
   // Keep the client's ts when sane so a retried submit produces the identical member (idempotent).
   const ts = p.ts != null && p.ts > now - TOKEN_TTL_MS && p.ts < now + 86_400_000 ? p.ts : now
   const entry: Entry = { id: p.id, name: sanitizeName(p.name), score: p.score, stage: p.stage, round: p.round, ts }
-  const member = JSON.stringify(entry)
+  // Admin-only extras (deterministic so a retried submit yields the identical member):
+  // client-claimed durationMs, server-verified ms from run start to the last checkpoint, clears.
+  const member = JSON.stringify({ ...entry, durationMs: p.durationMs, serverMs: tok.iat - tok.t0, stagesCleared: tok.st })
   try {
     // One entry per token and per id. A retry of the SAME entry (lost response, offline queue)
     // is accepted idempotently; anything else reusing the token / id is rejected.
