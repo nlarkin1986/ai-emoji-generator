@@ -498,7 +498,10 @@
     }
   }
   Player.prototype.play = function (ch, e, t, rs) {
-    var dur = e.n * rs, I, k
+    // snap to the sample grid so a key-off and the next key-on land on the *same* time value
+    // (otherwise float drift can order the key-off after the next note's first frame)
+    var sr = this.E.ctx.sampleRate, Q = function (x) { return Math.round(x * sr) / sr }, dur = e.n * rs, I, k, t0 = t
+    t = Q(t)
     if (ch === 'no') {
       var D = DR[e.m]
       if (!D) return
@@ -508,12 +511,12 @@
     } else if (ch === 'tr') {
       if (e.m < 0) return this.vt.set(t, 0, 0)
       I = INS[e.i] || INS.bass
-      this.vt.set(t, mf(e.m), 1); this.vt.set(t + dur * (I.g || 1), 0, 0)
+      this.vt.set(t, mf(e.m), 1); this.vt.set(Q(t0 + dur * (I.g || 1)), 0, 0)
     } else {
       var v = this.vp[ch]
       if (e.m < 0) return v.set(t, 0, 0, 0)
       I = INS[e.i] || INS.lead
-      var A = e.a, tOff = t + dur * (I.g || 0.94), f0 = mf(e.m)
+      var A = e.a, tOff = Q(t0 + dur * (I.g || 0.94)), f0 = mf(e.m)
       v.vibr(t, 0)
       if (I.v && dur * 60 > I.v[0] + 6) v.vibr(t + I.v[0] / 60, I.v[1])
       for (k = 0; ; k++) {
@@ -752,6 +755,7 @@
       return { name: name, bpm: S.bpm, rows: C.rows, bars: C.rows / 16, loop: C.loop, loopRow: C.loopRow, sec: (C.rows * 15) / S.bpm,
         loopSec: ((C.rows - C.loopRow) * 15) / S.bpm, introSec: (C.loopRow * 15) / S.bpm, warn: C.warn, key: S.k, scale: S.sc, extra: S.x || '', notes: notes }
     },
+    _dev: { Engine: Engine, Player: Player },
     _list: function () { return { music: Object.keys(SONGS), sfx: Object.keys(SFX) } },
     _state: function () { return { ctx: A.ctx ? A.ctx.state : 'none', playing: A.pl ? A.pl.name : null, paused: !!A.paused, muted: A.muted, tempo: A.tempo, pend: A.pend } },
   }

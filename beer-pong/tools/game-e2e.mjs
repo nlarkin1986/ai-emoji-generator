@@ -64,7 +64,7 @@ function trackErrors(p) { const e = []; p.on("pageerror", (x) => e.push(x.messag
   const box = await page.locator("#screen").boundingBox()
   const tapAt = async (x, y) => { await page.touchscreen.tap(box.x + (x / 256) * box.width, box.y + (y / 240) * box.height); await page.waitForTimeout(120) }
   await page.waitForTimeout(300)
-  await tapAt(128, 124 + 3)
+  await tapAt(128, 108 + 3)
   ok(await waitFor(page, () => BP.Game.debug.state === "match" && BP.Game.debug.phase === "aim", 6000), "tap menu item -> match")
   await page.waitForTimeout(300)
   await tapAt(40, 200)

@@ -2451,7 +2451,10 @@ body.m-landscape #dpad .plate{display:block}
     }
   }
   Player.prototype.play = function (ch, e, t, rs) {
-    var dur = e.n * rs, I, k
+    // snap to the sample grid so a key-off and the next key-on land on the *same* time value
+    // (otherwise float drift can order the key-off after the next note's first frame)
+    var sr = this.E.ctx.sampleRate, Q = function (x) { return Math.round(x * sr) / sr }, dur = e.n * rs, I, k
+    t = Q(t)
     if (ch === 'no') {
       var D = DR[e.m]
       if (!D) return
@@ -2461,12 +2464,12 @@ body.m-landscape #dpad .plate{display:block}
     } else if (ch === 'tr') {
       if (e.m < 0) return this.vt.set(t, 0, 0)
       I = INS[e.i] || INS.bass
-      this.vt.set(t, mf(e.m), 1); this.vt.set(t + dur * (I.g || 1), 0, 0)
+      this.vt.set(t, mf(e.m), 1); this.vt.set(Q(t + dur * (I.g || 1)), 0, 0)
     } else {
       var v = this.vp[ch]
       if (e.m < 0) return v.set(t, 0, 0, 0)
       I = INS[e.i] || INS.lead
-      var A = e.a, tOff = t + dur * (I.g || 0.94), f0 = mf(e.m)
+      var A = e.a, tOff = Q(t + dur * (I.g || 0.94)), f0 = mf(e.m)
       v.vibr(t, 0)
       if (I.v && dur * 60 > I.v[0] + 6) v.vibr(t + I.v[0] / 60, I.v[1])
       for (k = 0; ; k++) {
@@ -3435,7 +3438,7 @@ BP.Scores = (function () {
   // ---------------------------------------------------------------- constants
   var W = 256, H = 240, STEP = 1000 / 60
   var TX0 = 32, TX1 = 224, TMID = 189, TZ = 14, FLOOR_H = -33
-  var CUP_R = 4, RIM_H = 10, BALL_R = 2, GRAV = 0.1
+  var CUP_R = 4, RIM_H = 10, BALL_R = 2, GRAV = 0.1, TABLE_E = 0.68
   var HAND = [{ x: 28, y: 3, z: 0 }, { x: 228, y: 3, z: 0 }]
   var PX = [16, 240], FEET = 228
   var TWO_PI = Math.PI * 2
@@ -3598,7 +3601,7 @@ BP.Scores = (function () {
       x += vx; y += vy; z += vz
       if (y < BALL_R && vy < 0 && onTable(x, z)) {
         if (bounced) return { x: x, z: z, ok: false }
-        y = BALL_R; vy = -vy * 0.55; vx *= 0.88; vz *= 0.88; bounced = true
+        y = BALL_R; vy = -vy * TABLE_E; vx *= 0.88; vz *= 0.88; bounced = true
         continue
       }
       if (vy < 0 && y <= RIM_H && (bounced || !needBounce)) return { x: x, z: z, ok: true, n: i + 1 }
@@ -3699,10 +3702,10 @@ BP.Scores = (function () {
       if (b.y < BALL_R && b.y > -5 && b.vy < 0 && onTable(b.x, b.z)) {
         b.y = BALL_R
         if (b.vy < -0.4) {
-          b.vy = -b.vy * 0.55; b.vx *= 0.88; b.vz *= 0.88
+          b.vy = -b.vy * TABLE_E; b.vx *= 0.88; b.vz *= 0.88
           b.bounces++
           sfx('bounce')
-          if (b.bshot && b.bounces === 1) { b.vz += gauss() * 0.04; b.vx += gauss() * 0.03 }
+          if (b.bshot && b.bounces === 1) { b.vz += gauss() * 0.07; b.vx += gauss() * 0.06 }
           puff(b.x, sy(0, b.z), 'white', 3)
         } else { b.vy = 0; b.rolling = true }
       }
@@ -3723,8 +3726,14 @@ BP.Scores = (function () {
     }
     // ---- out / failsafe
     var speed = Math.abs(b.vx) + Math.abs(b.vz) + Math.abs(b.vy)
+    if (b.t > 240 || b.rim > 14) {
+      // failsafe: a ball balanced on / circling a rim drops in, anything else is a miss
+      var tc = m.sides[tgt].cups
+      for (var q = 0; q < tc.length; q++) if (tc[q].alive && Math.hypot(b.x - tc[q].x, b.z - tc[q].z) < CUP_R && b.y > 0 && b.y < RIM_H + 3) { resolveSink(tc[q]); return }
+      resolveMiss(); return
+    }
     if ((b.floor && b.t - b.floorT > 16) || b.floor >= 3 || b.x < -10 || b.x > 266 ||
-        (b.rolling && speed < 0.08) || b.t > 330) resolveMiss()
+        (b.rolling && speed < 0.08)) resolveMiss()
   }
 
   // ======================================================================== FX
@@ -4144,7 +4153,7 @@ BP.Scores = (function () {
       case 'throw':
         if (M.pt >= 5) {
           if (human) {
-            var err = powErr(M.lockPow) * (M.bounce ? 1.5 : 1)
+            var err = powErr(M.lockPow) * (M.bounce ? 2.2 : 1)
             var dir = side === 0 ? 1 : -1
             var tx = M.lockAim.x + dir * err, tz = M.lockAim.z
             if (run && run.buzz) { tx += gauss() * 0.2 * run.buzz; tz += gauss() * 0.2 * run.buzz }
@@ -4413,7 +4422,7 @@ BP.Scores = (function () {
     var n1 = M.sides[1].cups.length, sp1 = n1 > 6 ? 5 : 7
     M.sides[1].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 242 - (n1 - 1 - i) * sp1, 8) })
     var nm = M.overtime ? 'OVERTIME' : M.redemption ? 'REDEMPTION' : M.st.name
-    if (M.overtime || M.redemption) { if (blink(frame, 12)) TC(nm, 8, 'gold') } else TC(nm, 8, 'lgray')
+    if (M.overtime || M.redemption) { if (blink(frame, 12)) TC(nm, 8, 'gold') } else TC(nm, 8, 'sky')
     // row 3: balls, buzz, fire, wind
     var bl = M.redemption ? 1 : M.balls
     if (M.turn === 0 || M.demo) {
@@ -4431,8 +4440,8 @@ BP.Scores = (function () {
     }
     if (M.st.wind) {
       A.drawIcon(ctx, 'wind', 196, 16)
-      var wdx = Math.cos(M.wind.ang)
-      if (M.wind.s) A.drawIcon(ctx, wdx > 0.3 ? 'arrowR' : wdx < -0.3 ? 'arrowL' : 'wind', 205, 16)
+      var wdx = Math.cos(M.wind.ang), wdz = Math.sin(M.wind.ang)
+      if (M.wind.s) A.drawIcon(ctx, Math.abs(wdx) >= Math.abs(wdz) ? (wdx > 0 ? 'arrowR' : 'arrowL') : (wdz > 0 ? 'arrowD' : 'arrowU'), 205, 16)
       T(String(M.wind.s), 214, 16, 'cyan')
     }
   }
@@ -4455,7 +4464,7 @@ BP.Scores = (function () {
       if (pr('down') || pr('select')) { titleCursor = (titleCursor + 1) % 3; sfx('select') }
       var choose = -1
       if (p) {
-        for (var i = 0; i < 3; i++) if (inR(p, 72, 124 + i * 14 - 3, 112, 14)) choose = i
+        for (var i = 0; i < 3; i++) if (inR(p, 64, 108 + i * 14 - 4, 128, 14)) choose = i
         if (choose < 0 && S.t > 10) choose = titleCursor
       } else if (okPr() && S.t > 10) choose = titleCursor
       if (choose >= 0) {
@@ -4498,13 +4507,13 @@ BP.Scores = (function () {
       if (ph === 70) { /* silent on title */ }
       // logo + menu
       A.drawLogo(ctx, 128, 26, frame)
-      box(64, 114, 128, 52, 'default')
+      box(64, 98, 128, 52, 'default')
       for (var i = 0; i < 3; i++) {
-        var yy = 124 + i * 14
+        var yy = 108 + i * 14
         T(MENU[i], 88, yy, i === titleCursor ? 'white' : 'lgray')
         if (i === titleCursor && blink(frame, 16)) T('▶', 74, yy, 'red')
       }
-      if (blink(frame, 30)) TC('PUSH START', 172, 'white', true)
+      if (blink(frame, 30)) TC('PUSH START', 155, 'white', true)
       T('HI ' + pad(hi, 6), 8, 4, 'white', true)
       TC('© 1989 PARTY SOFT', 231, 'white', true)
     },
@@ -4572,6 +4581,7 @@ BP.Scores = (function () {
       var r = rows[i]
       if (!r) { TR(String(i + 1), 34, y, 'dgray'); T('.  --------', 34, y, 'dgray'); continue }
       var c = i === 0 ? 'gold' : i === 1 ? 'lgray' : i === 2 ? 'orange' : 'white'
+      if (i === 0) BP.Art.drawIcon(ctx, 'crown', 14, y)
       if (hl === i + 1) { if (!blink(frame, 8)) continue; c = 'cyan' }
       drawScoreRow(i + 1, r, y, c)
     }
@@ -4834,6 +4844,7 @@ BP.Scores = (function () {
       TC('STAGE ' + (run.stage + 1) + ' CLEAR!', 10, 'gold')
       box(20, 34, 216, 112, 'gold')
       BIG('YOU WIN!', 128, 42, 'gold', 2)
+      BP.Art.drawIcon(ctx, 'trophy', 30, 46); BP.Art.drawIcon(ctx, 'trophy', 218, 46)
       for (var i = 0; i < S.lines.length; i++) {
         if (i > S.i) break
         var ln = S.lines[i], y = 66 + i * 14
@@ -5123,10 +5134,8 @@ BP.Scores = (function () {
       var step = Math.min(4, 1 + ((fade.t / (FADE_T / 4)) | 0))
       var lvl = fade.phase === 'out' ? step : 5 - step
       if (lvl > 0) {
-        ctx.globalAlpha = Math.min(1, lvl / 4)
-        ctx.fillStyle = '#000000'
-        ctx.fillRect(0, 0, W, H)
-        ctx.globalAlpha = 1
+        if (BP.Art.fade) { try { BP.Art.fade(ctx, lvl) } catch (e) {} }
+        else { ctx.globalAlpha = Math.min(1, lvl / 4); ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1 }
       }
     }
   }
