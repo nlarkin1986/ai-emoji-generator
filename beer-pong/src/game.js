@@ -16,15 +16,15 @@
   var TWO_PI = Math.PI * 2
 
   var STAGES = [
-    { name: 'BACKYARD BASH', who: 'chad', cpu: 'CHAD', acc: 0.25, aim: 34, pow: 16, bounce: 0, wind: false, band: 'dblue', stars: 1,
+    { name: 'BACKYARD BASH', who: 'chad', cpu: 'CHAD', acc: 0.21, aim: 34, pow: 16, bounce: 0, wind: false, band: 'dblue', stars: 1,
       taunt: ['NICE HAT, ROOKIE.', 'THIS IS MY YARD!'] },
-    { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.35, aim: 46, pow: 22, bounce: 0.05, wind: false, band: 'dred', stars: 2,
+    { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.31, aim: 46, pow: 22, bounce: 0.05, wind: false, band: 'dred', stars: 2,
       taunt: ['TANK NO MISS.', 'TANK ONLY DRINK.'] },
-    { name: 'ROOFTOP', who: 'sky', cpu: 'SKY', acc: 0.42, aim: 24, pow: 12, bounce: 0.08, wind: true, band: 'purple', stars: 3,
+    { name: 'ROOFTOP', who: 'sky', cpu: 'SKY', acc: 0.38, aim: 24, pow: 12, bounce: 0.08, wind: true, band: 'purple', stars: 3,
       taunt: ['FEEL THAT BREEZE?', 'THE WIND IS MINE.'] },
-    { name: 'BEACH BONFIRE', who: 'brody', cpu: 'BRO-DY', acc: 0.48, aim: 30, pow: 14, bounce: 0.1, wind: false, band: 'dgreen', stars: 4,
+    { name: 'BEACH BONFIRE', who: 'brody', cpu: 'BRO-DY', acc: 0.44, aim: 30, pow: 14, bounce: 0.1, wind: false, band: 'dgreen', stars: 4,
       taunt: ["SURF'S UP, BRO.", 'CUPS GOING DOWN.'] },
-    { name: 'CHAMPIONSHIP', who: 'kegmaster', cpu: 'KEGMASTER', acc: 0.55, aim: 40, pow: 18, bounce: 0.18, wind: false, band: 'dred', stars: 5,
+    { name: 'CHAMPIONSHIP', who: 'kegmaster', cpu: 'KEGMASTER', acc: 0.51, aim: 40, pow: 18, bounce: 0.18, wind: false, band: 'dred', stars: 5,
       taunt: ['KNEEL BEFORE THE', 'KEGMASTER, PEON!'] },
   ]
 
@@ -104,6 +104,7 @@
   var m = null // current match
   var paused = false, pauseSel = 0
   var errors = []
+  var shotLog = []
   var bot = { aimT: -1, powT: -1, plannedFor: null }
 
   function setState(name, data) {
@@ -175,7 +176,7 @@
         y = BALL_R; vy = -vy * 0.55; vx *= 0.88; vz *= 0.88; bounced = true
         continue
       }
-      if (vy < 0 && y < RIM_H - 1 && (bounced || !needBounce)) return { x: x, z: z, ok: true, n: i + 1 }
+      if (vy < 0 && y <= RIM_H && (bounced || !needBounce)) return { x: x, z: z, ok: true, n: i + 1 }
       if (y < FLOOR_H) return { x: x, z: z, ok: false }
     }
     return { x: x, z: z, ok: false }
@@ -188,12 +189,12 @@
     var p0 = HAND[side], dist = Math.abs(tx - p0.x)
     if (!bounce) {
       var n = clamp(Math.round((fastArc ? 26 : 30) + dist * (fastArc ? 0.15 : 0.18)), 30, 80)
-      var ax = tx, az = tz, v = directV(p0, ax, RIM_H - 1, az, n)
+      var ax = tx, az = tz, v = directV(p0, ax, RIM_H, az, n)
       if (wind && (wind.ax || wind.az)) {
         for (var it = 0; it < 6; it++) {
           var L = simLand(p0, v, false, wind)
           ax += tx - L.x; az += tz - L.z
-          v = directV(p0, ax, RIM_H - 1, az, n)
+          v = directV(p0, ax, RIM_H, az, n)
         }
       }
       return v
@@ -219,6 +220,8 @@
       fire: side === 0 && !m.demo && run && run.streak >= 3, tx: tx, tz: tz,
     }
     m.trail = []
+    shotLog.push({ side: side, tx: +tx.toFixed(2), tz: +tz.toFixed(2), bounce: !!bounce, v: [+v.x.toFixed(3), +v.y.toFixed(3), +v.z.toFixed(3)] })
+    if (shotLog.length > 50) shotLog.shift()
     sfx('throw')
     sfx('whoosh')
   }
@@ -443,13 +446,14 @@
     var tx = c.x, tz = c.z, dirX = side === 0 ? 1 : -1, longShort = 0
     if (make) { tx += gauss() * 0.4; tz += gauss() * 0.4 }
     else {
+      var minD = rnd() < 0.7 ? 6.6 : 5.2 // mostly clean misses, sometimes a rim scare
       for (var k = 0; k < 16; k++) {
         var along = rnd() < 0.65
-        var dd = rr(5.6, 11)
+        var dd = rr(minD, 12)
         var sgn = rnd() < 0.5 ? -1 : 1
         var cx = c.x + (along ? sgn * dd : gauss() * 2), cz = c.z + (along ? gauss() * 2 : sgn * dd)
         var ok = true
-        for (var j = 0; j < cs.length; j++) if (Math.hypot(cs[j].x - cx, cs[j].z - cz) < 5.4) { ok = false; break }
+        for (var j = 0; j < cs.length; j++) if (Math.hypot(cs[j].x - cx, cs[j].z - cz) < minD) { ok = false; break }
         if (ok || k === 15) { tx = cx; tz = cz; longShort = along ? sgn * dirX : 0; break }
       }
     }
@@ -465,6 +469,7 @@
   // ======================================================================== RESOLUTION
   function resolveSink(c) {
     var b = m.ball, side = b.side, vic = 1 - side
+    if (shotLog.length) shotLog[shotLog.length - 1].res = 'sink r' + b.rim + ' b' + b.bounces
     var island = !hasNeighbor(c, vic) && alive(vic) > 1
     var bounced = b.bounces > 0
     var clean = b.rim === 0 && !bounced
@@ -562,6 +567,7 @@
 
   function resolveMiss() {
     var b = m.ball, side = b.side
+    if (shotLog.length) shotLog[shotLog.length - 1].res = 'miss r' + b.rim + ' b' + b.bounces + ' f' + b.floor + ' t' + b.t + ' @' + b.x.toFixed(1) + ',' + b.y.toFixed(1) + ',' + b.z.toFixed(1)
     var rim = b.rim > 0
     m.ball = null
     m.lastSank = false
@@ -1633,10 +1639,12 @@
     return best < 0 ? m.pt + 30 : best
   }
   function planPowT(skill) {
-    for (var t = m.pt + 4; t < m.pt + 300; t++) {
-      if (Math.abs(powVal(t) - m.pow.sc) < 0.015) return Math.max(m.pt + 4, t + Math.round(gauss() * (1 - skill) * 5))
+    var best = m.pt + 20, bd = 1e9
+    for (var t = m.pt + 8; t < m.pt + 8 + m.pow.period; t++) {
+      var d = Math.abs(powVal(t) - m.pow.sc)
+      if (d < bd) { bd = d; best = t }
     }
-    return m.pt + 20
+    return Math.max(m.pt + 4, best + Math.round(gauss() * (1 - skill) * 5))
   }
 
   // ======================================================================== LOOP
@@ -1760,6 +1768,7 @@
     get cpuAcc() { return run && run.cpuShots ? Math.round(100 * run.cpuMakes / run.cpuShots) : 0 },
     get cpuShotsN() { return run ? run.cpuShots : 0 },
     get cpuMakesN() { return run ? run.cpuMakes : 0 },
+    get shotLog() { return shotLog.slice(-12) },
     get runTick0() { return run ? run.tick0 : -1 },
     get fps() { return fps },
     get wind() { return m ? m.wind.s : 0 },
