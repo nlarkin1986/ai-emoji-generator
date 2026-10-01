@@ -201,7 +201,7 @@ body.m-landscape #dpad .plate{display:block}
   var padPref = lsGet('bp_pad')
   var S = {
     coarse: coarse, tv: tvMode, mode: '', s: 1,
-    pad: tvMode ? false : (padPref === null ? coarse : padPref === '1'),
+    pad: tvMode ? false : (padPref === null ? true : padPref === '1'), // controller shown by default everywhere (desktop can hide it with the pad icon)
     crt: lsGet('bp_crt') === '1',
     standalone: mm('(display-mode: standalone)') || mm('(display-mode: fullscreen)') || !!navigator.standalone
   }
