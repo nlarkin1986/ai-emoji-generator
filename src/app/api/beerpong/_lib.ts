@@ -15,10 +15,11 @@
 // Anti-cheat (a prize is at stake, but this is a party game — not a bank):
 //  * Token chain (server time only): POST /run issues an HMAC-signed token {iat, t0, st:0, sc, mk, sh}.
 //    Each stage clear trades the current token for the next one at /run/checkpoint, which needs
-//    >= 40 s of server time since the previous link and a per-stage delta within
-//    score <= (makes*1400 + 17000) * round, makes <= 13. The submit must chain from the latest
-//    link: stages reached S == checkpoints + 1 (or == checkpoints right after the final clear) and
-//    the last stage obeys the same delta rule with >= 10 s elapsed. Every token is single-use.
+//    >= max(40 s, 30 s + 2 s/shot) of server time since the previous link and a per-stage delta
+//    within score <= (makes*1400 + 15000) * round, makes <= 13. The submit must chain from the
+//    latest link: stages reached S == checkpoints + 1 (or == checkpoints at the ENDING, >= 10 clears)
+//    and the unfinished last stage may add at most (makes*1400 + 2000) * round (+10,000 after the
+//    ENDING) with >= 10 s + 3 s/shot elapsed. Every token is single-use.
 //    So a forger needs real time per stage and still can't exceed a per-stage ceiling.
 //  * plausible(): a whole-run ceiling (mirrored in scores.js).
 //  * FNV-1a checksum with a static salt (speed bump only — the salt ships in the page source).
@@ -35,11 +36,16 @@ const MAX_BODY = 4096
 const SALT = "SBP-1989-PARTYSOFT" // == scores.js SALT. Not a secret.
 const TOKEN_TTL_MS = 7 * 86_400_000 // queued offline scores may arrive days later
 const USED_TTL_S = 8 * 86_400 // remember used tokens / ids a bit longer than tokens live
-const CP_MIN_MS = 40_000 // server time between chain links (a real stage incl. VS card + tally >= 45 s)
-const FINAL_MIN_MS = 10_000 // last (unfinished) stage
+// Completed stage (checkpoint): >= max(40 s, 30 s + 2 s per player shot) of server time since the
+// previous link (a real stage incl. VS card + tally takes >= 45 s; every player shot is answered by
+// a CPU shot). Unfinished final stage: >= 10 s + 3 s per shot.
+const CP_MIN_MS = 40_000
+const cpMinMs = (dShots: number) => Math.max(CP_MIN_MS, 30_000 + dShots * 2_000)
+const finalMinMs = (dShots: number) => 10_000 + dShots * 3_000
 const PER_MAKE = 1400 // real max <= 1,350 per make before the round multiplier
-const PER_STAGE = 17000 // real max: 14,000 clear bonus + 2,000 redemption per stage
-const FINAL_SLACK = 10000 // one-time 5,000 champion bonus at the ENDING (final summary only)
+const PER_STAGE = 15000 // completed stage: real max 13,000 clear bonus, or 2,000 redemption (never both with PERFECT)
+const PER_FINAL = 2000 // unfinished stage: no clear bonus, at most a redemption bonus
+const FINAL_SLACK = 10000 // one-time 5,000 champion bonus — only once the ENDING was reached (>= 10 clears)
 const MAX_STAGE_MAKES = 13 // 10-cup rack + 3-cup overtime
 
 // ---------------------------------------------------------------- store ----
@@ -122,10 +128,10 @@ function checksum(p: Record<string, unknown>): string {
 /**
  * Plausibility ceiling. Mirrors scores.js plausible(). Game: rounds of 5 stages (stage 0-4); rounds
  * 1-2 then the endless CHAMPION'S GAUNTLET (round 3, 4, ...) with score multiplier = round.
- * <= 1,400 pts per make before the round multiplier, <= 17,000 bonus per stage (incl. redemption).
+ * <= 1,400 pts per make before the round multiplier, <= 15,000 bonus per stage.
  *   round in 1..30, stage in 0..4, S = (round-1)*5 + stage + 1   (stages reached)
  *   makes <= shots;  (S-1)*3 <= makes <= S*10 + 10
- *   score <= (makes*1400 + S*17000) * round + 10000
+ *   score <= (makes*1400 + S*15000) * round + 10000
  *   S*20000 <= durationMs <= 12 h;  shots <= durationMs/700 + 20
  * (The token chain enforces the much tighter per-stage rule; this is the cheap pre-filter.)
  */
@@ -137,7 +143,7 @@ function plausible(p: Summary): string | null {
   if (p.makes > p.shots) return "makes_gt_shots"
   if (p.makes > S * 10 + 10) return "too_many_makes"
   if (p.makes < (S - 1) * 3) return "too_few_makes"
-  if (p.score > (p.makes * PER_MAKE + S * PER_STAGE) * p.round + 10000) return "score_too_high"
+  if (p.score > (p.makes * PER_MAKE + S * PER_STAGE) * p.round + FINAL_SLACK) return "score_too_high"
   if (p.durationMs < S * 20_000) return "too_short"
   if (p.durationMs > 12 * 3_600_000) return "too_long"
   if (p.shots > p.durationMs / 700 + 20) return "too_fast"
@@ -191,17 +197,22 @@ async function readToken(token: string, now: number): Promise<Link | string> {
  * Per-stage rule for one link: the stage(s) played since the previous link.
  * Returns null when OK, else a reason. "too_soon" is retryable (the client waits and retries).
  */
-function stageDelta(prev: Link, cur: { round: number; score: number; makes: number; shots: number }, elapsed: number, minMs: number, slack = 0): string | null {
+type Rule = { bonus: number; slack: number; minMs: (dShots: number) => number }
+const COMPLETED: Rule = { bonus: PER_STAGE, slack: 0, minMs: cpMinMs }
+function stageDelta(prev: Link, cur: { round: number; score: number; makes: number; shots: number }, elapsed: number, rule: Rule): { why: string; waitMs?: number } | null {
   const dS = cur.score - prev.sc, dM = cur.makes - prev.mk, dSh = cur.shots - prev.sh
-  if (dS < 0 || dM < 0 || dSh < 0) return "not_monotonic"
-  if (dM > dSh) return "makes_gt_shots"
-  if (dM > MAX_STAGE_MAKES) return "stage_too_many_makes"
-  if (dS > (dM * PER_MAKE + PER_STAGE) * cur.round + slack) return "stage_score_too_high"
-  if (elapsed < minMs) return "too_soon"
-  if (dSh > elapsed / 700 + 4) return "stage_too_fast"
+  if (dS < 0 || dM < 0 || dSh < 0) return { why: "not_monotonic" }
+  if (dM > dSh) return { why: "makes_gt_shots" }
+  if (dM > MAX_STAGE_MAKES) return { why: "stage_too_many_makes" }
+  if (dS > (dM * PER_MAKE + rule.bonus) * cur.round + rule.slack) return { why: "stage_score_too_high" }
+  const need = rule.minMs(dSh)
+  if (elapsed < need) return { why: "too_soon", waitMs: need - elapsed }
   return null
 }
-const retryAfter = (elapsed: number, minMs: number) => ({ "retry-after": String(Math.ceil((minMs - elapsed) / 1000)) })
+function deltaFail(d: { why: string; waitMs?: number }): Response {
+  if (d.why === "too_soon") return json({ ok: false, error: "too_soon", reason: d.why, retryInMs: d.waitMs }, 425, { "retry-after": String(Math.ceil((d.waitMs || 0) / 1000)) })
+  return json({ ok: false, error: "unverified", reason: d.why }, 422)
+}
 
 function parseEntry(m: unknown): Entry | null {
   try {
@@ -332,9 +343,8 @@ export async function checkpointPost(req: Request): Promise<Response> {
   // The cleared stage must be the next one in order.
   if ((c.round - 1) * 5 + c.stage !== prev.st) return json({ ok: false, error: "unverified", reason: "out_of_order" }, 422)
   const elapsed = now - prev.iat
-  const why = stageDelta(prev, c, elapsed, CP_MIN_MS)
-  if (why === "too_soon") return json({ ok: false, error: "too_soon", reason: why, retryInMs: CP_MIN_MS - elapsed }, 425, retryAfter(elapsed, CP_MIN_MS))
-  if (why) return json({ ok: false, error: "unverified", reason: why }, 422)
+  const d = stageDelta(prev, c, elapsed, COMPLETED)
+  if (d) return deltaFail(d)
   try {
     if (await rateLimited(store, "rlrun", clientIp(req), RUN_RATE_LIMIT)) return json({ ok: false, error: "rate_limited" }, 429, { "retry-after": "60" })
     const h = fnv1a(JSON.stringify([c.round, c.stage, c.score, c.makes, c.shots]))
@@ -413,14 +423,14 @@ export async function scoresPost(req: Request): Promise<Response> {
   const tok = await readToken(p.token, now)
   if (typeof tok === "string") return json({ ok: false, error: "unverified", reason: tok }, 422)
   const S = (p.round - 1) * 5 + p.stage + 1
-  // S == st + 1: died / quit in the stage after the last clear. S == st: submitted right after the
-  // last clear (the ENDING). Anything else is a run that skipped checkpoints -> unverified.
-  if (S !== tok.st + 1 && S !== tok.st) return json({ ok: false, error: "unverified", reason: tok.st === 0 ? "no_checkpoints" : "checkpoint_mismatch" }, 422)
-  const elapsed = now - tok.iat
-  const minMs = S === tok.st + 1 ? FINAL_MIN_MS : 0
-  const dwhy = stageDelta(tok, p, elapsed, minMs, FINAL_SLACK)
-  if (dwhy === "too_soon") return json({ ok: false, error: "too_soon", reason: dwhy, retryInMs: minMs - elapsed }, 425, retryAfter(elapsed, minMs))
-  if (dwhy) return json({ ok: false, error: "unverified", reason: dwhy }, 422)
+  // S == st + 1: the run ended in the (unfinished) stage after the last clear. S == st: submitted
+  // right after the last clear — only legal at the ENDING (>= 10 clears). Anything else skipped
+  // checkpoints -> unverified.
+  const ending = tok.st >= 10
+  if (S !== tok.st + 1 && !(S === tok.st && ending)) return json({ ok: false, error: "unverified", reason: tok.st === 0 ? "no_checkpoints" : "checkpoint_mismatch" }, 422)
+  // The unfinished stage carries no clear bonus (at most a redemption bonus); +10,000 only after the ENDING.
+  const d = stageDelta(tok, p, now - tok.iat, { bonus: PER_FINAL, slack: ending ? FINAL_SLACK : 0, minMs: finalMinMs })
+  if (d) return deltaFail(d)
 
   // Keep the client's ts when sane so a retried submit produces the identical member (idempotent).
   const ts = p.ts != null && p.ts > now - TOKEN_TTL_MS && p.ts < now + 86_400_000 ? p.ts : now

@@ -28,8 +28,10 @@
  *                       stage = 0-based stage reached (0..4), round = 1..30 (3+ = GAUNTLET),
  *                       shots/makes = whole-run player totals, durationMs = real play time (ms).
  *                     -> {rank, top, mode, id, queued?, rejected?}. mode is 'global' only when the
- *                       score is on the shared board; queued/rejected results are 'local' with the
- *                       on-device table. The caller's row in `top` has `you: true`.
+ *                       score is on the shared board; queued/rejected results are 'local' but still
+ *                       show the global top 10 with the entry merged in ({you:true, local:true}).
+ *                       The caller's row in `top` has `you: true`.
+ *   URLs with ?debug / ?test / ?seed / ?fast are LOCAL only (no network), except ?api&debug on localhost.
  *
  * Anti-cheat: names sanitised, numbers clamped, plausible() (mirrored from the server), the
  * server-timed checkpoint chain (see _lib.ts), and an FNV-1a checksum with a STATIC salt
@@ -97,7 +99,7 @@ BP.Scores = (function () {
 
   // Plausibility ceiling — identical to _lib.ts. Returns null when OK, else a reason.
   //   round in 1..30 (multiplier = round), stage in 0..4, S = (round-1)*5 + stage + 1
-  //   makes <= shots; (S-1)*3 <= makes <= S*10+10; score <= (makes*1400 + S*17000)*round + 10000
+  //   makes <= shots; (S-1)*3 <= makes <= S*10+10; score <= (makes*1400 + S*15000)*round + 10000
   //   S*20000 <= durationMs <= 12 h; shots <= durationMs/700 + 20
   // (The server's checkpoint chain additionally enforces the per-stage rule in real server time.)
   function plausible(p) {
@@ -108,7 +110,7 @@ BP.Scores = (function () {
     if (p.makes > p.shots) return 'makes_gt_shots'
     if (p.makes > S * 10 + 10) return 'too_many_makes'
     if (p.makes < (S - 1) * 3) return 'too_few_makes'
-    if (p.score > (p.makes * 1400 + S * 17000) * p.round + 10000) return 'score_too_high'
+    if (p.score > (p.makes * 1400 + S * 15000) * p.round + 10000) return 'score_too_high'
     if (p.durationMs < S * 20000) return 'too_short'
     if (p.durationMs > 12 * 3600000) return 'too_long'
     if (p.shots > p.durationMs / 700 + 20) return 'too_fast'
@@ -169,6 +171,17 @@ BP.Scores = (function () {
     for (var i = 0; i < all.length; i++) { var e = all[i]; if (!e || (e.id && seen[e.id])) continue; if (e.id) seen[e.id] = 1; out.push(e) }
     return sortList(out)
   }
+
+  // Debug / test / seeded / fast runs never touch the shared board (QA hooks can cheat). Local
+  // dev override: ?api together with the flag, honoured only on localhost / 127.0.0.1.
+  var LOCKED = (function () {
+    try {
+      var q = window.location.search
+      if (!/[?&](debug|test|seed|fast)(\b|=|&|$)/i.test(q)) return false
+      var h = window.location.hostname
+      return !(/[?&]api(\b|=|&|$)/.test(q) && (h === 'localhost' || h === '127.0.0.1'))
+    } catch (e) { return false }
+  })()
 
   // -------------------------------------------------------------- http ----
   // Only probe the API where it can exist: the Next app (and devserver) set cookie bp_api=1 on the
@@ -338,6 +351,7 @@ BP.Scores = (function () {
   // Deliver queued scores, oldest first. Single-flight; stops at the first transient failure.
   // -> Promise<boolean> queue empty
   function flush() {
+    if (LOCKED) return Promise.resolve(false)
     if (flushP) return flushP
     if (!pending().length) return Promise.resolve(true)
     lastFlush = Date.now()
@@ -357,7 +371,7 @@ BP.Scores = (function () {
   }
   // Background retry while the queue is non-empty: 15 s, 30 s, then every 60 s.
   function scheduleRetry() {
-    if (retryTimer || !pending().length) return
+    if (LOCKED || retryTimer || !pending().length) return
     var delay = Math.min(60000, 15000 * Math.pow(2, retryFails))
     retryTimer = setTimeout(function () {
       retryTimer = null
@@ -381,10 +395,11 @@ BP.Scores = (function () {
     })
   }
   function redetect() {
-    if (backend || !canHttp() || !online()) return Promise.resolve()
+    if (LOCKED || backend || !canHttp() || !online()) return Promise.resolve()
     return probeHttp().then(function (l) { if (l) { cache = l; seeBest(l); arm() } })
   }
   function detect() {
+    if (LOCKED) return Promise.resolve()
     var hasClaude = false
     try { hasClaude = !!(window.claude && typeof window.claude.use === 'function') } catch (e) { }
     var step = Promise.resolve(null)
@@ -478,6 +493,18 @@ BP.Scores = (function () {
       for (var k in extra) res[k] = extra[k]
       return res
     }
+    // Not (yet) on the shared board: still show the global top 10 (cache or a fresh GET) with this
+    // entry merged in and flagged {you:true, local:true}, so the board never looks empty.
+    var boardResult = function (extra) {
+      return (cache ? Promise.resolve(cache) : fetchTop(10)).then(function (list) {
+        if (!list) return localResult(extra)
+        if (!cache) cache = list
+        var m = mergedGlobal(list, base)
+        var res = { rank: rankIn(m, base), top: withYou(m.slice(0, 10), base.id).map(function (e) { if (e.you) e.local = true; return e }), mode: 'local', id: base.id }
+        for (var k in extra) res[k] = extra[k]
+        return res
+      }, function () { return localResult(extra) })
+    }
     var globalResult = function (r) {
       kick() // deliver older queued scores in the background
       cache = r.top; seeBest(r.top)
@@ -491,8 +518,8 @@ BP.Scores = (function () {
         return push(sign(base)).then(function (r) {
           if (r.status === 'ok') return globalResult(r)
           lastError = r.reason
-          if (r.status === 'retry') { enqueue(sign(base)); return localResult({ queued: true }) }
-          return localResult({ rejected: r.reason })
+          if (r.status === 'retry') { enqueue(sign(base)); return boardResult({ queued: true }) }
+          return boardResult({ rejected: r.reason })
         })
       }
       // HTTP: finish this run's chain (one pass), then hand the run over as a queue-able item.
@@ -501,12 +528,12 @@ BP.Scores = (function () {
         var item = { id: base.id, base: base, token: run.token, cps: run.cps.slice() }
         resetRun()
         arm() // pre-arm the next run's chain start in the background
-        if (why) { lastError = why; return localResult({ rejected: why }) }
+        if (why) { lastError = why; return boardResult({ rejected: why }) }
         return deliver(item).then(function (r) {
           if (r.status === 'ok') return globalResult(r)
           lastError = r.reason
-          if (r.status === 'retry') { enqueue(item); return localResult({ queued: true }) }
-          return localResult({ rejected: r.reason })
+          if (r.status === 'retry') { enqueue(item); return boardResult({ queued: true }) }
+          return boardResult({ rejected: r.reason })
         })
       })
     }).catch(function () { return localResult({}) })
@@ -523,7 +550,7 @@ BP.Scores = (function () {
     // extras (not in SPEC; handy for UI / QA)
     sanitizeName: sanitizeName,
     plausible: plausible,
-    status: function () { return { mode: backend && !degraded ? 'global' : 'local', backend: backend, degraded: degraded, pending: pending().length, hasToken: !!run.token, links: run.links, cpPending: run.cps.length, broken: run.broken, lastError: lastError } },
+    status: function () { return { mode: backend && !degraded ? 'global' : 'local', locked: LOCKED, backend: backend, degraded: degraded, pending: pending().length, hasToken: !!run.token, links: run.links, cpPending: run.cps.length, broken: run.broken, lastError: lastError } },
     _checksum: checksum,
   }
 })()

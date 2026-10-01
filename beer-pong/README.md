@@ -33,7 +33,8 @@ This is a single-file NES-style beer pong game, served at **`/beerpong`** by thi
 - No requests are made while `navigator.onLine` is false, so the console stays clean.
 - A queued item's checkpoints are replayed in order before the score itself. The server times each link with its own clock, so a run that was offline for several stages simply verifies late: one link per retry once 40 s have passed since the previous link. A run whose chain breaks gets `rejected:'unverified'` and stays **LOCAL**. A chain breaks when a checkpoint is refused, or when no run token could ever be obtained (for example, offline from page load).
 - Each entry carries a client id. The server accepts an identical retry and ignores duplicates, so a score can never be double-counted.
-- `submit()` reports `mode:'local'` (with `queued:true` or `rejected`) whenever the score is not yet on the shared board.
+- `submit()` reports `mode:'local'` (with `queued:true` or `rejected`) whenever the score is not yet on the shared board. Its `top` is still the global top 10, with the player's entry merged in and flagged `{you:true, local:true}`.
+- URLs with `?debug`, `?test`, `?seed` or `?fast` are **always LOCAL**, with no network calls at all, because their QA hooks can cheat. For local development, `?debug&api` is honoured on `localhost` / `127.0.0.1` only.
 - If no API is reachable, the game runs in **LOCAL** mode with an on-device table. That covers no KV configured, a static host, or `file://`. The game only probes the API when the page was served by this app: the Next config sets the cookie `bp_api=1` on `/beerpong`, and `?api` forces the probe. Static copies therefore never log 404s.
 - Inside a claude.ai Artifact, the game uses the artifact's shared `db` (collection `scores`) when it is available. Viewers who cannot write fall back to the local table. Run tokens are not used there.
 
@@ -61,23 +62,25 @@ Storage:
    - `POST /run` issues an HMAC-SHA256-signed chain start `{iat, t0, st:0, sc, mk, sh}`. The secret is `BEERPONG_SECRET`, else one derived from `BEERPONG_ADMIN_KEY`, else from the KV token.
    - After every stage clear the game trades its current token for the next link. Each link requires:
      - the cleared stage is the next one in order, `(round−1)·5 + stage == st`;
-     - **at least 40 s of server time** since the previous link;
-     - per-stage deltas `0 ≤ Δmakes ≤ 13`, `Δmakes ≤ Δshots`, `Δscore ≤ (Δmakes·1400 + 17000)·round` (17,000 = 14,000 clear bonus + 2,000 redemption), and `Δshots ≤ elapsed/700 + 4`.
+     - server time since the previous link of **at least max(40 s, 30 s + 2 s·Δshots)**;
+     - per-stage deltas `0 ≤ Δmakes ≤ 13`, `Δmakes ≤ Δshots`, and `Δscore ≤ (Δmakes·1400 + 15000)·round`.
    - The final submit must carry the latest link:
      - `S == checkpoints + 1` (the run ended in the stage after the last clear), or `S == checkpoints` (submitted right after the final clear, as at the ENDING);
-     - the last stage obeys the same delta rule plus 10,000 slack (for the one-time 5,000 champion bonus), with at least 10 s elapsed.
-   - Without checkpoints a submit can only be a stage-1 run. Every link is single-use, and the client's `lag` is ignored.
+     - the unfinished last stage carries no clear bonus: `Δscore ≤ (Δmakes·1400 + 2000)·round`, with at least `10 s + 3 s·Δshots` elapsed;
+     - only after the ENDING (at least 10 verified clears) is there an extra 10,000 slack, for the one-time 5,000 champion bonus, and only then may `S == checkpoints`.
+   - Without checkpoints a submit can only be a stage-1 run, worth at most about 20k after waiting 49 s. Every link is single-use, and the client's `lag` is ignored.
+   - A link that comes too early gets `425 too_soon` with `retryInMs`. The client waits and retries it, so a fast legit player is only delayed, never lost.
    - So a forger must spend real time on every stage and still can't beat the per-stage ceiling.
 2. **Plausibility.** `round ∈ 1..30` (3+ = CHAMPION'S GAUNTLET, multiplier = round), `stage ∈ 0..4`, `S = (round−1)·5 + stage + 1`, and:
    ```
    makes ≤ shots;   (S−1)·3 ≤ makes ≤ S·10 + 10
-   score ≤ (makes·1400 + S·17000)·round + 10000
+   score ≤ (makes·1400 + S·15000)·round + 10000
    S·20 s ≤ durationMs ≤ 12 h;   shots ≤ durationMs/700 + 20
    ```
    This whole-run check is a cheap pre-filter; the checkpoint chain is the real check.
 3. Sanitised names (A–Z 0–9 space . - ! ♥, 8 characters, plus a small bad-word filter), strict ranges, and an FNV-1a checksum with a *static* salt. The checksum is a speed bump only, because the salt ships in the page.
 
-What remains possible: a scripted forger who reads the source can still claim up to the per-stage ceiling, spending at least 40 s of real time per stage. That is about 35k per stage in Round 1 and about 70k per stage in Round 2. Compare `serverMs` and the score in `?admin=1` before handing out the prize, and remove anything suspicious.
+What remains possible: a scripted forger who reads the source can still claim up to the per-stage ceiling, spending at least 40 s of real time per stage. That is about 33k per stage in Round 1 and about 66k per stage in Round 2, at more than 56 s per stage. Real stages score about 2–12k in Round 1 and 4–21k in Round 2. Compare `serverMs` and the score in `?admin=1` before handing out the prize, and remove anything suspicious.
 
 ## 5. Local development
 ```sh
