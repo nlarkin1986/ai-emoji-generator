@@ -10,22 +10,22 @@
   // ---------------------------------------------------------------- constants
   var W = 256, H = 240, STEP = 1000 / 60
   var TX0 = 32, TX1 = 224, TMID = 189, TZ = 14, FLOOR_H = -33
-  var CUP_R = 4, RIM_H = 10, BALL_R = 2, GRAV = 0.1, TABLE_E = 0.68
+  var CUP_R = 4, RIM_H = 10, BALL_R = 2, GRAV = 0.0756, TABLE_E = 0.68, PACE = 1.15 // PACE: ball flight is 15% slower than v1 (same arc shapes)
   var HAND = [{ x: 28, y: 3, z: 0 }, { x: 228, y: 3, z: 0 }]
   var PX = [16, 240], FEET = 228
   var TWO_PI = Math.PI * 2
 
   // acc = Round 1 CPU make chance, acc2 = Round 2 (remixed: 10-cup racks, wind on rooftop + beach, faster meters)
   var STAGES = [
-    { name: 'BACKYARD BASH', who: 'chad', cpu: 'NATE', acc: 0.22, acc2: 0.5, aim: 12, pow: 6, bounce: 0, wind: false, band: 'dblue', stars: 1,
+    { name: 'BACKYARD BASH', who: 'chad', cpu: 'NATE', acc: 0.3, acc2: 0.58, aim: 12, pow: 6, bounce: 0, wind: false, band: 'dblue', stars: 1,
       taunt: ['NICE HAT, ROOKIE.', 'THIS IS MY YARD!'], taunt2: ['I PRACTICED, BRO.', 'REMATCH TIME!'] },
-    { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.33, acc2: 0.55, aim: 16, pow: 8, bounce: 0.05, wind: false, band: 'dred', stars: 2,
+    { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.42, acc2: 0.63, aim: 16, pow: 8, bounce: 0.05, wind: false, band: 'dred', stars: 2,
       taunt: ['TANK NO MISS.', 'TANK ONLY DRINK.'], taunt2: ['TANK ANGRY NOW.', 'TANK SMASH CUPS.'] },
-    { name: 'ROOFTOP', who: 'sky', cpu: 'SKY', acc: 0.42, acc2: 0.6, aim: 10, pow: 6, bounce: 0.08, wind: true, band: 'purple', stars: 3,
+    { name: 'ROOFTOP', who: 'sky', cpu: 'SKY', acc: 0.5, acc2: 0.67, aim: 10, pow: 6, bounce: 0.08, wind: true, band: 'purple', stars: 3,
       taunt: ['FEEL THAT BREEZE?', 'THE WIND IS MINE.'], taunt2: ['STORM IS COMING.', 'HOLD ON TIGHT!'] },
-    { name: 'BEACH BONFIRE', who: 'brody', cpu: 'BRO-DY', acc: 0.5, acc2: 0.63, aim: 12, pow: 6, bounce: 0.1, wind: false, band: 'dgreen', stars: 4,
+    { name: 'BEACH BONFIRE', who: 'brody', cpu: 'BRO-DY', acc: 0.57, acc2: 0.7, aim: 12, pow: 6, bounce: 0.1, wind: false, band: 'dgreen', stars: 4,
       taunt: ["SURF'S UP, BRO.", 'CUPS GOING DOWN.'], taunt2: ['SEA BREEZE, BRO.', 'GOOD LUCK, HA!'] },
-    { name: 'CHAMPIONSHIP', who: 'kegmaster', cpu: 'KEGMASTER', acc: 0.58, acc2: 0.65, aim: 16, pow: 8, bounce: 0.18, wind: false, band: 'dred', stars: 5,
+    { name: 'CHAMPIONSHIP', who: 'kegmaster', cpu: 'KEGMASTER', acc: 0.62, acc2: 0.7, aim: 16, pow: 8, bounce: 0.18, wind: false, band: 'dred', stars: 5,
       taunt: ['KNEEL BEFORE THE', 'KEGMASTER, PEON!'], taunt2: ['NO ONE BEATS ME', 'TWICE. NO ONE!'] },
   ]
 
@@ -254,7 +254,7 @@
   function solveLaunch(side, tx, tz, bounce, wind, fastArc) {
     var p0 = HAND[side], dist = Math.abs(tx - p0.x)
     if (!bounce) {
-      var n = clamp(Math.round((fastArc ? 22 : 30) + dist * (fastArc ? 0.14 : 0.18)), 30, 80)
+      var n = clamp(Math.round(((fastArc ? 26 : 30) + dist * (fastArc ? 0.15 : 0.18)) * PACE), 34, 92) // CPU arc steep enough to clear the near rim
       var ax = tx, az = tz, v = directV(p0, ax, RIM_H, az, n)
       if (wind && (wind.ax || wind.az)) {
         for (var it = 0; it < 6; it++) {
@@ -268,7 +268,7 @@
     var dir = side === 0 ? 1 : -1
     var bx = tx - dir * 50, bz = p0.z + (tz - p0.z) * 0.7, vb = null
     for (var k = 0; k < 14; k++) {
-      vb = directV(p0, bx, BALL_R, bz, 60)
+      vb = directV(p0, bx, BALL_R, bz, Math.round(60 * PACE))
       var L2 = simLand(p0, vb, true, wind)
       if (!L2.ok) { bx -= dir * 6; continue }
       bx += (tx - L2.x) * 0.9; bz += (tz - L2.z) * 0.9
@@ -332,7 +332,7 @@
               b.vx -= 1.45 * vn * ux; b.vy -= 1.45 * vn * uy; b.vz -= 1.45 * vn * uz
               b.vx *= 0.9; b.vz *= 0.9
               if (d < CUP_R) {
-                var k = rnd() < 0.6 ? -0.16 : 0.12 // rattle in vs spin out
+                var k = (rnd() < 0.6 ? -0.16 : 0.12) / PACE // rattle in vs spin out (scaled to ball speed)
                 b.vx += nx * k; b.vz += nz * k
               }
               b.rim++
@@ -345,7 +345,7 @@
       // ---- table
       if (b.y < BALL_R && b.y > -5 && b.vy < 0 && onTable(b.x, b.z)) {
         b.y = BALL_R
-        if (b.vy < -0.4) {
+        if (b.vy < -0.35) {
           b.vy = -b.vy * TABLE_E; b.vx *= 0.88; b.vz *= 0.88
           b.bounces++
           sfx('bounce')
@@ -436,7 +436,7 @@
     if (!windOn()) { m.wind = { ax: 0, az: 0, s: 0, ang: 0 }; return }
     var s = m.loop > 0 && m.stage === 2 ? 2 + ri(2) : 1 + ri(3) // rooftop is always breezy, a gale in Round 2
     var a = ri(8) * (TWO_PI / 8)
-    var k = 0.0011 * s
+    var k = (0.0011 / (PACE * PACE)) * s // same drift per throw as before despite the slower flight
     m.wind = { ax: Math.cos(a) * k, az: Math.sin(a) * k, s: s, ang: a }
   }
 
@@ -495,7 +495,7 @@
   // ---------------------------------------------------------------- aim + power models
   function speedMul() {
     if (!run) return 1
-    var s = (0.84 + 0.09 * m.stage) * (m.loop > 0 ? 1.18 : 1) * (1 + 0.12 * run.buzz)
+    var s = (0.84 + 0.09 * m.stage) * (m.loop > 0 ? 1.3 : 1) * (1 + 0.09 * run.buzz)
     if (run.streak >= 3) s *= 0.7
     if (m.kegP2) s *= 1.06
     return s
@@ -509,9 +509,9 @@
     m.aim = {
       cx: (x0 + x1) / 2, cz: (z0 + z1) / 2,
       ax: Math.min(17, Math.max(9, (x1 - x0) / 2 + 5)), az: Math.max(10, (z1 - z0) / 2 + 5),
-      wx: (TWO_PI / 124) * sm, wz: (TWO_PI / 86) * sm,
+      wx: (TWO_PI / 170) * sm, wz: (TWO_PI / 118) * sm, // ~27% slower sweep (party-friendly)
       px: rnd() * TWO_PI, pz: rnd() * TWO_PI,
-      wob: m.ctrl[side] === 'human' && run ? run.buzz * 0.75 : 0,
+      wob: m.ctrl[side] === 'human' && run ? run.buzz * 0.55 : 0,
     }
   }
   function aimPos(t) {
@@ -523,12 +523,13 @@
   }
   function setupPow() {
     // stage 1 is forgiving (wide green zone, slower bar); it tightens every stage and again in Round 2
-    var sm = 0.92 + 0.06 * m.stage + (m.loop > 0 ? 0.2 : 0) + (m.loop > 1 ? 0.05 * (m.loop - 1) : 0) + (m.kegP2 ? 0.06 : 0)
-    m.pow = { period: Math.round(58 / sm), sc: 0.66, bw: Math.max(0.04, 0.088 - 0.007 * m.stage - (m.loop > 0 ? 0.012 : 0)) }
+    var sm = 0.92 + 0.06 * m.stage + (m.loop > 0 ? 0.38 : 0) + (m.loop > 1 ? 0.05 * (m.loop - 1) : 0) + (m.kegP2 ? 0.06 : 0)
+    m.pow = { period: Math.round(102 / sm), sc: 0.66, bw: Math.max(0.05, 0.11 - 0.008 * m.stage - (m.loop > 0 ? 0.02 : 0)) }
   }
   function powVal(t) {
     var p = m.pow.period, u = (t % p) / p
-    return u < 0.5 ? u * 2 : 2 - u * 2
+    var tri = u < 0.5 ? u * 2 : 2 - u * 2
+    return tri * 0.75 + ((1 - Math.cos(Math.PI * tri)) / 2) * 0.25 // mild ease: lingers at the top/bottom turnaround
   }
   function powErr(v) {
     var dp = v - m.pow.sc, bw = m.pow.bw, a = Math.abs(dp)
@@ -598,7 +599,7 @@
     var pv = m.pow.sc + (make ? rr(-0.6, 0.6) * m.pow.bw : longShort > 0 ? m.pow.bw + rr(0.05, 0.2) : longShort < 0 ? -m.pow.bw - rr(0.05, 0.25) : rr(-0.8, 0.8) * m.pow.bw)
     // crosshair shows the point the CPU aims at (upwind compensation visible)
     var ax = tx - m.wind.ax * 1600, az = tz - m.wind.az * 1600
-    var at = st.aim + ri(8)
+    var at = Math.round((st.aim + ri(8)) * PACE)
     if (side === 0) at = 30 + ri(10)
     if (fire) at = Math.round(at * 0.6)
     var call = side === 1 && st.who === 'kegmaster' ? cupName(c, side) + '!' : null
@@ -769,6 +770,7 @@
   }
 
   function finishResolve(calls, dur) {
+    dur = Math.round(dur * PACE)
     if (m.ctrl[m.turn] === 'cpu' && !m.over && !m.pendingRed && !m.pendingOT && !m.demo) dur = Math.round(dur * 0.6)
     callouts(calls)
     m.phase = 'result'; m.pt = 0; m.resT = FAST ? Math.min(dur, 40) : dur
@@ -864,7 +866,7 @@
         if (M.pt >= (FAST ? 10 : 50)) { startTurn(0) }
         break
       case 'banner':
-        if (M.pt >= (FAST ? 14 : side === 1 ? 24 : 40) || (M.ff && M.pt > 4) || (!M.demo && M.pt > 10 && okPr() && side === 0)) { M.banner = ''; beginThrow() }
+        if (M.pt >= (FAST ? 14 : side === 1 ? 28 : 46) || (M.ff && M.pt > 4) || (!M.demo && M.pt > 10 && okPr() && side === 0)) { M.banner = ''; beginThrow() }
         break
       case 'aim':
         if (human) {
@@ -2281,7 +2283,7 @@
   }
   function windDrift(tx) {
     if (!m.wind.s) return { x: 0, z: 0 }
-    var n = clamp(Math.round(30 + Math.abs(tx - HAND[0].x) * 0.18), 30, 80)
+    var n = clamp(Math.round((30 + Math.abs(tx - HAND[0].x) * 0.18) * PACE), 34, 92)
     var f = (n * (n + 1)) / 2
     return { x: m.wind.ax * f, z: m.wind.az * f }
   }

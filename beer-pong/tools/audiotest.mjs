@@ -72,6 +72,20 @@ for (const name of list.music) {
   console.log(`${name.padEnd(9)} bars=${info.bars} bpm=${info.bpm} len=${info.sec.toFixed(2)}s loop=${info.loop} peak=${r.peak.toFixed(3)} rms=${r.rms.toFixed(3)} first=${r.first.toFixed(3)} last=${r.last.toFixed(2)} centroid=${r.centroid}Hz` +
     (info.loop ? ` loopCorr(min ch)=${r.loopCorr.toFixed(3)} mix=${r.mixCorr.toFixed(3)} seamRms=${r.seamRms.toFixed(3)}` : "") + ` (${r.ms}ms)`)
   if (info.warn.length) fail(`${name} pattern length mismatch ${info.warn}`)
+  { // key check: every pitched note in its section's scale (declared passing/borrowed tones allowed, moved with key lifts)
+    const NI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }, pc = (n) => (NI[n[0]] + (n[1] === "#" ? 1 : n[1] === "b" ? -1 : 0) + 12) % 12
+    const SC = { maj: [0, 2, 4, 5, 7, 9, 11], min: [0, 2, 3, 5, 7, 8, 10] }
+    let tot = 0, ex = 0, out = []
+    for (const ch of ["p1", "p2", "tr"]) for (const [m, k] of info.nk[ch]) {
+      tot++
+      const root = pc(k), sh = root - pc(info.key), p = ((m % 12) + 12) % 12
+      if (SC[info.scale].some((x) => (x + root) % 12 === p)) continue
+      if (info.extra.split(" ").filter(Boolean).some((x) => (pc(x) + sh + 12) % 12 === p)) { ex++; continue }
+      out.push(ch + ":" + m + "@" + k)
+    }
+    console.log(`          key ${info.key} ${info.scale}: ${tot} notes, ${tot - ex - out.length} diatonic, ${ex} declared borrowed/passing, ${out.length} out`)
+    if (out.length) fail(`${name} out-of-key notes ${out.slice(0, 8)}`)
+  }
   if (r.nan) fail(`${name} NaN samples`)
   if (r.peak >= 0.99) fail(`${name} clipping peak ${r.peak}`)
   if (r.rms < 0.03) fail(`${name} too quiet rms ${r.rms}`)

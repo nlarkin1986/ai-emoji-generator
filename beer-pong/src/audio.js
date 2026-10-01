@@ -70,7 +70,7 @@
   var DMC_RATE = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54] // CPU cycles per bit (NTSC)
   // r: rate index, d: seconds. Sources are synthesised at the DMC bit rate, encoded to 1-bit deltas, then decoded.
   var DMS = { K: { r: 15, d: 0.17 }, S: { r: 15, d: 0.16 }, oh: { r: 14, d: 0.56 }, yeah: { r: 14, d: 0.64 } }
-  var DMCL = {}
+  var DMCL = {}, DMA = { Y: 'yeah', O: 'oh' } // pattern aliases for the voice samples
   function dpcmEncode(x) { // x: -1..1 at bit rate -> sample bytes (LSB first), like a .dmc file
     var c = 64, bytes = new Uint8Array(Math.ceil(x.length / 8))
     for (var i = 0; i < x.length; i++) {
@@ -158,6 +158,7 @@
     o: { n: '2', e: 'b9887766554433221100' },
     c: { n: '13', e: 'eddccbbaa99887766554433221100' },
     m: { n: '3', e: 'c96420', m: 1 },
+    P: { n: '4', e: 'f0d0c98765432100' }, // hand clap: 3 quick noise flams
     T: { n: 'ab', e: 'ec97530' },
   }
   for (var dk in DR) { DR[dk].N = hx(DR[dk].n); DR[dk].E = hx(DR[dk].e); DR[dk].m = DR[dk].m || 0 }
@@ -167,41 +168,41 @@
   // t-5 (transpose)  v9 (volume)  @ins  %047 (frame arpeggio, hex semitones)  [ .. ]n repeat  $mac.
   // Noise: k kick, s snare, h/H hat, o open hat, c crash, m cowbell (short-mode), T tom.
   // p2 '<e3 v6' = Capcom-style echo of pulse 1 delayed 3 rows; '<h-2' = diatonic 3rd-below harmony.
+
+  // ---- "CUP OF DESTINY" — the game's original arena-anthem main theme (D minor, 156 bpm, half-time stomp-stomp-CLAP).
+  // Dark intro -> verse -> riser build -> explosive chorus (lead in octaves / 3rds) -> WHOA-OH breakdown -> chorus lifted to E minor.
+  // Progressions: verse i-VI-III-VII (Dm Bb F C), build VI-VII-IV-V (Bb C G A), chorus Dm Bb F C | Dm Bb G A (major IV lift).
+  var AM = {
+    o: 'A5:2 D5:2 A5:2 E5:2 A5:2 F5:2 A5:2 E5:2 A5:2 D5:2 A5:2 F5:2 A5:2 Bb5:2 A5:2 F5:2 A5:2 C5:2 A5:2 F5:2 A5:2 C6:2 A5:2 F5:2 G5:2 C5:2 G5:2 E5:2 G5:2 C6:2 G5:2 E5:2',
+    sk: 'K:4 K:4 S:8',
+    ca: 'A5:2 D6:4 E6:2 F6:6 E6:2 D6:4 C6:2 D6:2 Bb5:8 A5:2 C6:4 D6:2 F6:6 G6:2 E6:4 D6:2 C6:2 G5:8',
+    cb: 'A5:2 D6:4 E6:2 F6:4 A6:4 G6:4 F6:2 D6:2 F6:8 G6:4 B6:4 A6:2 G6:2 D6:4 C#6:4 E6:4 A6:8',
+    ta: '2 [D2 D3]4 [Bb1 Bb2]4 [F2 F3]4 [C2 C3]4', tb: '2 [D2 D3]4 [Bb1 Bb2]4 [G2 G3]4 [A1 A2]4',
+    nc: 'c:2 h:2 h:2 h:2 P:2 h:2 o:2 h:2 [h:2 h:2 h:2 h:2 P:2 h:2 o:2 h:2]3',
+    da: 'Y:8 S:8 [K:4 K:4 S:8]3', db: '[K:4 K:4 S:8]3 K:4 K:4 S:2 S:2 S:2 S:2',
+    fa: '@buzz %037 [D5:2]8 %047 [Bb4:2]8 [F4:2]8 [C5:2]8', fb: '@buzz %037 [D5:2]8 %047 [Bb4:2]8 [G4:2]8 [A4:2]8',
+    ua: '1 [D2 D3]8 [Bb1 Bb2]8 [F2 F3]8 [C2 C3]8', ub: '1 [D2 D3]8 [Bb1 Bb2]8 [G2 G3]8 [A1 A2]8',
+    fn: 'c:1 H:1 [h:1 H:1]7 [[h:1 H:1]8]3', fd: '[K:4 S:4]7 K:2 K:2 S:2 S:2',
+  }
+  var AP = {
+    I: ['r:64', '@harp $o', 'D2:16 D2:16 D2:16 D2:16', 'v7 [r:4 h:4 r:4 h:4]4', '[$sk]4'],
+    V: ['@soft D5:6 E5:2 F5:4 E5:2 D5:2 D5:4 C5:2 Bb4:2 C5:8 C5:6 D5:2 F5:4 E5:2 C5:2 E5:4 D5:2 C5:2 G4:8 D5:6 E5:2 F5:4 A5:4 G5:6 F5:2 D5:4 Bb4:4 A5:6 G5:2 F5:4 C5:4 E5:4 F5:2 G5:2 C5:2 D5:2 E5:4',
+      '@harp $o $o', 'D2:8 A2:8 Bb1:8 F2:8 F2:8 C3:8 C2:8 G2:8 D2:8 A2:8 Bb1:8 F2:8 F2:8 C3:8 C2:8 G2:8', '[r:2 h:2 r:2 h:2 P:2 h:2 r:2 h:2]8', '[$sk]8'],
+    BU: ['D5:8 F5:8 E5:8 G5:8 B5:8 D6:8 C#6:4 E6:4 A6:8',
+      '@harp [Bb4:1 D5:1 F5:1 D5:1]4 [C5:1 E5:1 G5:1 E5:1]4 [G5:1 B5:1 D6:1 B5:1]4 A5:1 C#6:1 E6:1 A6:1 C#6:1 E6:1 A6:1 C#7:1 E6:1 A6:1 C#7:1 E7:1 A6:1 C#7:1 E7:1 A7:1',
+      '2 [Bb1 Bb2]4 [C2 C3]4 [G2 G3]4 [A1 A2]4', 'v8 [s:4]4 v10 [s:2]8 v12 [s:1]16 v15 [s:1]12 r:4', '$sk $sk [K:4]4 K:2 K:2 K:2 K:2 S:2 S:2 S:2 S:2'],
+    CA: ['$ca', '<h-7 v11', '$ta', '$nc', '$da'],
+    CB: ['$cb', '<h-2 v10', '$tb', '$nc', '$db'],
+    BR: ['D6:6 C6:2 A5:8 r:16 C6:6 Bb5:2 A5:8 r:16', 'r:16 D5:6 C5:2 Bb4:8 r:16 G4:6 F4:2 E4:8', 'D2:16 Bb1:16 F2:16 C2:16', '[r:8 P:8]4', '$sk Y:8 S:8 $sk O:8 S:8'],
+    LA: ['t2 $ca', '<h-7 v11', 't2 $ta', '$nc', '$da'],
+    LB: ['t2 $cb', '<h-2 v10 kE', 't2 $tb', '$nc', '$db'],
+    FA: ['$ca', '$fa', '$ua', '$fn', '$fd'], FB: ['$cb', '$fb', '$ub', '$fn', '$fd'],
+    FC: ['t2 $ca', 't2 $fa', 't2 $ua', '$fn', '$fd'], FD: ['t2 $cb', 't2 $fb', 't2 $ub', '$fn', '$fd'],
+  }
+  function anthem(o) { var S = { k: 'D', sc: 'min', x: 'B C#', mac: AM, pat: AP, loop: 0, kp: { LA: 'E', LB: 'E', FC: 'E', FD: 'E' } }; for (var k in o) S[k] = o[k]; return S }
   var SONGS = {
-    title: {
-      bpm: 150, k: 'C', sc: 'maj', ins: ['lead', 'harm', 'bass'], loop: 1, ord: 'I A B',
-      pat: {
-        I: ['C6:2 r:2 C6:2 r:2 C6:1 r:1 C6:2 D6:2 E6:2 D6:2 r:2 D6:2 r:2 D6:1 r:1 G6:6',
-          'E5:2 r:2 E5:2 r:2 E5:1 r:1 E5:2 F5:2 G5:2 B5:2 r:2 B5:2 r:2 B5:1 r:1 D6:6',
-          'C3:2 r:2 C3:2 r:2 C3:1 r:1 C3:2 D3:2 E3:2 G2:2 r:2 G2:2 r:2 G2:1 r:1 G2:2 A2:2 B2:2',
-          's:2 r:2 s:2 r:2 s:1 r:1 k:2 k:2 k:2 s:2 r:2 s:2 r:2 s:1 r:1 s:1 s:1 s:1 s:1 s:1 s:1',
-          'S:4 S:4 S:2 K:2 K:2 K:2 S:4 S:4 S:2 S:1 S:1 S:1 S:1 S:1 S:1'],
-        A: ['E5:2 G5:2 C6:3 B5:1 C6:2 G5:2 E5:4 A5:2 C6:2 E6:3 D6:1 C6:2 A5:2 E5:4 F5:2 A5:2 C6:2 F6:4 E6:2 D6:2 C6:2 D6:6 B5:2 G5:4 r:2 G5:1 B5:1 C6:2 G5:2 E6:3 D6:1 C6:2 E6:2 G6:4 A6:4 G6:2 E6:2 C6:4 A5:4 F6:2 E6:2 D6:2 C6:2 D6:2 E6:2 F6:2 B5:2 C6:12 r:4',
-          '@stab %047 [C5:3 C5:3 C5:2]2 %037 [A4:3 A4:3 A4:2]2 %047 [F4:3 F4:3 F4:2]2 [G4:3 G4:3 G4:2]2 [C5:3 C5:3 C5:2]2 %037 [A4:3 A4:3 A4:2]2 %047 F4:3 F4:3 F4:2 G4:3 G4:3 G4:2 C5:3 C5:3 C5:2 C5:8',
-          '2 [C3 C4]4 [A2 A3]4 [F2 F3]4 [G2 G3]4 [C3 C4]4 [A2 A3]4 [F2 F3]2 [G2 G3]2 C3 C4 C3 G2 C3:8',
-          '2 c h s h k k s h [k h s h k k s h]6 k h s h s:1 s:1 s:1 s:1 s s', '[K:4 S:4 K:2 K:2 S:4]7 K:4 S:4 S:1 S:1 S:1 S:1 S:2 S:2'],
-        B: ['r:2 A5:2 B5:2 C6:2 E6:4 D6:2 C6:2 B5:4 G5:2 B5:2 E6:6 r:2 r:2 F5:2 A5:2 C6:2 F6:4 E6:2 C6:2 E6:6 D6:2 C6:2 G5:2 E5:4 F5:2 A5:2 D6:3 C6:1 D6:2 F6:2 A6:4 G6:4 F6:2 D6:2 B5:4 G5:4 E6:4 G6:4 A6:4 E6:4 F6:4 E6:2 D6:2 D6:2 B5:2 G5:2 B5:2',
-          '<h-2 @harm',
-          '2 [A2 A3]4 [E2 E3]4 [F2 F3]4 [C3 C4]4 [D3 D4]4 [G2 G3]4 [E2 E3]2 [A2 A3]2 [D3 D4]2 G2 G3 G2 B2',
-          '2 c o s o k k s o [k o s o k k s o]6 k k s s s:1 s:1 s:1 s:1 s s', '[K:4 S:4 K:2 K:2 S:4]7 K:2 K:2 S:2 S:2 S:1 S:1 S:1 S:1 S:2 S:2'],
-      },
-    },
-    stage0: { // BACKYARD BASH — party rock, G (mixolydian b7 flavour)
-      bpm: 160, k: 'G', sc: 'maj', x: 'F', ins: ['lead', 'chug', 'bass'], loop: 0, ord: 'A A2 B C',
-      mac: { h: 'G4:3 G4:3 G4:2 G4:2 G4:2 G4:2 G4:2', q: 'G2:2 G2:2 G3:2 G2:2 G2:2 G3:2 D3:2 G2:2',
-        d: 'k:2 h:2 s:2 h:2 k:2 k:2 s:2 h:2', f: 'k:2 h:2 s:2 h:2 s:1 s:1 s:1 s:1 s:2 s:2',
-        D: '[K:4 S:4 K:2 K:2 S:4]3 K:4 S:4 S:1 S:1 S:1 S:1 S:2 S:2' },
-      pat: {
-        A: ['G5:2 G5:1 G5:1 B5:2 D6:2 r:2 D6:2 B5:2 G5:2 A5:2 B5:2 A5:2 G5:2 F5:2 G5:6 E5:2 G5:2 C6:2 E6:4 D6:2 C6:2 A5:2 B5:4 A5:2 G5:2 D5:4 r:4',
-          '%07c $h $h t-7 $h t0 $h', '$q $q t5 $q t0 $q', 'c:2 h:2 s:2 h:2 k:2 k:2 s:2 h:2 $d $d $f', '$D'],
-        A2: ['A5:2 A5:1 A5:1 D6:2 F#6:2 r:2 F#6:2 E6:2 D6:2 E6:2 D6:2 C6:2 B5:2 A5:2 G5:2 E5:4 D5:2 G5:2 B5:2 D6:2 G6:4 F6:2 D6:2 E6:2 D6:2 C6:2 A5:2 F#5:4 D5:4',
-          '%07c t-5 $h t-7 $h t0 $h t-5 $h', 't7 $q t5 $q t0 $q t7 $q', '$d $d $d $f', '$D'],
-        B: ['E6:3 E6:3 E6:2 D6:2 B5:2 G5:4 C6:3 C6:3 C6:2 D6:2 E6:2 G6:4 G6:2 F6:2 D6:2 B5:2 D6:2 B5:2 G5:4 A5:4 B5:2 C6:2 D6:8',
-          '%07c t-3 $h t-7 $h t0 $h t-5 $h', 't-3 $q t5 $q t0 $q t7 $q', '[k:2 o:2 s:2 o:2 k:2 k:2 s:2 o:2]3 $f', '$D'],
-        C: ['C6:2 r:2 C6:2 r:2 E6:2 D6:2 C6:4 D6:2 r:2 D6:2 r:2 F#6:2 E6:2 D6:4 G6:6 D6:2 B5:4 G5:4 A5:2 B5:2 D6:2 B5:2 A5:2 G5:2 F5:2 D5:2',
-          '%07c t-7 $h t-5 $h t0 $h G4:2 r:6 G4:2 G4:2 r:4', 't5 $q t7 $q t0 $q G2:2 A2:2 B2:2 D3:2 F3:2 E3:2 D3:2 B2:2', '$d $d $d $f', '$D'],
-      },
-    },
+    title: anthem({ bpm: 156, ins: ['lead', 'harm', 'bass'], ord: 'I V BU CA CB BR LA LB' }), // 36 bars, full showstopper
+    stage0: anthem({ bpm: 150, ins: ['lead', 'harm', 'bass'], ord: 'V BU CA CB BR CA CB' }), // BACKYARD: in-match anthem cut
     stage1: { // FRAT BASEMENT — funk, E dorian, triangle slap-bass riff
       bpm: 108, k: 'E', sc: 'min', x: 'C# D#', ins: ['funk', 'clav', 'bpl'], loop: 0, ord: 'A A2 B B2',
       mac: { cl: 'r:2 E5:1 r:1 E5:1 r:1 E5:2 r:2 E5:1 r:1 E5:1 E5:1 r:2',
@@ -242,43 +243,17 @@
           't-3 %037 $cp t2 $cp t7 %047 $cp t0 $cp t5 $cp t7 $cp t0 $cp t7 $cp', 't-3 $cb t2 $cb t7 $cb t0 $cb t5 $cb t7 $cb t0 $cb t7 $cb', '[$d]3 $f [$d]3 $f'],
       },
     },
-    stage4: { // CHAMPIONSHIP — heroic march, D major, brass in 3rds
-      bpm: 116, k: 'D', sc: 'maj', ins: ['brass', 'brass2', 'bass'], loop: 0, ord: 'A B',
-      mac: { mb: 'D3:4 A2:4 D3:4 A2:4', d: 'k:2 s:1 s:1 s:2 s:2 k:2 s:1 s:1 s:2 s:2', r: 's:1 s:1 s:1 s:1 s:1 s:1 s:1 s:1 k:2 s:2 k:2 c:2',
-        n: 'c:2 s:1 s:1 s:2 s:2 k:2 s:1 s:1 s:2 s:2 [$d]2 $r [$d]3 $r',
-        D: '[K:4 S:4 K:4 S:4]3 S:1 S:1 S:1 S:1 S:1 S:1 S:1 S:1 K:2 S:2 K:2 S:2 [K:4 S:4 K:4 S:4]3 S:2 S:2 S:2 S:2 K:2 S:2 K:2 S:2' },
-      pat: {
-        A: ['A5:3 A5:1 D6:4 F#6:3 E6:1 D6:4 B5:3 B5:1 D6:4 G6:6 F#6:2 F#6:3 E6:1 D6:2 A5:2 F#5:4 A5:4 E6:3 F#6:1 E6:2 C#6:2 A5:8 A5:3 A5:1 D6:4 F#6:3 G6:1 A6:4 B6:6 A6:2 G6:4 B5:4 G6:4 E6:4 E6:2 F#6:2 G6:2 C#6:2 D6:12 r:4',
-          '<h-2 @brass2', '$mb t5 $mb t0 $mb t-5 $mb t0 $mb t5 $mb t0 E3:4 B2:4 A2:4 E2:4 D3:4 A2:4 D3:8', '$n', '$D'],
-        B: ['F#6:3 F#6:1 D6:2 B5:2 F#5:4 B5:4 C#6:3 C#6:1 A5:2 F#5:2 C#5:4 F#5:4 D6:3 D6:1 B5:2 G5:2 D6:3 E6:1 G6:4 F#6:6 E6:2 D6:4 A5:4 B5:3 C#6:1 D6:4 B5:3 D6:1 G6:4 C#6:3 D6:1 E6:4 C#6:3 E6:1 A6:4 B6:4 A6:2 F#6:2 G6:4 F#6:2 E6:2 E6:4 F#6:2 G6:2 A6:8',
-          '<h-2 @brass2', 't-3 $mb t4 $mb t5 $mb t0 $mb t5 $mb t-5 $mb t0 B2:4 F#2:4 G2:4 D3:4 t-5 $mb', '$n', '$D'],
-      },
+    stage4: anthem({ bpm: 160, ins: ['brass', 'brass2', 'bass'], ord: 'BU CA CB BR LA LB' }), // CHAMPIONSHIP: brass anthem w/ key lift
+    fire: anthem({ bpm: 168, ins: ['lead', 'buzz', 'bass'], ord: 'FA FB FC FD' }), // ON FIRE: double-time anthem chorus
+    vs: { // quotes the anthem chorus motif, ends on the dominant
+      bpm: 156, k: 'D', sc: 'min', x: 'C#', ins: ['lead', 'harm', 'bass'], loop: -1, ord: 'A',
+      pat: { A: ['A5:2 D6:4 E6:2 F6:6 E6:2 C#6:2 E6:2 A6:4', 'F5:2 A5:4 C6:2 D6:6 C6:2 A5:2 C#6:2 E6:4',
+        'D2:2 D3:2 D2:2 D3:2 D2:2 D3:2 Bb1:2 Bb2:2 A1:2 A2:2 A1:4', 'r:16 s:1 s:1 s:1 s:1 c:4', 'K:4 K:4 S:4 K:4 K:2 K:2 S:4'] },
     },
-    fire: { // ON FIRE — hype loop, D harmonic minor, 172 bpm
-      bpm: 172, k: 'D', sc: 'min', x: 'C#', ins: ['lead', 'buzz', 'bass'], loop: 0, ord: 'A A2 B B2',
-      mac: { d: 'k:2 h:1 h:1 s:2 h:1 h:1 k:1 h:1 k:1 h:1 s:2 h:1 h:1', f: 'k:2 h:1 h:1 s:2 h:1 h:1 s:1 s:1 s:1 s:1 s:1 s:1 c:2',
-        x: 'D6:2 D6:1 D6:1 F6:2 A6:2 G6:2 F6:2 E6:2 F6:2 D6:2 D6:1 D6:1 F6:2 Bb6:2 A6:2 G6:2 F6:2 D6:2 E6:2 E6:1 E6:1 G6:2 C7:2 Bb6:2 G6:2 E6:2 C6:2',
-        p: '%037 [D5:2]8 %047 [Bb4:2]8 [C5:2]8 [A4:2]8', q: '%037 [G4:2]8 [D5:2]8 %047 [Bb4:2]4 [C5:2]4 [A4:2]8',
-        D: '[K:4 S:4 K:2 K:2 S:4]3 K:4 S:4 S:1 S:1 S:1 S:1 S:1 S:1 S:2',
-        b: '2 [D2 D3]4 [Bb1 Bb2]4 [C2 C3]4 [A1 A2]4', c: '2 [G2 G3]4 [D2 D3]4 [Bb1 Bb2]2 [C2 C3]2 [A1 A2]4' },
-      pat: {
-        A: ['$x C#6:4 E6:4 A6:6 r:2', '$p', '$b', '[$d]3 $f', '$D'],
-        A2: ['$x A6:2 G6:2 F6:2 E6:2 C#6:2 E6:2 A5:4', '$p', '$b', '[$d]3 $f', '$D'],
-        B: ['Bb6:6 A6:2 G6:4 D6:4 F6:6 E6:2 D6:4 A5:4 Bb5:2 D6:2 F6:4 C6:2 E6:2 G6:4 A6:2 r:2 A6:2 r:2 C#7:2 r:2 E7:4', '$q', '$c', '[$d]3 $f', '$D'],
-        B2: ['Bb6:2 A6:2 G6:2 F6:2 G6:2 F6:2 E6:2 D6:2 F6:2 E6:2 D6:2 C#6:2 D6:2 E6:2 F6:2 A6:2 Bb6:4 A6:4 G6:4 E6:4 C#6:4 E6:4 A6:8', '$q', '$c', '[$d]3 $f', '$D'],
-      },
-    },
-    vs: {
-      bpm: 150, k: 'D', sc: 'min', x: 'C#', ins: ['brass', 'brass2', 'bass'], loop: -1, ord: 'A',
-      pat: { A: ['D6:2 r:1 D6:1 r:2 D6:2 F6:4 E6:4 A6:8', 'A5:2 r:1 A5:1 r:2 A5:2 D6:4 C#6:4 E6:8',
-        'D3:2 r:1 D3:1 r:2 D3:2 Bb2:4 A2:4 A2:8', 'k:2 r:1 k:1 r:2 k:2 s:1 s:1 s:1 s:1 s:1 s:1 s:1 s:1 c:8'] },
-    },
-    clear: {
-      bpm: 180, k: 'C', sc: 'maj', ins: ['lead', 'harm', 'bass'], loop: -1, ord: 'A',
-      pat: { A: ['G5:2 C6:2 E6:2 G6:4 E6:2 G6:4 F6:2 A6:2 C7:4 G6:2 B6:2 D7:4 C7:12 r:4',
-        'E5:2 G5:2 C6:2 E6:4 C6:2 E6:4 C6:2 F6:2 A6:4 D6:2 G6:2 B6:4 E6:12 r:4',
-        'C3:2 r:2 C3:2 r:2 C3:2 r:2 E3:2 G3:2 F3:4 F2:4 G3:4 G2:4 C3:12 r:4',
-        'k:2 h:2 s:2 h:2 k:2 h:2 s:2 s:1 s:1 k:4 s:4 k:4 s:1 s:1 s:1 s:1 c:12 r:4'] },
+    clear: { // the chorus motif in the relative major, crowd "YEAH!" on the final chord
+      bpm: 160, k: 'F', sc: 'maj', ins: ['lead', 'harm', 'bass'], loop: -1, ord: 'A',
+      pat: { A: ['C6:2 F6:4 G6:2 A6:6 G6:2 Bb6:4 A6:2 G6:2 C7:8 A6:12 r:4', '<h-2 v10',
+        '2 [F2 F3]4 Bb2:4 Bb1:4 C3:4 C2:4 F2:12 r:4', 'r:16 r:8 s:1 s:1 s:1 s:1 s:1 s:1 s:1 s:1 c:12 r:4', 'K:4 K:4 S:4 K:4 K:4 K:4 S:4 S:2 S:2 Y:12 r:4'] },
     },
     gameover: {
       bpm: 90, k: 'A', sc: 'min', x: 'G#', ins: ['soft', 'harm', 'bass'], loop: -1, ord: 'A',
@@ -313,8 +288,9 @@
   // ------------------------------------------------------------------ song compiler
   var SCALE = { maj: [0, 2, 4, 5, 7, 9, 11], min: [0, 2, 3, 5, 7, 8, 10] }
   function pcOf(n) { return (midiOf(n + '4') % 12 + 12) % 12 }
-  function harm(m, deg, S) {
-    var root = pcOf(S.k), sc = SCALE[S.sc], rel = m - root, oct = Math.floor(rel / 12), i = sc.indexOf(rel - oct * 12)
+  function harm(m, deg, S, key) {
+    if (deg % 7 === 0) return m + (12 * deg) / 7 // whole octaves
+    var root = pcOf(key || S.k), sc = SCALE[S.sc], rel = m - root, oct = Math.floor(rel / 12), i = sc.indexOf(rel - oct * 12)
     if (i < 0) return m - 4
     var ni = i + deg, oo = Math.floor(ni / 7)
     return root + 12 * (oct + oo) + sc[ni - oo * 7]
@@ -349,7 +325,7 @@
     var ev = { p1: [], p2: [], tr: [], no: [], dm: [] }, row = 0, loopRow = 0, dirs = [], warn = [], ins = S.ins || []
     S.ord.split(' ').forEach(function (pn, oi) {
       if (oi === S.loop) loopRow = row
-      var P = S.pat[pn], res = {}, len = 0
+      var P = S.pat[pn], res = {}, len = 0, pk = (S.kp && S.kp[pn]) || S.k
       CHS.forEach(function (ch, ci) {
         var s = P[ci] || ''
         if (s[0] === '<') { res[ch] = s; return }
@@ -360,19 +336,19 @@
         var o = res[ch]
         if (typeof o === 'string') { dirs.push([row, row + len, o]); return }
         if (o.len && o.len !== len) warn.push(pn + '.' + ch + ' ' + o.len + '/' + len)
-        o.ev.forEach(function (e) { e.r += row; ev[ch].push(e) })
+        o.ev.forEach(function (e) { e.r += row; e.k = pk; ev[ch].push(e) })
       })
       row += len
     })
     var loop = S.loop >= 0
     dirs.forEach(function (D) {
-      var tk = D[2].slice(1).trim().split(/\s+/), m = /^([eh])(-?\d+)$/.exec(tk[0]), vv = 15, ii = null
-      tk.slice(1).forEach(function (x) { if (x[0] === 'v') vv = +x.slice(1); if (x[0] === '@') ii = x.slice(1) })
+      var tk = D[2].slice(1).trim().split(/\s+/), m = /^([eh])(-?\d+)$/.exec(tk[0]), vv = 15, ii = null, kk = null
+      tk.slice(1).forEach(function (x) { if (x[0] === 'v') vv = +x.slice(1); if (x[0] === '@') ii = x.slice(1); if (x[0] === 'k') kk = x.slice(1) })
       ev.p1.forEach(function (e) {
         if (e.m < 0) return
         var r = e.r, mm = e.m
-        if (m[1] === 'e') { r += +m[2]; if (r >= row) { if (!loop) return; r = loopRow + r - row } } else mm = harm(mm, +m[2], S)
-        if (r >= D[0] && r < D[1]) ev.p2.push({ r: r, n: e.n, m: mm, i: ii || e.i, v: Math.round((e.v * vv) / 15), a: e.a })
+        if (m[1] === 'e') { r += +m[2]; if (r >= row) { if (!loop) return; r = loopRow + r - row } } else mm = harm(mm, +m[2], S, kk || e.k)
+        if (r >= D[0] && r < D[1]) ev.p2.push({ r: r, n: e.n, m: mm, i: ii || e.i, v: Math.round((e.v * vv) / 15), a: e.a, k: e.k })
       })
     })
     ev.p2.sort(function (a, b) { return a.r - b.r })
@@ -598,7 +574,8 @@
       for (k = 0; k < D.E.length; k++) fr.push([D.N[Math.min(k, D.N.length - 1)], Math.round((D.E[k] * e.v) / 15), D.m])
       cut(this.nh, t); this.nh = noiseHit(this.E, this.out.no, t, fr)
     } else if (ch === 'dm') {
-      if (DMS[e.m]) { cut(this.dh, t); this.dh = dmcHit(this.E, this.out.dm, t, e.m) } // DMC has no volume control
+      var nm = DMA[e.m] || e.m
+      if (DMS[nm]) { cut(this.dh, t); this.dh = dmcHit(this.E, this.out.dm, t, nm) } // DMC has no volume control
     } else if (ch === 'tr') {
       if (e.m < 0) return this.vt.set(t, 0, 0)
       I = INS[e.i] || INS.bass
@@ -848,9 +825,13 @@
       var C = song(name)
       if (!C) return null
       var S = C.S, notes = {}
-      CHS.forEach(function (ch) { notes[ch] = C.ev[ch].filter(function (e) { return e.m !== -1 }).map(function (e) { return e.m }) })
+      var nk = {}
+      CHS.forEach(function (ch) {
+        var L = C.ev[ch].filter(function (e) { return e.m !== -1 })
+        notes[ch] = L.map(function (e) { return e.m }); nk[ch] = L.map(function (e) { return [e.m, e.k || S.k] })
+      })
       return { name: name, bpm: S.bpm, rows: C.rows, bars: C.rows / 16, loop: C.loop, loopRow: C.loopRow, sec: (C.rows * 15) / S.bpm,
-        loopSec: ((C.rows - C.loopRow) * 15) / S.bpm, introSec: (C.loopRow * 15) / S.bpm, warn: C.warn, key: S.k, scale: S.sc, extra: S.x || '', notes: notes }
+        loopSec: ((C.rows - C.loopRow) * 15) / S.bpm, introSec: (C.loopRow * 15) / S.bpm, warn: C.warn, key: S.k, scale: S.sc, extra: S.x || '', notes: notes, nk: nk }
     },
     _dev: { Engine: Engine, Player: Player, dmc: dmcSample, enc: dpcmEncode, dec: dpcmDecode },
     _list: function () { return { music: Object.keys(SONGS), sfx: Object.keys(SFX) } },
