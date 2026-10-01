@@ -387,7 +387,7 @@
         [33, 26, ['s', 's', 'ss', 'ss']],                         // nose shade
         [26, 29, ['..ssssss..', '.ssSSSSss.', 'sKsSSSSsKs', '.ssssssss.']], // broad nose
         [29, 41, ['ssss']],                                       // chin shadow
-        [28, 56, ['.KKKKKK.', 'KKLLLLKK', 'KLLKKLLK', 'KKLLLLKK', 'KLLKKLLK', 'KKLLLLKK', '.KKKKKK.']] // #8
+        [26, 55, ['LL........LL', 'LL........LL', 'LL...LL...LL', 'LL..LLLL..LL', 'LL.LL..LL.LL', 'LLLL....LLLL', '.LL......LL.']] // Wisconsin W
       ]
     },
     p32: {
@@ -426,12 +426,14 @@
       '.KtTTTTTTTTTTTTT',
       '.KtTTTTTTTTTTTTT'
       ],
-      patches: []
+      patches: [
+        [13, 28, ['L....L', 'L.LL.L', '.L..L.']], // Wisconsin W
+      ]
     }
   };
 
   CH.sky = {
-    pal: { S: 'skin', s: 'salmon', H: 'blue', h: 'navy', n: 'lblue', G: 'black', g: 'white', T: 'purple', t: 'dpurple', P: 'lpurple', L: 'gold' },
+    pal: { S: 'skin', s: 'salmon', H: 'blue', h: 'navy', n: 'lblue', G: 'black', g: 'white', T: 'purple', t: 'dpurple', P: 'lpurple', L: 'white' },
     bg: ['cyan', 'teal'],
     p64: {
       shade: [27, 47, 3],
@@ -542,7 +544,7 @@
         [22, 28, ['..gg', '.gg', 'gg']], [39, 28, ['..gg', '.gg', 'gg']],
         [33, 34, ['s', 'ss']],                                        // nose shade
         [28, 38, ['.......K', 'KKKKKKK.', '.ssss...']],               // too-cool half smile
-        [33, 55, ['....KKKK', '...KLLK.', '..KLLKKK', '.KLLLLLK', '.KKKLLK.', '...KLK..', '..KLK...', '..KK....']] // bolt
+        [31, 55, ['LL........LL', 'LL........LL', 'LL...LL...LL', 'LL..LLLL..LL', 'LL.LL..LL.LL', 'LLLL....LLLL', '.LL......LL.']] // Wisconsin W
       ]
     },
     p32: {
@@ -582,6 +584,7 @@
       '.KtTTTTTTTTTTTTT'
       ],
       patches: [
+        [13, 28, ['L....L', 'L.LL.L', '.L..L.']], // Wisconsin W
         [0, 1, ['.............KKKKKK.............',
       '...........KKHHnnHHKK...........',
       '.........KKHhHHHHnnHHKK.........',
@@ -605,7 +608,7 @@
   };
 
   CH.brody = {
-    pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'black', g: 'white', r: 'red', y: 'gold', T: 'cyan', t: 'teal' },
+    pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'black', g: 'white', r: 'red', y: 'gold', T: 'cyan', t: 'teal', L: 'white' },
     bg: ['rose', 'dmagenta'],
     p64: {
       shade: [27, 47, 3],
@@ -676,6 +679,7 @@
       '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT'
       ],
       patches: [
+        [26, 55, ['LL........LL', 'LL........LL', 'LL...LL...LL', 'LL..LLLL..LL', 'LL.LL..LL.LL', 'LLLL....LLLL', '.LL......LL.']], // Wisconsin W
         [0, 0, [ // bleached spikes, dark roots
       '...............K.........K............K........K................',
       '..............KHK.......KhK..........KhK......KhK...............',
@@ -754,6 +758,7 @@
       '.KSSSSsKtTTTTTTT'
       ],
       patches: [
+        [13, 28, ['L....L', 'L.LL.L', '.L..L.']], // Wisconsin W
         [0, 0, [
       '.......KHK.....K.....KhK........',
       '....K..KHHK...KhK...KHhK..K.....',
@@ -779,7 +784,7 @@
   };
 
   CH.kegmaster = {
-    pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', D: 'brown', d: 'maroon', C: 'gold', c: 'orange', P: 'cream', J: 'red', T: 'blue', t: 'dblue', L: 'gold' },
+    pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', D: 'brown', d: 'maroon', C: 'gold', c: 'orange', P: 'cream', J: 'red', T: 'blue', t: 'dblue', L: 'white' },
     bg: ['purple', 'dpurple'],
     p64: {
       shade: [15, 31, 3],
@@ -854,7 +859,7 @@
         [21, 24, ['WEEWWW', 'sEEWWs']], [36, 24, ['WEEWWW', 'sEEWWs']], // glare at the hero
         [29, 27, ['..ss', '.sSSs', 'sSSSSs', 'sKSSKs', '.ssss']],     // fat nose
         [26, 36, ['.K..K..K..K.']],                                     // gritted teeth
-        [27, 55, ['LL.....LL', 'LL....LL.', 'LL...LL..', 'LLLLLL...', 'LL..LL...', 'LL...LL..', 'LL....LL.']] // gold K
+        [27, 55, ['LL.....LL', 'LL.....LL', 'LL..L..LL', 'LL.LLL.LL', 'LLLL.LLLL', 'LLL...LLL', '.L.....L.']] // Wisconsin W
       ]
     },
     p32: {
@@ -894,6 +899,7 @@
       'KtTTTTTTTTTTTTTT'
       ],
       patches: [
+        [13, 28, ['L....L', 'L.LL.L', '.L..L.']], // Wisconsin W
         [15, 15, ['ss', 'KK']],
         [13, 21, ['.K..K.']]
       ]

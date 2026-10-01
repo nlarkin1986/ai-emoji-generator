@@ -9,18 +9,18 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Beer Pong">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="Super Beer Pong">
+<meta name="application-name" content="1519 Madison Tailgate">
 <meta name="format-detection" content="telephone=no">
-<meta name="description" content="SUPER BEER PONG - an 8-bit party arcade game. Sink cups, beat the CPU ladder and log your high score!">
+<meta name="description" content="1519 MADISON TAILGATE - an 8-bit beer pong party arcade game. Sink cups, beat the CPU ladder and log your high score!">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Super Beer Pong">
+<meta property="og:title" content="1519 Madison Tailgate">
 <meta property="og:description" content="An 8-bit party arcade game. Sink cups, get ON FIRE, beat THE KEGMASTER and put your name on the leaderboard!">
-<meta property="og:site_name" content="Super Beer Pong">
+<meta property="og:site_name" content="1519 Madison Tailgate">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Super Beer Pong">
+<meta name="twitter:title" content="1519 Madison Tailgate">
 <meta name="twitter:description" content="An 8-bit party arcade game. Play on your phone and log a high score!">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' rx='3' fill='%23000'/%3E%3Cpath fill='%23FCFCFC' d='M6 1h4v1h-4zM5 2h4v1h-4zM10 2h1v1h-1zM5 3h6v1h-6zM6 4h4v1h-4zM7 5h2v1h-2zM1 7h14v1h-14zM3 9h1v1h-1zM3 10h1v1h-1zM3 11h1v1h-1zM3 13h10v1h-10z'/%3E%3Cpath fill='%23BCBCBC' d='M9 2h1v1h-1zM5 4h1v1h-1zM10 4h1v1h-1zM6 5h1v1h-1zM9 5h1v1h-1z'/%3E%3Cpath fill='%23D82800' d='M1 8h14v1h-14zM2 9h1v1h-1zM4 9h9v1h-9zM2 10h1v1h-1zM4 10h9v1h-9zM4 11h8v1h-8zM3 12h9v1h-9zM4 14h7v1h-7zM4 15h7v1h-7z'/%3E%3Cpath fill='%23881400' d='M13 9h1v1h-1zM13 10h1v1h-1zM12 11h1v1h-1zM12 12h1v1h-1zM11 14h1v1h-1zM11 15h1v1h-1z'/%3E%3C/svg%3E">
-<title>Super Beer Pong</title>
+<title>1519 Madison Tailgate</title>
 <style>
 :root{color-scheme:dark;--red:#e4211a;--lbl:"Arial Black","Helvetica Neue",Helvetica,Arial,sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -142,13 +142,13 @@ body.m-landscape #dpad .plate{display:block}
 <div id="sa"></div>
 <div id="app">
   <div id="tv" aria-hidden="true"><div id="brand"><b>SAL &amp; NATE'S</b> 40TH</div><i id="led"></i></div>
-  <div id="scr"><canvas id="screen" width="256" height="240" aria-label="Super Beer Pong game screen" tabindex="-1"></canvas><div id="crt"></div></div>
+  <div id="scr"><canvas id="screen" width="256" height="240" aria-label="1519 Madison Tailgate game screen" tabindex="-1"></canvas><div id="crt"></div></div>
 
   <!-- NES controller (portrait: whole pad below the screen; landscape: halves flank the screen) -->
   <div id="padbg" class="pad po" aria-hidden="true"></div>
   <div id="face" class="pad po" aria-hidden="true"></div>
   <div id="st1" class="stripe pad po"></div><div id="st2" class="stripe pad po"></div><div id="st3" class="stripe pad po"></div><div id="st4" class="stripe pad po"></div>
-  <div id="logo" class="pad">SUPER BEER PONG</div>
+  <div id="logo" class="pad">1519 MADISON TAILGATE</div>
   <div id="well1" class="well pad"></div><div id="well2" class="well pad lo"></div>
   <div id="lSel" class="lbl pad">SELECT</div><div id="lSt" class="lbl pad">START</div>
   <div id="pSel" class="pill pad" data-btn="select"></div><div id="pSt" class="pill pad" data-btn="start"></div>
@@ -176,7 +176,7 @@ body.m-landscape #dpad .plate{display:block}
   <div id="lB" class="lbl pad">B</div><div id="lA" class="lbl pad">A</div>
 
   <div id="top">
-    <div class="tl"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#FCFCFC" d="M6 1h4v1h-4zM5 2h4v1h-4zM10 2h1v1h-1zM5 3h6v1h-6zM6 4h4v1h-4zM7 5h2v1h-2zM1 7h14v1h-14zM3 9h1v3h-1zM3 13h10v1h-10z"/><path fill="#BCBCBC" d="M9 2h1v1h-1zM5 4h1v1h-1zM10 4h1v1h-1zM6 5h1v1h-1zM9 5h1v1h-1z"/><path fill="#D82800" d="M1 8h14v1h-14zM2 9h1v2h-1zM4 9h9v2h-9zM4 11h8v1h-8zM3 12h9v1h-9zM4 14h7v2h-7z"/><path fill="#881400" d="M13 9h1v2h-1zM12 11h1v2h-1zM11 14h1v2h-1z"/></svg>SUPER <span>BEER PONG</span></div>
+    <div class="tl"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#FCFCFC" d="M6 1h4v1h-4zM5 2h4v1h-4zM10 2h1v1h-1zM5 3h6v1h-6zM6 4h4v1h-4zM7 5h2v1h-2zM1 7h14v1h-14zM3 9h1v3h-1zM3 13h10v1h-10z"/><path fill="#BCBCBC" d="M9 2h1v1h-1zM5 4h1v1h-1zM10 4h1v1h-1zM6 5h1v1h-1zM9 5h1v1h-1z"/><path fill="#D82800" d="M1 8h14v1h-14zM2 9h1v2h-1zM4 9h9v2h-9zM4 11h8v1h-8zM3 12h9v1h-9zM4 14h7v2h-7z"/><path fill="#881400" d="M13 9h1v2h-1zM12 11h1v2h-1zM11 14h1v2h-1z"/></svg>1519 MADISON <span>TAILGATE</span></div>
     <button id="bPad" class="ui" type="button" tabindex="-1" data-ui title="Show / hide on-screen controller" aria-label="Toggle on-screen controller"></button>
     <button id="bCrt" class="ui" type="button" tabindex="-1" data-ui title="CRT scanlines" aria-label="Toggle CRT scanlines"></button>
     <button id="bMute" class="ui" type="button" tabindex="-1" data-ui title="Sound on/off (M)" aria-label="Toggle sound"></button>
@@ -467,8 +467,8 @@ body.m-landscape #dpad .plate{display:block}
       PCx($('lB'), bx + sk * 0.36, by + sk * 0.5 + lf * 0.75, lf * 1.2, lf)
       PCx($('lA'), axx + sk * 0.36, ayy + sk * 0.5 + lf * 0.75, lf * 1.2, lf)
     }
-    var lg = $('logo'); lg.textContent = 'SUPER BEER PONG'
-    var lgf = Math.max(10, Math.min(16, rw * 0.085))
+    var lg = $('logo'); lg.textContent = '1519 MADISON TAILGATE'
+    var lgf = Math.max(8, Math.min(12, rw * 0.06))
     lg.style.fontSize = lgf + 'px'; lg.style.textAlign = 'center'
     PCx(lg, rcx, y0 + 22, rw - 8, lgf + 2)
     lg.style.display = (ayy - sk / 2) - (y0 + 22 + lgf) > 6 ? '' : 'none'
@@ -2112,13 +2112,12 @@ body.m-landscape #dpad .plate{display:block}
   var logo = null;
   function buildLogo() {
     var LW = 212, LH = 58, g = new Uint8Array(LW * LH), band = new Uint8Array(LW * LH), i, x, y;
-    // "BEER PONG" 3x glyphs, italic shear, with ping-pong-ball 'O'
-    var str = 'BEER PONG', sc = 3, ox = 4, oy = 22;
+    // "TAILGATE" 3x glyphs, italic shear (game title: 1519 MADISON TAILGATE)
+    var str = 'TAILGATE', sc = 3, ox = 10, oy = 22;
     var cx = ox, ballAt = null;
     for (i = 0; i < str.length; i++) {
       var ch = str.charAt(i);
       if (ch === ' ') { cx += 12; continue; }
-      if (ch === 'O') { ballAt = [cx + 10, oy + 10]; cx += 23; continue; }
       var gl = GL[ch];
       for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl[y] && gl[y].charAt(x) === '#') {
         for (var sy = 0; sy < sc; sy++) for (var sx = 0; sx < sc; sx++) {
@@ -2128,14 +2127,15 @@ body.m-landscape #dpad .plate{display:block}
       }
       cx += 23;
     }
-    // "SUPER" 2x small caps at top-left with bars
-    var str2 = 'SUPER', sc2 = 2, ox2 = 44, oy2 = 3; cx = ox2;
+    // "1519 MADISON" 2x small caps across the top
+    var str2 = '1519 MADISON', sc2 = 2, ox2 = 16, oy2 = 3; cx = ox2;
     for (i = 0; i < str2.length; i++) {
+      if (str2.charAt(i) === ' ') { cx += 8; continue; }
       var gl2 = GL[str2.charAt(i)];
-      for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl2[y].charAt(x) === '#') {
-        for (sy = 0; sy < sc2; sy++) for (sx = 0; sx < sc2; sx++) { var qy = oy2 + y * sc2 + sy, qx = cx + x * sc2 + sx + ((6 - y) >> 1); g[qy * LW + qx] = 2; }
+      for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl2[y] && gl2[y].charAt(x) === '#') {
+        for (sy = 0; sy < sc2; sy++) for (sx = 0; sx < sc2; sx++) { var qy = oy2 + y * sc2 + sy, qx = cx + x * sc2 + sx + ((6 - y) >> 1); if (qx < LW) g[qy * LW + qx] = 2; }
       }
-      cx += 17;
+      cx += 15;
     }
     // extrude: 3px down-right in dark, then outline
     var out = new Uint8Array(LW * LH); // 0 none 1 face 2 superface 3 extrude 4 outline 5 ball
@@ -2168,11 +2168,9 @@ body.m-landscape #dpad .plate{display:block}
       // little red cup to the right of SUPER, ball hopping into it
     }
     // red cup emblem next to SUPER
-    var cupx = 184, cupy = 0;
+    var cupx = 199, cupy = 3;
     paint(c, ['KKKKKKKKKK', 'KWWWWWWWWK', 'KgWWWWWWgK', 'KRLRRRRRDK', '.KRLRRRDK.', '.KRLRRRDK.', '.KDDDDDDK.', '.KRLRRRDK.', '.KRLRRDDK.', '.KDDDDDDK.', '..KKKKKK..'],
       { K: 'black', W: 'white', g: 'lgray', R: 'red', L: 'salmon', D: 'dred' }, cupx, cupy);
-    // dotted arc from SUPER to the cup
-    for (i = 0; i < 6; i++) { var ax = 156 + i * 5, ay = 16 - Math.round(Math.sin((i + 1) / 7 * Math.PI) * 14); if (!o2[ay * LW + ax]) { R(c, ax, ay, 2, 2, 'white'); P1(c, ax + 1, ay + 1, 'lgray'); } }
     // underline bar with stars
     logo = { cv: cv, face: face, w: LW, h: LH };
     return logo;
@@ -2190,7 +2188,7 @@ body.m-landscape #dpad .plate{display:block}
       }
     }
     // sparkle star on the ball
-    var tw = (t >> 3) % 8; if (tw < 3) { var sx2 = lx + 136, sy2 = ly + 26; R(ctx, sx2 - tw, sy2, tw * 2 + 1, 1, 'white'); R(ctx, sx2, sy2 - tw, 1, tw * 2 + 1, 'white'); }
+    var tw = (t >> 3) % 8; if (tw < 3) { var sx2 = lx + 74, sy2 = ly + 21; R(ctx, sx2 - tw, sy2, tw * 2 + 1, 1, 'white'); R(ctx, sx2, sy2 - tw, 1, tw * 2 + 1, 'white'); }
   }
 
   // ------------------------------------------------------------------ init
@@ -2593,10 +2591,10 @@ body.m-landscape #dpad .plate{display:block}
   var CHARS = {
     hero: { logo: 'W', pal: { S: 'skin', s: 'salmon', H: 'maroon', h: 'dbrown', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', v: 'dred', k: 'black', Y: 'white', P: 'tan', p: 'gold', O: 'white', o: 'red' } },
     chad: { logo: 'W', pal: { S: 'skin', s: 'salmon', H: 'maroon', h: 'dbrown', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', v: 'lgray', k: 'black', Y: 'red', P: 'red', p: 'dred', O: 'white', o: 'red' } },
-    tank: { logo: 'N8', wide: 4, pal: { S: 'brown', s: 'maroon', H: 'dbrown', h: 'black', z: 'brown', T: 'green', t: 'dgreen', V: 'green', v: 'dgreen', k: 'black', Y: 'white', P: 'lgray', p: 'gray', O: 'white', o: 'gray', e: 'white' } },
-    sky: { logo: 'bolt', pal: { S: 'skin', s: 'salmon', H: 'blue', h: 'navy', G: 'black', q: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', v: 'dpurple', k: 'black', Y: 'gold', P: 'dgray', p: 'black', O: 'white', o: 'purple' } },
-    brody: { logo: null, pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'red', q: 'gold', g: 'white', T: 'cyan', t: 'blue', V: 'orange', v: 'brown', k: 'brown', Y: 'white', P: 'rose', p: 'dmagenta', O: 'orange', o: 'dbrown' } },
-    kegmaster: { logo: 'K', wide: 4, belly: 1, pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', D: 'brown', d: 'maroon', X: 'gold', x: 'orange', J: 'red', T: 'blue', t: 'dblue', V: 'blue', v: 'dblue', k: 'black', Y: 'gold', P: 'navy', p: 'black', O: 'white', o: 'gold' } }
+    tank: { logo: 'W', wide: 4, pal: { S: 'brown', s: 'maroon', H: 'dbrown', h: 'black', z: 'brown', T: 'green', t: 'dgreen', V: 'green', v: 'dgreen', k: 'black', Y: 'white', P: 'lgray', p: 'gray', O: 'white', o: 'gray', e: 'white' } },
+    sky: { logo: 'W', pal: { S: 'skin', s: 'salmon', H: 'blue', h: 'navy', G: 'black', q: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', v: 'dpurple', k: 'black', Y: 'white', P: 'dgray', p: 'black', O: 'white', o: 'purple' } },
+    brody: { logo: 'W', pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'red', q: 'gold', g: 'white', T: 'cyan', t: 'blue', V: 'orange', v: 'brown', k: 'brown', Y: 'white', P: 'rose', p: 'dmagenta', O: 'orange', o: 'dbrown' } },
+    kegmaster: { logo: 'W', wide: 4, belly: 1, pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', D: 'brown', d: 'maroon', X: 'gold', x: 'orange', J: 'red', T: 'blue', t: 'dblue', V: 'blue', v: 'dblue', k: 'black', Y: 'white', P: 'navy', p: 'black', O: 'white', o: 'gold' } }
   };
   var BASE = { K: 'black', E: 'black', e: 'white', M: 'maroon', B: 'white', b: 'lgray', R: 'red', r: 'white', Q: 'dred' };
   var DARKEN = { S: 'z', V: 'v', T: 't' };
@@ -3115,7 +3113,7 @@ body.m-landscape #dpad .plate{display:block}
         [33, 26, ['s', 's', 'ss', 'ss']],                         // nose shade
         [26, 29, ['..ssssss..', '.ssSSSSss.', 'sKsSSSSsKs', '.ssssssss.']], // broad nose
         [29, 41, ['ssss']],                                       // chin shadow
-        [28, 56, ['.KKKKKK.', 'KKLLLLKK', 'KLLKKLLK', 'KKLLLLKK', 'KLLKKLLK', 'KKLLLLKK', '.KKKKKK.']] // #8
+        [26, 55, ['LL........LL', 'LL........LL', 'LL...LL...LL', 'LL..LLLL..LL', 'LL.LL..LL.LL', 'LLLL....LLLL', '.LL......LL.']] // Wisconsin W
       ]
     },
     p32: {
@@ -3154,12 +3152,14 @@ body.m-landscape #dpad .plate{display:block}
       '.KtTTTTTTTTTTTTT',
       '.KtTTTTTTTTTTTTT'
       ],
-      patches: []
+      patches: [
+        [13, 28, ['L....L', 'L.LL.L', '.L..L.']], // Wisconsin W
+      ]
     }
   };
 
   CH.sky = {
-    pal: { S: 'skin', s: 'salmon', H: 'blue', h: 'navy', n: 'lblue', G: 'black', g: 'white', T: 'purple', t: 'dpurple', P: 'lpurple', L: 'gold' },
+    pal: { S: 'skin', s: 'salmon', H: 'blue', h: 'navy', n: 'lblue', G: 'black', g: 'white', T: 'purple', t: 'dpurple', P: 'lpurple', L: 'white' },
     bg: ['cyan', 'teal'],
     p64: {
       shade: [27, 47, 3],
@@ -3270,7 +3270,7 @@ body.m-landscape #dpad .plate{display:block}
         [22, 28, ['..gg', '.gg', 'gg']], [39, 28, ['..gg', '.gg', 'gg']],
         [33, 34, ['s', 'ss']],                                        // nose shade
         [28, 38, ['.......K', 'KKKKKKK.', '.ssss...']],               // too-cool half smile
-        [33, 55, ['....KKKK', '...KLLK.', '..KLLKKK', '.KLLLLLK', '.KKKLLK.', '...KLK..', '..KLK...', '..KK....']] // bolt
+        [31, 55, ['LL........LL', 'LL........LL', 'LL...LL...LL', 'LL..LLLL..LL', 'LL.LL..LL.LL', 'LLLL....LLLL', '.LL......LL.']] // Wisconsin W
       ]
     },
     p32: {
@@ -3310,6 +3310,7 @@ body.m-landscape #dpad .plate{display:block}
       '.KtTTTTTTTTTTTTT'
       ],
       patches: [
+        [13, 28, ['L....L', 'L.LL.L', '.L..L.']], // Wisconsin W
         [0, 1, ['.............KKKKKK.............',
       '...........KKHHnnHHKK...........',
       '.........KKHhHHHHnnHHKK.........',
@@ -3333,7 +3334,7 @@ body.m-landscape #dpad .plate{display:block}
   };
 
   CH.brody = {
-    pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'black', g: 'white', r: 'red', y: 'gold', T: 'cyan', t: 'teal' },
+    pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'black', g: 'white', r: 'red', y: 'gold', T: 'cyan', t: 'teal', L: 'white' },
     bg: ['rose', 'dmagenta'],
     p64: {
       shade: [27, 47, 3],
@@ -3404,6 +3405,7 @@ body.m-landscape #dpad .plate{display:block}
       '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT'
       ],
       patches: [
+        [26, 55, ['LL........LL', 'LL........LL', 'LL...LL...LL', 'LL..LLLL..LL', 'LL.LL..LL.LL', 'LLLL....LLLL', '.LL......LL.']], // Wisconsin W
         [0, 0, [ // bleached spikes, dark roots
       '...............K.........K............K........K................',
       '..............KHK.......KhK..........KhK......KhK...............',
@@ -3482,6 +3484,7 @@ body.m-landscape #dpad .plate{display:block}
       '.KSSSSsKtTTTTTTT'
       ],
       patches: [
+        [13, 28, ['L....L', 'L.LL.L', '.L..L.']], // Wisconsin W
         [0, 0, [
       '.......KHK.....K.....KhK........',
       '....K..KHHK...KhK...KHhK..K.....',
@@ -3507,7 +3510,7 @@ body.m-landscape #dpad .plate{display:block}
   };
 
   CH.kegmaster = {
-    pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', D: 'brown', d: 'maroon', C: 'gold', c: 'orange', P: 'cream', J: 'red', T: 'blue', t: 'dblue', L: 'gold' },
+    pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', D: 'brown', d: 'maroon', C: 'gold', c: 'orange', P: 'cream', J: 'red', T: 'blue', t: 'dblue', L: 'white' },
     bg: ['purple', 'dpurple'],
     p64: {
       shade: [15, 31, 3],
@@ -3582,7 +3585,7 @@ body.m-landscape #dpad .plate{display:block}
         [21, 24, ['WEEWWW', 'sEEWWs']], [36, 24, ['WEEWWW', 'sEEWWs']], // glare at the hero
         [29, 27, ['..ss', '.sSSs', 'sSSSSs', 'sKSSKs', '.ssss']],     // fat nose
         [26, 36, ['.K..K..K..K.']],                                     // gritted teeth
-        [27, 55, ['LL.....LL', 'LL....LL.', 'LL...LL..', 'LLLLLL...', 'LL..LL...', 'LL...LL..', 'LL....LL.']] // gold K
+        [27, 55, ['LL.....LL', 'LL.....LL', 'LL..L..LL', 'LL.LLL.LL', 'LLLL.LLLL', 'LLL...LLL', '.L.....L.']] // Wisconsin W
       ]
     },
     p32: {
@@ -3622,6 +3625,7 @@ body.m-landscape #dpad .plate{display:block}
       'KtTTTTTTTTTTTTTT'
       ],
       patches: [
+        [13, 28, ['L....L', 'L.LL.L', '.L..L.']], // Wisconsin W
         [15, 15, ['ss', 'KK']],
         [13, 21, ['.K..K.']]
       ]
@@ -7404,7 +7408,7 @@ BP.Scores = (function () {
 
   // ---------------------------------------------------------------- ENDING (beat Round 2's KEGMASTER)
   var CREDITS = [
-    ['SUPER BEER PONG', 'gold'], ['', ''], ['- STAFF -', 'red'], ['', ''],
+    ['1519 MADISON TAILGATE', 'gold'], ['', ''], ['- STAFF -', 'red'], ['', ''],
     ['PRODUCER', 'gold'], ['BIG KEG KENJI', 'white'], ['', ''],
     ['DIRECTOR', 'gold'], ['SPLASH-SAN', 'white'], ['', ''],
     ['PROGRAM', 'gold'], ['MR. RATTLE', 'white'], ['NETWORK NED', 'white'], ['', ''],

@@ -344,10 +344,10 @@
   var CHARS = {
     hero: { logo: 'W', pal: { S: 'skin', s: 'salmon', H: 'maroon', h: 'dbrown', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', v: 'dred', k: 'black', Y: 'white', P: 'tan', p: 'gold', O: 'white', o: 'red' } },
     chad: { logo: 'W', pal: { S: 'skin', s: 'salmon', H: 'maroon', h: 'dbrown', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', v: 'lgray', k: 'black', Y: 'red', P: 'red', p: 'dred', O: 'white', o: 'red' } },
-    tank: { logo: 'N8', wide: 4, pal: { S: 'brown', s: 'maroon', H: 'dbrown', h: 'black', z: 'brown', T: 'green', t: 'dgreen', V: 'green', v: 'dgreen', k: 'black', Y: 'white', P: 'lgray', p: 'gray', O: 'white', o: 'gray', e: 'white' } },
-    sky: { logo: 'bolt', pal: { S: 'skin', s: 'salmon', H: 'blue', h: 'navy', G: 'black', q: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', v: 'dpurple', k: 'black', Y: 'gold', P: 'dgray', p: 'black', O: 'white', o: 'purple' } },
-    brody: { logo: null, pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'red', q: 'gold', g: 'white', T: 'cyan', t: 'blue', V: 'orange', v: 'brown', k: 'brown', Y: 'white', P: 'rose', p: 'dmagenta', O: 'orange', o: 'dbrown' } },
-    kegmaster: { logo: 'K', wide: 4, belly: 1, pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', D: 'brown', d: 'maroon', X: 'gold', x: 'orange', J: 'red', T: 'blue', t: 'dblue', V: 'blue', v: 'dblue', k: 'black', Y: 'gold', P: 'navy', p: 'black', O: 'white', o: 'gold' } }
+    tank: { logo: 'W', wide: 4, pal: { S: 'brown', s: 'maroon', H: 'dbrown', h: 'black', z: 'brown', T: 'green', t: 'dgreen', V: 'green', v: 'dgreen', k: 'black', Y: 'white', P: 'lgray', p: 'gray', O: 'white', o: 'gray', e: 'white' } },
+    sky: { logo: 'W', pal: { S: 'skin', s: 'salmon', H: 'blue', h: 'navy', G: 'black', q: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', v: 'dpurple', k: 'black', Y: 'white', P: 'dgray', p: 'black', O: 'white', o: 'purple' } },
+    brody: { logo: 'W', pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'red', q: 'gold', g: 'white', T: 'cyan', t: 'blue', V: 'orange', v: 'brown', k: 'brown', Y: 'white', P: 'rose', p: 'dmagenta', O: 'orange', o: 'dbrown' } },
+    kegmaster: { logo: 'W', wide: 4, belly: 1, pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', D: 'brown', d: 'maroon', X: 'gold', x: 'orange', J: 'red', T: 'blue', t: 'dblue', V: 'blue', v: 'dblue', k: 'black', Y: 'white', P: 'navy', p: 'black', O: 'white', o: 'gold' } }
   };
   var BASE = { K: 'black', E: 'black', e: 'white', M: 'maroon', B: 'white', b: 'lgray', R: 'red', r: 'white', Q: 'dred' };
   var DARKEN = { S: 'z', V: 'v', T: 't' };

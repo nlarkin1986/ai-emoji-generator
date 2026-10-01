@@ -1943,7 +1943,7 @@
 
   // ---------------------------------------------------------------- ENDING (beat Round 2's KEGMASTER)
   var CREDITS = [
-    ['SUPER BEER PONG', 'gold'], ['', ''], ['- STAFF -', 'red'], ['', ''],
+    ['1519 MADISON TAILGATE', 'gold'], ['', ''], ['- STAFF -', 'red'], ['', ''],
     ['PRODUCER', 'gold'], ['BIG KEG KENJI', 'white'], ['', ''],
     ['DIRECTOR', 'gold'], ['SPLASH-SAN', 'white'], ['', ''],
     ['PROGRAM', 'gold'], ['MR. RATTLE', 'white'], ['NETWORK NED', 'white'], ['', ''],

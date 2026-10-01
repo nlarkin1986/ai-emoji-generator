@@ -1591,13 +1591,12 @@
   var logo = null;
   function buildLogo() {
     var LW = 212, LH = 58, g = new Uint8Array(LW * LH), band = new Uint8Array(LW * LH), i, x, y;
-    // "BEER PONG" 3x glyphs, italic shear, with ping-pong-ball 'O'
-    var str = 'BEER PONG', sc = 3, ox = 4, oy = 22;
+    // "TAILGATE" 3x glyphs, italic shear (game title: 1519 MADISON TAILGATE)
+    var str = 'TAILGATE', sc = 3, ox = 10, oy = 22;
     var cx = ox, ballAt = null;
     for (i = 0; i < str.length; i++) {
       var ch = str.charAt(i);
       if (ch === ' ') { cx += 12; continue; }
-      if (ch === 'O') { ballAt = [cx + 10, oy + 10]; cx += 23; continue; }
       var gl = GL[ch];
       for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl[y] && gl[y].charAt(x) === '#') {
         for (var sy = 0; sy < sc; sy++) for (var sx = 0; sx < sc; sx++) {
@@ -1607,14 +1606,15 @@
       }
       cx += 23;
     }
-    // "SUPER" 2x small caps at top-left with bars
-    var str2 = 'SUPER', sc2 = 2, ox2 = 44, oy2 = 3; cx = ox2;
+    // "1519 MADISON" 2x small caps across the top
+    var str2 = '1519 MADISON', sc2 = 2, ox2 = 16, oy2 = 3; cx = ox2;
     for (i = 0; i < str2.length; i++) {
+      if (str2.charAt(i) === ' ') { cx += 8; continue; }
       var gl2 = GL[str2.charAt(i)];
-      for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl2[y].charAt(x) === '#') {
-        for (sy = 0; sy < sc2; sy++) for (sx = 0; sx < sc2; sx++) { var qy = oy2 + y * sc2 + sy, qx = cx + x * sc2 + sx + ((6 - y) >> 1); g[qy * LW + qx] = 2; }
+      for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl2[y] && gl2[y].charAt(x) === '#') {
+        for (sy = 0; sy < sc2; sy++) for (sx = 0; sx < sc2; sx++) { var qy = oy2 + y * sc2 + sy, qx = cx + x * sc2 + sx + ((6 - y) >> 1); if (qx < LW) g[qy * LW + qx] = 2; }
       }
-      cx += 17;
+      cx += 15;
     }
     // extrude: 3px down-right in dark, then outline
     var out = new Uint8Array(LW * LH); // 0 none 1 face 2 superface 3 extrude 4 outline 5 ball
@@ -1647,11 +1647,9 @@
       // little red cup to the right of SUPER, ball hopping into it
     }
     // red cup emblem next to SUPER
-    var cupx = 184, cupy = 0;
+    var cupx = 199, cupy = 3;
     paint(c, ['KKKKKKKKKK', 'KWWWWWWWWK', 'KgWWWWWWgK', 'KRLRRRRRDK', '.KRLRRRDK.', '.KRLRRRDK.', '.KDDDDDDK.', '.KRLRRRDK.', '.KRLRRDDK.', '.KDDDDDDK.', '..KKKKKK..'],
       { K: 'black', W: 'white', g: 'lgray', R: 'red', L: 'salmon', D: 'dred' }, cupx, cupy);
-    // dotted arc from SUPER to the cup
-    for (i = 0; i < 6; i++) { var ax = 156 + i * 5, ay = 16 - Math.round(Math.sin((i + 1) / 7 * Math.PI) * 14); if (!o2[ay * LW + ax]) { R(c, ax, ay, 2, 2, 'white'); P1(c, ax + 1, ay + 1, 'lgray'); } }
     // underline bar with stars
     logo = { cv: cv, face: face, w: LW, h: LH };
     return logo;
@@ -1669,7 +1667,7 @@
       }
     }
     // sparkle star on the ball
-    var tw = (t >> 3) % 8; if (tw < 3) { var sx2 = lx + 136, sy2 = ly + 26; R(ctx, sx2 - tw, sy2, tw * 2 + 1, 1, 'white'); R(ctx, sx2, sy2 - tw, 1, tw * 2 + 1, 'white'); }
+    var tw = (t >> 3) % 8; if (tw < 3) { var sx2 = lx + 74, sy2 = ly + 21; R(ctx, sx2 - tw, sy2, tw * 2 + 1, 1, 'white'); R(ctx, sx2, sy2 - tw, 1, tw * 2 + 1, 'white'); }
   }
 
   // ------------------------------------------------------------------ init
