@@ -84,7 +84,7 @@ await t("legit chained runs pass: R1 stage 4, R2 ENDING (S == checkpoints), GAUN
   // ENDING: the 10th stage was cleared + checkpointed, then submit right away (S == st)
   let token = await mint(), score = 0, makes = 0, shots = 0
   for (let k = 0; k < 10; k++) { advance(45_000); const r = Math.floor(k / 5) + 1; score += (8 * 1400 + 17000) * r; makes += 8; shots += 12; token = (await cp(token, { round: r, stage: k % 5, score, makes, shots })).body.token }
-  const end = resign({ v: 1, id: "ending-0001", name: "CHAMP", score, stage: 4, round: 2, shots, makes, durationMs: 450_000, ts: Date.now(), token })
+  const end = resign({ v: 1, id: "ending-0001", name: "CHAMP", score: score + 5000 /* champion bonus */, stage: 4, round: 2, shots, makes, durationMs: 450_000, ts: Date.now(), token })
   assert.equal(await reason(end), "ok")
   assert.equal(await reason(await run({ stage: 2, round: 4, dM: 10, dSh: 14, fill: 0.9 })), "ok")
 })
