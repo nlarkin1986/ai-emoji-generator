@@ -574,14 +574,14 @@ body.m-landscape #dpad .plate{display:block}
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'forest', 'dgreen', 'green', 'brown'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'maroon', 'dbrown', 'olive', 'gray', 'dgray', 'navy', 'blue', 'brown', 'green', 'dgreen'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'magenta', 'purple', 'dpurple', 'cyan', 'brown'],
-    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'dpurple', 'dmagenta', 'rose', 'cream', 'dblue', 'blue', 'olive', 'orange', 'dbrown', 'cyan'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'dpurple', 'dmagenta', 'rose', 'cream', 'dblue', 'blue', 'olive', 'orange', 'dbrown', 'cyan', 'brown'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'dgray', 'gray', 'cream', 'navy', 'dblue', 'blue', 'brown']
   ];
   var STAGE_OVR = [
     { maroon: 'dred', olive: 'dgray', orange: 'gold', salmon: 'red', xlgray: 'lgray', lime2: 'gold', yellow: 'gold', blue: 'slate', dbrown: 'dgray', skin2: 'tan', skin3: 'brown', sky: 'white' },
     { orange: 'gold', salmon: 'red', purple: 'blue', magenta: 'blue', sky: 'white', cream: 'white', forest: 'dgreen', slate: 'navy', skin2: 'tan', skin3: 'brown', cyan: 'white', lgreen: 'green' },
     { orange: 'gold', salmon: 'red', teal: 'slate', blue: 'slate', green: 'cyan', dbrown: 'dgray', olive: 'dgray', dmagenta: 'dpurple', skin2: 'tan', skin3: 'dred', sky: 'cyan', maroon: 'dred' },
-    { salmon: 'rose', pblue: 'white', forest: 'dbrown', brown: 'dbrown', gray: 'dbrown', teal: 'blue', pink: 'rose', lgreen: 'cyan', green: 'cyan', yellow: 'gold', skin2: 'orange', skin3: 'dbrown', maroon: 'dred' },
+    { salmon: 'rose', pblue: 'white', forest: 'dbrown', gray: 'dbrown', teal: 'blue', pink: 'rose', lgreen: 'cyan', green: 'cyan', yellow: 'gold', skin2: 'orange', skin3: 'brown', maroon: 'dred' },
     { lblue: 'blue', purple: 'navy', dpurple: 'navy', orange: 'gold', salmon: 'red', green: 'blue', maroon: 'dred', dbrown: 'brown', skin2: 'tan', skin3: 'brown', slate: 'navy', yellow: 'gold' }
   ];
   var subCache = [];
@@ -857,8 +857,9 @@ body.m-landscape #dpad .plate{display:block}
   // ------------------------------------------------------------------ small sprites
   var S = {}; // prerendered sprite canvases
   var CUPMAP = {
-    full: ['WWWWWWWW', 'gWWWWWWg', 'RLRRRRRD', 'RLRRRRRD', '.DDDDDD.', '.RLRRRD.', '.RLRRRD.', '.RLRRRD.', '.RLRRDD.', '.DDDDDD.'],
-    pal: { W: 'white', g: 'lgray', R: 'red', L: 'red', D: 'dred' }
+    // classic red party cup: white rolled rim, black outline, white highlight stripe, dred ridge band, slight taper
+    full: ['gWWWWWWg', 'KWWWWWWK', 'KRLRRRDK', 'KRLRRRDK', 'KDDDDDDK', '.KLRRDK.', '.KLRRDK.', '.KRRRDK.', '.KRRDDK.', '.KKKKKK.'],
+    pal: { W: 'white', g: 'lgray', R: 'red', L: 'white', D: 'dred', K: 'black' }
   };
   var BALL = ['.WWW.', 'WWWWW', 'WWWWg', 'WWWgg', '.ggg.'];
   var FIRE = [ // 8x8 fireball, 2 flicker frames (red/orange/gold + white-hot core)
@@ -1397,118 +1398,175 @@ body.m-landscape #dpad .plate{display:block}
     ctx.drawImage(cv, Math.round(x), Math.round(y));
   }
 
-  // ------------------------------------------------------------------ crowd (background partygoers 12x24)
-  var CROWD = {
-    stand: [
-      '....KKKK....',
-      '...KHHHHK...',
-      '..KHHHHHHK..',
-      '..KHSSSSHK..',
-      '..KSESSESK..',
-      '..KSSSSSSK..',
-      '...KSMMSK...',
-      '...KKSSKK...',
-      '..KTTTTTTK..',
-      '.KTTTTTTTTK.',
-      'KTTTTLLTTTTK',
-      'KTKTTLLTTKTK',
-      'KTKTTTTTTKTK',
-      'KSKTTTTTRRSK',
-      'KSKTTTTTRRK.',
-      '.KKPPPPPPKK.',
-      '..KPPPPPPK..',
-      '..KPPKKPPK..',
-      '..KPPKKPPK..',
-      '..KSSKKSSK..',
-      '..KSSK.KSSK.',
-      '..KSSK.KSSK.',
-      '.KWWWK.KWWWK',
-      '.KKKKK.KKKKK'],
-    cheer: [
-      'KK..KKKK..KK',
-      'SK.KHHHHK.KS',
-      'SKKHHHHHHKKS',
-      'SKKHSSSSHKKS',
-      'SKKSESSESKKS',
-      'TKKSSSSSSKKT',
-      'TTKKSMMSKKTT',
-      '.TTKKMMKKTT.',
-      '..KTTTTTTK..',
-      '..KTTTTTTK..',
-      '..KTTLLTTK..',
-      '..KTTLLTTK..',
-      '..KTTTTTTK..',
-      '..KTTTTTTK..',
-      '..KTTTTTTK..',
-      '.KKPPPPPPKK.',
-      '..KPPPPPPK..',
-      '..KPPKKPPK..',
-      '..KPPKKPPK..',
-      '..KSSKKSSK..',
-      '..KSSK.KSSK.',
-      '..KSSK.KSSK.',
-      '.KWWWK.KWWWK',
-      '.KKKKK.KKKKK'],
-    cup: [
-      '....KKKK.RR.',
-      '...KHHHHKRRK',
-      '..KHHHHHHKSK',
-      '..KHSSSSHKSK',
-      '..KSESSESKSK',
-      '..KSSSSSSKTK',
-      '...KSMMSKTTK',
-      '...KKSSKKTK.',
-      '..KTTTTTTTK.',
-      '.KTTTTTTTK..',
-      'KTTTTLLTTK..',
-      'KTKTTLLTTK..',
-      'KTKTTTTTTK..',
-      'KSKTTTTTTK..',
-      'KSKTTTTTTK..',
-      '.KKPPPPPPKK.',
-      '..KPPPPPPK..',
-      '..KPPKKPPK..',
-      '..KPPKKPPK..',
-      '..KSSKKSSK..',
-      '..KSSK.KSSK.',
-      '..KSSK.KSSK.',
-      '.KWWWK.KWWWK',
-      '.KKKKK.KKKKK']
+  // ------------------------------------------------------------------ crowd (background partygoers 20x32)
+  // Hand-authored pixel maps. A partygoer = body frame (20 wide, arms) + head/hair style (12 wide, stamped
+  // at col 4). Head is 10x10 with 1-px eyes; the table (y 182..200) hides everything below the waist.
+  // K outline, S skin, T shirt, t shirt shade, A sleeve/arm (shirt or skin for tank tops), L chest print,
+  // P pants, H hair, C cap, c cap brim, W white, R cup red, E eye, M mouth, G shades.
+  var CB = { // body halves are mirrored: each pose lists the LEFT 10 columns; right side = mirror of a pose
+    idle: [
+      '..........', '..........', '..........', '..........', '..........', '..........', '..........',
+      '..........', '..........', '..........', '..........', '..........', '..........', '..........',
+      '........KS',
+      '...KKTTTTS',
+      '..KAATTTTT',
+      '..KAAKTTTT',
+      '..KAAKTTTT',
+      '..KSSKTTTL',
+      '..KSSKTTTL',
+      '..KSSKTTTT',
+      '..KSSKTTTT',
+      '..KSSKTTTT',
+      '..KSSKPPPP',
+      '...KKKPPPP',
+      '.....KPPPP',
+      '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK'],
+    up: [ // arm straight up, fist above the head
+      '..........',
+      '.KKK......',
+      'KSSSK.....',
+      'KSSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KAAK.....',
+      '.KAAK.....',
+      '.KAAAK....',
+      '..KAAAK.KS',
+      '...KAAATTS',
+      '....KTTTTT',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KTTTL',
+      '.....KTTTL',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KPPPP',
+      '.....KPPPP',
+      '.....KPPPP',
+      '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK'],
+    cup: [ // raised red cup at head height ("cheers!")
+      '..........',
+      '..........',
+      '..........',
+      'WWWWW.....',
+      'KRRRK.....',
+      'KRRRK.....',
+      'KSSSK.....',
+      'KSSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KAAK.....',
+      '.KAAK.....',
+      '.KAAAK....',
+      '..KAAAK.KS',
+      '...KAAATTS',
+      '....KTTTTT',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KTTTL',
+      '.....KTTTL',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KPPPP',
+      '.....KPPPP',
+      '.....KPPPP',
+      '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK']
   };
+  var CH = { // head + hair styles, 12 wide, rows 0..15 (row 4 = top of a plain head)
+    short: ['', '', '', '',
+      '...KKKKKK...', '..KHHHHHHK..', '.KHHHHHHHHK.', '.KHHHHHHHHK.', '.KHSSSSSSHK.',
+      'KSSSESSESSSK', '.KSSSSSSSSK.', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    long: ['', '', '', '',
+      '...KKKKKK...', '..KHHHHHHK..', '.KHHHHHHHHK.', 'KHHHHHHHHHHK', 'KHHSSSSSSHHK',
+      'KHSSESSESSHK', 'KHSSSSSSSSHK', 'KHSSSMMSSSHK', 'KHHKSSSSKHHK', 'KHHHKKKKHHHK', 'KHHK....KHHK', '.KK......KK.'],
+    cap: ['', '', '', '',
+      '...KKKKKK...', '..KCCCCCCK..', '.KCCCWWCCCK.', '.KCCCCCCCCK.', 'KccccccccccK',
+      'KSSSESSESSSK', '.KSSSSSSSSK.', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    beanie: ['', '', '',
+      '....KKKK....', '...KCCCCK...', '..KCCCCCCK..', '.KCCCCCCCCK.', '.KccccccccK.', '.KHSSSSSSHK.',
+      'KSSSESSESSSK', '.KSSSSSSSSK.', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    afro: ['',
+      '...KKKKKK...', '..KHHHHHHK..', '.KHHHHHHHHK.', 'KHHHHHHHHHHK', 'KHHHHHHHHHHK', 'KHHHHHHHHHHK', 'KHHHHHHHHHHK', 'KHHSSSSSSHHK',
+      'KHSSESSESSHK', '.KSSSSSSSSK.', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    bun: ['',
+      '....KKKK....', '...KHHHHK...', '...KHHHHK...', '...KKKKKK...', '..KHHHHHHK..', '.KHHHHHHHHK.', '.KHHHHHHHHK.', 'KHHHSSSSHHHK',
+      'KHSSESSESSHK', 'KHSSSSSSSSHK', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    spiky: ['', '',
+      '..K..KK..K..', '.KHKKHHKKHK.', '.KHHHHHHHHK.', '.KHHHHHHHHK.', '.KHHHHHHHHK.', '.KHHHHHHHHK.', '.KHSSSSSSHK.',
+      'KSSSESSESSSK', '.KSSSSSSSSK.', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    bald: ['', '', '', '',
+      '...KKKKKK...', '..KSSWWSSK..', '.KSSSSSSSSK.', '.KSSSSSSSSK.', '.KSSSSSSSSK.',
+      'KSSSESSESSSK', '.KHSSSSSSHK.', '.KHHSMMSHHK.', '..KHHHHHHK..', '...KKKKKK...']
+  };
+  var SHADES_ROW = 'KSKWKKKKWKSK';
+  function mirrorRow(r) { return r.split('').reverse().join(''); }
   var crowdCache = {};
+  // v: [style, hair, skin, shirt, print, pants, cap, flags]  flags: 's' shades, 'k' tank top (bare arms)
   function crowdSprite(v, frame, st) {
-    var key = v.join(',') + frame + st; if (crowdCache[key]) return crowdCache[key];
-    var map = { K: 'black', E: 'black', M: 'dred', R: 'red', H: v[0], S: v[1], T: v[2], L: v[3], P: v[4], W: 'white' };
-    return (crowdCache[key] = spr(CROWD[frame], map, false));
+    var key = v.join(',') + '|' + frame + '|' + st; if (crowdCache[key]) return crowdCache[key];
+    var L = CB[frame === 'cheer' || frame === 'pumpL' ? 'up' : 'idle'];
+    var Rt = CB[frame === 'cheer' || frame === 'wave' ? 'up' : frame === 'cup' ? 'cup' : 'idle'];
+    var rows = [], y;
+    for (y = 0; y < 32; y++) rows.push((L[y] + mirrorRow(Rt[y])).split(''));
+    // body shading: right edge of the torso one shade darker
+    for (y = 15; y < 24; y++) if (rows[y][13] === 'T') rows[y][13] = 't';
+    var hs = CH[v[0]] || CH.short, open = frame === 'cheer' || frame === 'pumpL' || frame === 'wave';
+    for (y = 0; y < hs.length; y++) {
+      var hr = hs[y]; if (y === 9 && v[7] && v[7].indexOf('s') >= 0) hr = SHADES_ROW;
+      for (var x = 0; x < hr.length; x++) { var ch = hr.charAt(x); if (ch !== '.') rows[y][x + 4] = (open && ch === 'M') ? 'K' : ch; }
+    }
+    var tank = v[7] && v[7].indexOf('k') >= 0;
+    var map = { K: 'black', E: 'black', M: 'dred', S: v[2], T: v[3], t: CSHADE[v[3]] || v[3], A: tank ? v[2] : v[3], L: v[4], P: v[5],
+      H: v[1], C: v[6] || 'red', c: CSHADE[v[6] || 'red'] || 'black', W: 'white', R: 'red', G: 'black' };
+    return (crowdCache[key] = spr(rows.map(function (r) { return r.join(''); }), map, false));
   }
-  // variant: [hair, skin, shirt, logo, pants]
+  var CSHADE = { white: 'lgray', lgray: 'gray', red: 'dred', gold: 'brown', green: 'dgreen', blue: 'dblue', slate: 'navy',
+    cyan: 'blue', magenta: 'purple', purple: 'dpurple', orange: 'brown', rose: 'dmagenta', gray: 'dgray', navy: 'black', olive: 'dbrown', cream: 'gold' };
+  // per stage: [centerX, dy, [style, hair, skin, shirt, print, pants, cap, flags], role]  role: 0 plain, 1 drinker
+  // 5-6 per stage between the racks (10-cup racks reach x 72 / 184) so cups and splashes always read against the backdrop
   var CROWDS = [
-    [[46, ['maroon', 'skin', 'red', 'white', 'slate']], [66, ['yellow', 'skin', 'white', 'red', 'blue']], [88, ['dbrown', 'skin3', 'red', 'white', 'tan']],
-      [112, ['orange', 'skin', 'white', 'red', 'slate']], [146, ['black', 'skin2', 'red', 'white', 'dgray']], [168, ['cream', 'skin', 'lgray', 'red', 'blue']],
-      [190, ['maroon', 'skin', 'red', 'red', 'tan']], [212, ['dbrown', 'skin3', 'white', 'red', 'slate']]],
-    [[44, ['dbrown', 'skin', 'blue', 'white', 'tan']], [64, ['yellow', 'skin', 'green', 'white', 'slate']], [90, ['black', 'skin3', 'white', 'blue', 'dgray']],
-      [116, ['maroon', 'skin', 'orange', 'white', 'blue']], [144, ['cream', 'skin', 'lgray', 'green', 'slate']], [170, ['dbrown', 'skin2', 'red', 'white', 'tan']],
-      [196, ['black', 'skin', 'purple', 'white', 'blue']]],
-    [[48, ['black', 'skin', 'magenta', 'white', 'dgray']], [72, ['cream', 'skin', 'cyan', 'navy', 'slate']], [100, ['maroon', 'skin2', 'white', 'purple', 'dgray']],
-      [130, ['dbrown', 'skin', 'lgray', 'red', 'blue']], [158, ['yellow', 'skin', 'purple', 'white', 'dgray']], [184, ['black', 'skin3', 'blue', 'white', 'slate']],
-      [208, ['orange', 'skin', 'green', 'white', 'dgray']]],
-    [[86, ['cream', 'skin2', 'pink', 'white', 'cyan']], [108, ['dbrown', 'skin3', 'yellow', 'red', 'blue']], [132, ['yellow', 'skin', 'cyan', 'white', 'pink']],
-      [156, ['maroon', 'skin2', 'orange', 'white', 'teal']], [180, ['black', 'skin', 'lgreen', 'white', 'blue']], [204, ['cream', 'skin2', 'white', 'cyan', 'orange']]],
-    [[44, ['black', 'skin', 'gold', 'blue', 'dgray']], [66, ['maroon', 'skin3', 'blue', 'gold', 'slate']], [90, ['yellow', 'skin', 'red', 'white', 'dgray']],
-      [114, ['dbrown', 'skin2', 'gold', 'red', 'blue']], [142, ['cream', 'skin', 'white', 'blue', 'slate']], [166, ['black', 'skin3', 'red', 'gold', 'dgray']],
-      [190, ['orange', 'skin', 'blue', 'white', 'slate']], [212, ['maroon', 'skin', 'gold', 'blue', 'dgray']]]
+    [[78, 0, ['cap', 'brown', 'skin', 'red', 'white', 'navy', 'white'], 1], [98, 1, ['long', 'gold', 'tan', 'white', 'red', 'slate'], 0],
+      [118, -1, ['afro', 'black', 'brown', 'red', 'white', 'dgray'], 0], [138, 1, ['bun', 'black', 'tan', 'lgray', 'red', 'navy'], 1],
+      [158, 0, ['spiky', 'gold', 'skin', 'white', 'red', 'navy'], 1], [178, -1, ['beanie', 'brown', 'tan', 'slate', 'white', 'dgray', 'red'], 0]],
+    [[78, 0, ['short', 'dbrown', 'skin', 'blue', 'white', 'navy'], 1], [98, 1, ['long', 'gold', 'skin', 'red', 'white', 'navy'], 0],
+      [118, -1, ['cap', 'black', 'brown', 'white', 'blue', 'dgray', 'green'], 1], [138, 0, ['bald', 'dbrown', 'tan', 'green', 'white', 'navy', null, 's'], 0],
+      [158, 1, ['bun', 'maroon', 'skin', 'gold', 'red', 'navy'], 0], [178, -1, ['afro', 'dbrown', 'brown', 'red', 'white', 'navy'], 1]],
+    [[78, 1, ['long', 'black', 'tan', 'magenta', 'white', 'navy'], 0], [98, -1, ['cap', 'brown', 'skin', 'white', 'purple', 'dgray', 'purple'], 1],
+      [118, 0, ['afro', 'black', 'brown', 'cyan', 'navy', 'navy'], 0], [138, 1, ['spiky', 'gold', 'skin', 'purple', 'white', 'dgray', null, 's'], 1],
+      [158, 0, ['bun', 'brown', 'tan', 'white', 'magenta', 'navy'], 0], [178, -1, ['short', 'black', 'skin', 'red', 'white', 'dgray'], 1]],
+    [[102, 0, ['long', 'gold', 'tan', 'rose', 'white', 'blue', null, 'k'], 0], [122, -1, ['spiky', 'gold', 'skin', 'cyan', 'white', 'dblue', null, 'sk'], 1],
+      [142, 1, ['bun', 'dbrown', 'orange', 'white', 'rose', 'blue'], 0], [162, 0, ['cap', 'dbrown', 'tan', 'orange', 'white', 'dblue', 'cyan'], 1],
+      [182, -1, ['afro', 'black', 'brown', 'gold', 'red', 'blue', null, 'k'], 0]],
+    [[88, 0, ['cap', 'black', 'skin', 'gold', 'blue', 'navy', 'blue'], 1], [108, 1, ['long', 'brown', 'tan', 'blue', 'gold', 'navy'], 0],
+      [128, -1, ['afro', 'black', 'brown', 'red', 'white', 'navy'], 1], [148, 0, ['spiky', 'gold', 'skin', 'white', 'blue', 'navy', null, 's'], 0],
+      [168, 1, ['bald', 'black', 'tan', 'blue', 'gold', 'navy'], 1]]
   ];
+  var CROWD_TOP = 157; // sprite row 0; row 25 (= y 182) is the table's far edge, so legs never show
+  var JUMP = [0, -2, -3, -4, -4, -3, -2, 0], FR_I = { idle: 0, cheer: 1, pumpL: 2, wave: 3, cup: 4 };
   function drawCrowd(ctx, stage, t, ex) {
     var list = CROWDS[stage] || CROWDS[0];
     for (var i = 0; i < list.length; i++) {
-      var m = list[i], ph = (t + i * 23) | 0, fr = 'stand', dy = 0;
-      if (i % 3 === 1) fr = 'cup';
-      if (ex > 0.05) {
-        var lively = ((i * 5 + (ph >> 5)) % 4) < Math.ceil(ex * 4);
-        if (lively) { fr = ((ph >> 3) & 1) ? 'cheer' : (i % 3 === 1 ? 'cup' : 'stand'); var j = (ph >> 2) % 6; dy = -Math.round([0, 2, 3, 3, 2, 0][j] * Math.min(1, ex * 1.4)); }
-      } else if (((ph >> 5) & 3) === 0) dy = -1;
-      if (((ph >> 6) % 5) === 0 && ex <= 0.05 && i % 2 === 0) fr = 'cup';
-      ctx.drawImage(crowdSprite(m[1], fr, stage), m[0] - 6, 167 + dy);
+      var m = list[i], ph = (t + i * 37) | 0, fr = 'idle', dy = 0, drinker = m[3] === 1;
+      var lively = ex > 0.05 && ((i * 3 + (ph >> 6)) % 5) < Math.ceil(ex * 5);
+      if (lively) {
+        var beat = (ph >> 4) & 3; // 4 beats of 16 ticks: arms-up / pump / arms-up / cup or wave
+        fr = beat === 1 ? (i & 1 ? 'pumpL' : 'wave') : beat === 3 ? (drinker ? 'cup' : 'idle') : 'cheer';
+        if (ex > 0.5) dy = JUMP[(ph >> 2) & 7] * (i & 1 ? 1 : 0) + (i & 1 ? 0 : -((ph >> 3) & 1));
+        else dy = -((ph >> 3) & 1);
+      } else {
+        var slow = (ph >> 5) & 7;
+        if (drinker && (slow === 2 || slow === 3)) fr = 'cup';
+        if (slow === 5) dy = -1;
+      }
+      ctx.drawImage(m[4 + FR_I[fr]] || (m[4 + FR_I[fr]] = crowdSprite(m[2], fr, stage)), m[0] - 10, CROWD_TOP + m[1] + dy);
     }
   }
 
@@ -1535,33 +1593,35 @@ body.m-landscape #dpad .plate{display:block}
     R(c, x + (w >> 1), y, 1, h, lit ? 'orange' : 'black'); R(c, x, y + (h >> 1), w, 1, lit ? 'orange' : 'black');
     R(c, x - 2, y + h + 1, w + 4, 2, frame || 'lgray');
   }
-  function treeBlob(c, cx, cy, r, base, hi, dark) {
-    disc(c, cx, cy, r, base);
-    // highlight upper-left dithered
-    for (var y = -r; y < 0; y++) for (var x = -r; x < 0; x++) if (x * x + y * y < r * r * 0.8 && ((x + y + cx + cy) & 1) && (x + y) < -r * 0.6) P1(c, cx + x, cy + y, hi);
-    // leafy edge bumps
-    for (var a = 0; a < 12; a++) { var an = a / 12 * Math.PI * 2, px = Math.round(cx + Math.cos(an) * r), py = Math.round(cy + Math.sin(an) * r); disc(c, px, py, 2, base); }
-    if (dark) for (var b = 0; b < r; b += 3) P1(c, cx + ((b * 7) % r) - (r >> 1), cy + (r >> 2) + (b % 5), dark);
+  // foliage: overlapping round lobes, each with a crisp light crescent on its upper-left (no dither noise)
+  function lobe(c, cx, cy, r, base, hi) { disc(c, cx, cy, r, base); if (hi && r > 3) { disc(c, cx - 1, cy - 1, r - 2, hi); disc(c, cx + 1, cy + 1, r - 2, base); } }
+  function canopy(c, lobes, base, hi) {
+    var L = lobes.slice().sort(function (a, b) { return a[1] - b[1]; });
+    L.forEach(function (l) { // silhouette with leafy bumps round the rim
+      disc(c, l[0], l[1], l[2], base);
+      for (var a = 0; a < 9; a++) { var an = (a / 9 + l[0] * 0.013) * 6.283; disc(c, Math.round(l[0] + Math.cos(an) * l[2]), Math.round(l[1] + Math.sin(an) * l[2]), 2, base); }
+    });
+    if (hi) L.forEach(function (l) { if (l[2] > 4) { disc(c, l[0] - 1, l[1] - 1, l[2] - 3, hi); disc(c, l[0] + 1, l[1] + 1, l[2] - 3, base); } });
   }
-  function bush(c, x, y, w, h, base, hi) {
-    for (var i = 0; i < w; i += 7) disc(c, x + i + 3, y + (h >> 1) + ((i * 3) % 4) - 1, (h >> 1) + ((i * 5) % 3), base);
-    for (var j = 0; j < w; j += 7) { P1(c, x + j + 2, y + 3 + (j % 3), hi); P1(c, x + j + 4, y + 2 + (j % 2), hi); P1(c, x + j + 1, y + 5, hi); }
-  }
-  function grassBand(c, y0, y1, base, tuft, seed) {
-    R(c, 0, y0, 256, y1 - y0, base);
-    var r = rng(seed);
-    for (var i = 0; i < 260; i++) { var x = (r() * 256) | 0, y = (y0 + 2 + r() * (y1 - y0 - 3)) | 0; P1(c, x, y, tuft); P1(c, x + 1, y - 1, tuft); P1(c, x + 2, y, tuft); }
+  function hedge(c, x0, x1, y, r, base, hi) { var L = [], k = 0; for (var x = x0 + r; x <= x1 - r; x += r + 3, k++) L.push([x, y + [0, -2, 1, -1][k & 3], r]); canopy(c, L, base, hi); }
+  var TUFTS = [[3, 2], [21, 4], [12, 7], [28, 10], [6, 13], [17, 14]];
+  function grassBand(c, y0, y1, base, tuft, tuft2) { // 32x16 metatile of grass tufts, tiled like NES BG tiles
+    R(c, 0, y0, W, y1 - y0, base);
+    for (var ty = y0; ty < y1; ty += 16) for (var tx = 0; tx < W; tx += 32) for (var i = 0; i < TUFTS.length; i++) {
+      var x = tx + TUFTS[i][0], y = ty + TUFTS[i][1], col = (i % 3 === 1) && tuft2 ? tuft2 : tuft; if (y + 1 >= y1) continue;
+      P1(c, x, y + 1, col); P1(c, x + 1, y, col); P1(c, x + 2, y + 1, col);
+    }
   }
   function lyingCup(c, x, y) { paint(c, ['.WRRRRD', 'WWRLRRD', 'WWRRRRD', '.WRRRD.'], { W: 'white', R: 'red', L: 'white', D: 'dred' }, x, y); }
 
   function bgBackyard() {
     var cv = mk(W, H), c = cv._x, i;
     R(c, 0, 0, W, H, 'navy');
-    dith(c, 0, 0, W, 34, 'black'); R(c, 0, 0, W, 26, 'black'); dith4(c, 0, 34, W, 10, 'black');
+    R(c, 0, 0, W, 30, 'black'); dith(c, 0, 30, W, 4, 'black');
     STAR_SETS[0] = stars(c, 11, 120, 26, 120, function (x, y) { return (x > 52 && x < 204 && y > 24) || (x < 66 && y > 30) || (x > 196 && y > 52); });
     moonCrescent(c, 226, 40, 8, 'navy');
     // far trees right
-    treeBlob(c, 214, 82, 16, 'forest', 'dgreen', 'black'); treeBlob(c, 244, 70, 16, 'forest', 'dgreen', 'black'); treeBlob(c, 232, 100, 18, 'forest', 'dgreen');
+    canopy(c, [[212, 80, 10], [228, 68, 11], [246, 66, 11], [222, 92, 11], [242, 86, 12], [256, 96, 10]], 'forest', 'dgreen');
     // neighbor house (right)
     c.fillStyle = C('dgray');
     for (i = 0; i < 26; i++) c.fillRect(226 - i * 2, 74 + i, 4 + i * 4, 1);
@@ -1570,8 +1630,9 @@ body.m-landscape #dpad .plate{display:block}
     c.fillStyle = C('lgray'); for (i = 0; i < 26; i++) { c.fillRect(226 - i * 2, 74 + i, 2, 1); c.fillRect(228 + i * 2, 74 + i, 2, 1); }
     window4(c, 222, 108, 10, 14, true, 'gray'); window4(c, 240, 108, 10, 14, false, 'gray');
     // left trees (big dark clump)
-    treeBlob(c, 18, 66, 20, 'forest', 'dgreen', 'black'); treeBlob(c, 44, 52, 16, 'forest', 'dgreen', 'black');
-    treeBlob(c, 8, 104, 22, 'forest', 'dgreen', 'black'); treeBlob(c, 40, 90, 18, 'forest', 'dgreen', 'black'); treeBlob(c, 30, 128, 20, 'forest', 'dgreen', 'black');
+    disc(c, 22, 90, 34, 'forest'); disc(c, 30, 124, 26, 'forest');
+    canopy(c, [[12, 46, 11], [32, 40, 10], [50, 52, 9], [2, 66, 11], [22, 62, 11], [44, 72, 10], [8, 86, 11], [30, 84, 11], [52, 94, 9],
+      [14, 106, 11], [38, 104, 10], [4, 124, 10], [26, 124, 11], [50, 118, 9], [16, 140, 10], [40, 138, 10]], 'forest', 'dgreen');
     // ---- main house
     var hx0 = 66, hx1 = 190, eave = 56, peak = 28;
     // roof (gable) dark shingles
@@ -1615,20 +1676,18 @@ body.m-landscape #dpad .plate{display:block}
     // steps
     R(c, 148, 146, 26, 2, 'lgray'); R(c, 146, 148, 30, 2, 'gray'); R(c, 144, 150, 34, 2, 'lgray'); R(c, 144, 152, 34, 1, 'dgray');
     // ground/lawn
-    grassBand(c, 150, 232, 'dgreen', 'green', 5);
-    dith4(c, 0, 150, 256, 6, 'forest');
-    // hedges in front of house
-    bush(c, 44, 128, 98, 26, 'forest', 'dgreen');
-    bush(c, 186, 130, 30, 24, 'forest', 'dgreen');
-    bush(c, 66, 138, 72, 18, 'forest', 'green');
+    grassBand(c, 150, 230, 'dgreen', 'forest', 'green');
+    R(c, 0, 150, W, 2, 'forest');
+    // hedges in front of house (back row dark, front row a step lighter)
+    hedge(c, 40, 148, 138, 8, 'forest', 'dgreen'); hedge(c, 184, 222, 140, 8, 'forest', 'dgreen');
+    hedge(c, 64, 140, 148, 6, 'dgreen', null);
     // walkway to steps
-    R(c, 150, 153, 22, 8, 'gray'); dith4(c, 150, 153, 22, 8, 'lgray');
+    R(c, 150, 153, 22, 8, 'gray'); R(c, 150, 153, 22, 1, 'lgray'); R(c, 160, 154, 1, 7, 'dgray');
     // dropped cups in lawn under the table
     lyingCup(c, 70, 214); lyingCup(c, 150, 218); lyingCup(c, 196, 212);
     // sidewalk
     R(c, 0, 230, W, 10, 'gray'); R(c, 0, 230, W, 1, 'lgray'); R(c, 0, 231, W, 1, 'xlgray');
     for (i = 0; i < W; i += 32) R(c, i + 12, 232, 1, 8, 'dgray');
-    dith4(c, 0, 233, W, 7, 'dgray', 2);
     return cv;
   }
 
@@ -1643,18 +1702,13 @@ body.m-landscape #dpad .plate{display:block}
     R(c, 0, 33, W, 3, 'lgray'); R(c, 0, 35, W, 1, 'gray');
     for (x = 30; x < W; x += 64) R(c, x, 32, 3, 5, 'gray');
     // brick wall
-    for (y = 39; y < 170; y += 5) {
-      var off = ((y / 5) | 0) % 2 ? 6 : 0;
-      for (x = -off; x < W; x += 12) {
-        R(c, x, y, 11, 4, 'maroon');
-        var hsh = (x * 7 + y * 13) & 15;
-        if (hsh === 3) R(c, x, y, 10, 1, 'dred');
-        else if (hsh === 9 || hsh === 12) R(c, x, y, 11, 4, 'dbrown');
-        else if (hsh === 5) dith(c, x, y, 11, 4, 'dbrown');
-      }
+    // brick wall: one clean 16x8 brick tile (2 courses, half-brick offset), dbrown mortar, lit top edge
+    R(c, 0, 39, W, 131, 'dbrown');
+    for (y = 40; y < 170; y += 4) {
+      var off = ((y - 40) >> 2) & 1 ? 8 : 0;
+      for (x = -off, i = 0; x < W; x += 16, i++) { var dk = ((i + (y >> 2) * 3) % 7) === 0; R(c, x, y, 15, 3, dk ? 'dbrown' : 'maroon'); R(c, x, y, 3, 1, dk ? 'maroon' : 'dred'); }
     }
-    dith(c, 0, 39, W, 22, 'black'); dith4(c, 0, 61, W, 109, 'black', 1);
-    dith(c, 0, 39, 16, 131, 'black'); dith(c, 240, 39, 16, 131, 'black');
+    R(c, 0, 39, W, 2, 'black');
     // small high window showing night + moon
     R(c, 108, 44, 40, 20, 'lgray'); R(c, 110, 46, 36, 16, 'navy'); dith(c, 110, 46, 36, 4, 'black');
     P1(c, 116, 50, 'white'); P1(c, 132, 48, 'lgray'); P1(c, 140, 53, 'white');
@@ -1670,11 +1724,11 @@ body.m-landscape #dpad .plate{display:block}
     R(c, 176, 64, 2, 18, 'sky'); R(c, 174, 60, 2, 28, 'lgray'); P1(c, 174, 59, 'gold');
     text(c, 'PONG', 182, 66, 'white');
     // poster
-    R(c, 64, 60, 26, 34, 'cream'); R(c, 66, 62, 22, 30, 'magenta'); disc(c, 77, 74, 6, 'yellow'); R(c, 68, 84, 18, 2, 'white'); R(c, 70, 88, 14, 1, 'white');
+    R(c, 64, 60, 26, 34, 'lgray'); R(c, 66, 62, 22, 30, 'navy'); R(c, 70, 70, 12, 16, 'black'); R(c, 71, 71, 10, 14, 'gold'); R(c, 71, 71, 10, 3, 'white'); R(c, 73, 75, 1, 9, 'olive');
+    R(c, 81, 74, 3, 1, 'black'); R(c, 83, 74, 1, 8, 'black'); R(c, 81, 81, 3, 1, 'black'); R(c, 70, 68, 12, 3, 'white'); P1(c, 69, 70, 'white'); P1(c, 75, 67, 'white'); R(c, 68, 88, 18, 2, 'red');
     // couch (behind crowd)
     R(c, 39, 137, 80, 1, 'black'); R(c, 38, 138, 82, 34, 'black'); R(c, 39, 138, 80, 22, 'olive'); R(c, 40, 138, 78, 1, 'gold');
     for (x = 65; x < 119; x += 26) R(c, x, 139, 1, 20, 'dbrown');
-    dith4(c, 39, 141, 80, 18, 'dbrown');
     R(c, 39, 160, 80, 10, 'olive'); R(c, 39, 160, 80, 1, 'gold'); R(c, 65, 160, 1, 10, 'dbrown'); R(c, 92, 160, 1, 10, 'dbrown');
     R(c, 31, 148, 11, 24, 'black'); R(c, 32, 149, 9, 22, 'olive'); R(c, 32, 149, 9, 1, 'gold'); R(c, 40, 150, 1, 21, 'dbrown');
     R(c, 116, 148, 11, 24, 'black'); R(c, 117, 149, 9, 22, 'olive'); R(c, 117, 149, 9, 1, 'gold'); R(c, 117, 150, 1, 21, 'dbrown');
@@ -1688,12 +1742,12 @@ body.m-landscape #dpad .plate{display:block}
     R(c, 205, 120, 4, 5, 'black'); R(c, 206, 118, 2, 3, 'red');
     // concrete floor
     R(c, 0, 170, W, 70, 'dgray');
-    dith4(c, 0, 170, W, 70, 'gray', 0);
-    R(c, 0, 170, W, 1, 'gray');
-    for (x = 0; x < W; x += 64) R(c, x, 171, 1, 69, 'black');
-    R(c, 0, 205, W, 1, 'black');
-    // rug under table
-    R(c, 26, 212, 204, 16, 'dred'); R(c, 28, 214, 200, 12, 'red'); dith4(c, 28, 214, 200, 12, 'dred'); R(c, 26, 212, 204, 1, 'gold'); R(c, 26, 227, 204, 1, 'gold');
+    R(c, 0, 170, W, 1, 'gray'); R(c, 0, 171, W, 1, 'black');
+    for (x = 0; x < W; x += 64) { R(c, x, 172, 1, 68, 'black'); R(c, x + 1, 172, 1, 68, 'gray'); }
+    R(c, 0, 204, W, 1, 'black'); R(c, 0, 205, W, 1, 'gray');
+    // rug under table: red field, dred border, gold trim + diamond row
+    R(c, 26, 211, 204, 18, 'gold'); R(c, 27, 212, 202, 16, 'dred'); R(c, 29, 214, 198, 12, 'red');
+    for (x = 36; x < 222; x += 12) { R(c, x, 219, 3, 1, 'gold'); P1(c, x + 1, 218, 'gold'); P1(c, x + 1, 220, 'gold'); }
     lyingCup(c, 90, 214); lyingCup(c, 172, 220);
     // string light wire
     for (x = 0; x < W; x++) P1(c, x, 44 + Math.round(Math.sin((x % 64) / 64 * Math.PI) * 8), 'black');
@@ -1721,7 +1775,7 @@ body.m-landscape #dpad .plate{display:block}
       var b = B[i]; R(c, b[0], 160 - b[2], b[1], b[2], 'black');
       R(c, b[0], 160 - b[2], b[1], 1, 'dgray');
       for (y = 160 - b[2] + 4; y < 156; y += 5) for (x = b[0] + 2; x < b[0] + b[1] - 2; x += 4) {
-        var q = r(); if (q < 0.38) R(c, x, y, 2, 2, q < 0.1 ? 'cream' : 'yellow'); else if (q < 0.45) R(c, x, y, 2, 2, 'slate');
+        var q = r(); if (q < 0.26) R(c, x, y, 2, 2, q < 0.05 ? 'cream' : 'gold'); else if (q < 0.4) R(c, x, y, 2, 2, 'slate');
       }
     }
     // radio tower on tallest building (x 92..122)
@@ -1737,8 +1791,9 @@ body.m-landscape #dpad .plate{display:block}
     // roof parapet + floor
     R(c, 0, 160, W, 14, 'gray'); R(c, 0, 160, W, 2, 'lgray'); R(c, 0, 172, W, 2, 'dgray');
     for (x = 0; x < W; x += 16) R(c, x, 162, 1, 10, 'dgray');
-    R(c, 0, 174, W, 66, 'dgray'); dith4(c, 0, 174, W, 66, 'black');
-    for (y = 186; y < 240; y += 14) R(c, 0, y, W, 1, 'black');
+    R(c, 0, 174, W, 66, 'dgray');
+    for (y = 186, i = 0; y < 240; y += 14, i++) { R(c, 0, y, W, 1, 'black'); for (x = (i & 1) * 24; x < W; x += 48) R(c, x, y - 13, 1, 13, 'black'); }
+    R(c, 0, 174, W, 1, 'black');
     // AC unit + vent
     R(c, 6, 140, 26, 20, 'lgray'); R(c, 8, 142, 22, 16, 'gray'); disc(c, 19, 150, 6, 'dgray'); for (i = -5; i <= 5; i += 2) R(c, 14, 150 + i, 11, 1, 'black');
     R(c, 222, 146, 8, 14, 'gray'); R(c, 220, 144, 12, 3, 'lgray');
@@ -1766,27 +1821,29 @@ body.m-landscape #dpad .plate{display:block}
     for (y = 112; y < 156; y += 4) for (x = (y * 7) % 16; x < W; x += 16) R(c, x, y, 6, 1, 'blue');
     // sand
     R(c, 0, 154, W, 86, 'olive'); R(c, 0, 154, W, 2, 'white'); dith(c, 0, 156, W, 2, 'lgray');
-    dith4(c, 0, 158, W, 82, 'orange', 0);
-    // fire glow on sand around bonfire (left)
-    for (y = 160; y < 240; y++) for (x = 0; x < 120; x++) { var dx = (x - 48) / 60, dy = (y - 186) / 34; var d = dx * dx + dy * dy; if (d < 1 && ((x + y) & 1)) P1(c, x, y, d < 0.35 ? 'gold' : 'orange'); }
+    R(c, 0, 158, W, 1, 'dbrown');
+    // sand: one 32x16 speck tile repeated (no noise), then a crisp 2-step firelight pool round the bonfire
+    for (y = 160; y < 240; y += 8) for (x = ((y >> 3) & 1) * 16; x < W; x += 32) { P1(c, x + 3, y + 2, 'dbrown'); P1(c, x + 11, y + 5, 'orange'); P1(c, x + 12, y + 5, 'dbrown'); }
+    for (y = 160; y < 214; y++) for (x = 16; x < 140; x++) { var dx = (x - 77) / 50, dy = (y - 175) / 18, d = dx * dx + dy * dy; if (d < 1 && (d < 0.12 || ((x + y) & 1))) P1(c, x, y, 'orange'); }
     // palms
-    function palm(px, py, h, dir) {
-      for (i = 0; i < h; i++) { var xx = px + Math.round(Math.sin(i / h * 1.6) * 8 * dir); R(c, xx, py - i, 4, 1, i % 4 === 0 ? 'black' : 'dbrown'); }
-      var tx = px + Math.round(Math.sin(1.6) * 8 * dir) + 2, ty = py - h;
-      var fr = [[-14, 4], [-10, -6], [0, -9], [10, -6], [15, 5], [6, 10], [-6, 10]];
-      for (var f = 0; f < fr.length; f++) {
-        for (var s = 0; s <= 10; s++) { var t2 = s / 10, fx = Math.round(tx + fr[f][0] * t2), fy = Math.round(ty + fr[f][1] * t2 + (Math.abs(fr[f][0]) > 8 ? t2 * t2 * 6 : 0)); R(c, fx - 1, fy, 3, 2, 'forest'); }
+    function palm(px, py, h, dir) { // dusk silhouette: ringed trunk, thick drooping fronds tapering to a point
+      for (i = 0; i < h; i++) { var xx = px + Math.round(Math.sin(i / h * 1.6) * 9 * dir); R(c, xx, py - i, 4, 1, i % 4 === 0 ? 'black' : 'dbrown'); P1(c, xx + (dir > 0 ? 3 : 0), py - i, 'black'); }
+      var tx = px + Math.round(Math.sin(1.6) * 9 * dir) + 2, ty = py - h;
+      var fr = [[-17, 5], [-12, -5], [-3, -9], [7, -8], [16, -3], [18, 7], [-9, 10], [6, 11]];
+      for (var f = 0; f < fr.length; f++) for (var s = 0; s <= 14; s++) {
+        var t2 = s / 14, fx = Math.round(tx + fr[f][0] * t2), fy = Math.round(ty + fr[f][1] * t2 + (Math.abs(fr[f][0]) > 8 ? t2 * t2 * 8 : t2 * t2 * 3)), wd = s < 6 ? 3 : s < 11 ? 2 : 1;
+        R(c, fx - (wd >> 1), fy, wd, 2, 'dbrown'); if (s > 3 && !(s & 1)) P1(c, fx, fy + 2, 'dbrown');
       }
-      disc(c, tx, ty + 1, 2, 'dbrown');
+      disc(c, tx, ty + 2, 2, 'black'); P1(c, tx - 1, ty + 1, 'dbrown');
     }
     palm(8, 176, 90, 1); palm(232, 178, 80, -1); palm(214, 178, 56, -1);
     // tiki torches
-    R(c, 196, 140, 2, 40, 'brown'); R(c, 194, 136, 6, 5, 'olive'); R(c, 120, 146, 2, 34, 'brown'); R(c, 118, 142, 6, 5, 'olive');
+
     // logs of bonfire
-    R(c, 36, 171, 26, 3, 'brown'); R(c, 34, 174, 30, 3, 'dbrown'); R(c, 37, 172, 2, 2, 'orange'); R(c, 58, 172, 2, 2, 'orange');
-    for (i = 0; i < 7; i++) { R(c, 32 + i * 5, 177, 4, 3, 'gray'); R(c, 32 + i * 5, 177, 4, 1, 'lgray'); }
+    R(c, 64, 168, 26, 3, 'brown'); R(c, 62, 171, 30, 3, 'dbrown'); R(c, 65, 169, 2, 2, 'orange'); R(c, 86, 169, 2, 2, 'orange');
+    for (i = 0; i < 7; i++) { R(c, 60 + i * 5, 174, 4, 3, 'gray'); R(c, 60 + i * 5, 174, 4, 1, 'lgray'); }
     // cooler
-    R(c, 146, 160, 22, 14, 'blue'); R(c, 146, 160, 22, 3, 'white'); R(c, 154, 158, 6, 2, 'lgray');
+    R(c, 223, 165, 20, 12, 'black'); R(c, 224, 166, 18, 10, 'blue'); R(c, 224, 166, 18, 3, 'white'); R(c, 224, 169, 18, 1, 'dblue'); R(c, 230, 164, 6, 2, 'lgray');
     lyingCup(c, 92, 212); lyingCup(c, 182, 218);
     // footprints / shells
     var r2 = rng(9); for (i = 0; i < 18; i++) P1(c, (r2() * 256) | 0, (200 + r2() * 38) | 0, 'cream');
@@ -1800,42 +1857,41 @@ body.m-landscape #dpad .plate{display:block}
     R(c, 0, 24, W, 10, 'dgray'); for (x = 0; x < W; x += 8) R(c, x, 24 + (x % 16 ? 2 : 0), 1, 8, 'black');
     for (x = 16; x < W; x += 32) { R(c, x, 34, 8, 3, 'gray'); R(c, x + 1, 37, 6, 1, 'cream'); }
     // stands handled as separate pre-rendered frames; floor + barrier here
-    R(c, 0, 150, W, 14, 'navy'); R(c, 0, 150, W, 2, 'gold'); R(c, 0, 162, W, 2, 'dblue');
+    R(c, 0, 140, W, 14, 'navy'); R(c, 0, 140, W, 1, 'gold'); R(c, 0, 141, W, 1, 'brown'); R(c, 0, 153, W, 1, 'black');
     // ad boards
     var ads = ['PONG', 'CUP', 'PARTY', 'SOFT'];
-    for (i = 0; i < 4; i++) { R(c, 4 + i * 64, 152, 56, 10, i % 2 ? 'red' : 'blue'); text(c, ads[i], 4 + i * 64 + 28 - ads[i].length * 4, 153, i % 2 ? 'white' : 'gold'); }
-    // floor: dark court with star
-    R(c, 0, 164, W, 76, 'dblue'); dith4(c, 0, 164, W, 76, 'navy');
-    for (y = 170; y < 240; y += 10) R(c, 0, y, W, 1, 'navy');
-    R(c, 0, 164, W, 1, 'lblue');
+    for (i = 0; i < 4; i++) { R(c, 4 + i * 64, 142, 56, 10, i % 2 ? 'red' : 'blue'); R(c, 4 + i * 64, 151, 56, 1, i % 2 ? 'dred' : 'dblue'); text(c, ads[i], 4 + i * 64 + 28 - ads[i].length * 4, 143, i % 2 ? 'white' : 'gold'); }
+    // floor: dark court, clean perspective plank seams (wider apart toward the viewer)
+    R(c, 0, 154, W, 86, 'dblue'); R(c, 0, 154, W, 1, 'blue');
+    [158, 163, 169, 176, 184, 193, 203, 214, 226].forEach(function (yy) { R(c, 0, yy, W, 1, 'navy'); });
     // big center circle (perspective ellipse) under table
     for (i = 0; i < 360; i += 2) { var a = i / 180 * Math.PI; P1(c, Math.round(128 + Math.cos(a) * 70), Math.round(212 + Math.sin(a) * 18), 'gold'); }
     return cv;
   }
   // arena stands frames (2): tiers of fans
   var standFrames = null;
-  function arenaStands() {
+  function arenaStands() { // tiled fans: 8x10 cells, 4-fan pattern per row, rows offset half a cell; frame 1 = arms up
     if (standFrames) return standFrames;
+    var SH = ['blue', 'dred', 'dblue', 'dgray', 'blue', 'red', 'dgray', 'dblue'], SK = ['skin', 'tan', 'brown', 'skin'], HR = ['black', 'brown', 'gold', 'black', 'dgray'];
     standFrames = withStage(4, function () { return [0, 1].map(function (fr) {
-      var cv = mk(W, 112), c = cv._x, r = rng(31), x, y;
-      R(c, 0, 0, W, 112, 'black');
-      for (var row = 0; row < 9; row++) {
-        var ty = 8 + row * 12; R(c, 0, ty + 9, W, 2, row % 2 ? 'dgray' : 'dpurple');
-        for (x = 2 + (row % 2) * 3; x < W - 3; x += 6) {
-          var q = r(), shirt = ['red', 'blue', 'gold', 'white', 'green', 'purple', 'orange', 'lgray'][(q * 8) | 0];
-          var skin = ['skin', 'skin2', 'skin3'][(r() * 3) | 0], hair = ['black', 'dbrown', 'yellow', 'maroon'][(r() * 4) | 0];
-          var up = fr && ((x >> 2) + row) % 3 === 0 ? 1 : 0;
-          var arms = fr && ((x >> 2) + row) % 5 === 1;
-          R(c, x, ty + 4 - up, 4, 5, shirt); R(c, x + 1, ty + 1 - up, 2, 3, skin); R(c, x + 1, ty + 0 - up, 2, 1, hair);
-          if (arms) { P1(c, x - 1, ty + 1 - up, skin); P1(c, x + 4, ty + 1 - up, skin); P1(c, x - 1, ty + 2 - up, shirt); P1(c, x + 4, ty + 2 - up, shirt); }
+      var cv = mk(W, 102), c = cv._x, x, k;
+      R(c, 0, 0, W, 102, 'black');
+      for (var row = 0; row < 10; row++) {
+        var ty = 2 + row * 10;
+        for (x = -4 + (row & 1) * 4, k = 0; x < W; x += 8, k++) {
+          var q = (k + row * 3) & 7, sh = SH[(q + row) & 7], sk = SK[(k * 3 + row) & 3], hr = HR[(k + row * 2) % 5];
+          var up = fr && ((k + row) % 3 === 0) ? 1 : 0;
+          R(c, x + 1, ty + 5 - up, 6, 4, sh); R(c, x + 2, ty + 4 - up, 4, 1, sh);
+          R(c, x + 2, ty + 1 - up, 4, 3, sk); R(c, x + 2, ty - up, 4, 1, hr); P1(c, x + 2, ty + 1 - up, hr); P1(c, x + 5, ty + 1 - up, hr);
+          if (fr && ((k + row) % 4 === 1)) { R(c, x, ty - 1, 1, 4, sk); R(c, x + 7, ty - 1, 1, 4, sk); }
         }
+        R(c, 0, ty + 9, W, 1, 'navy');
       }
-      dith4(c, 0, 0, W, 40, 'black', 1);
+      dith4(c, 0, 0, W, 20, 'black', 1);
       return cv;
     }); });
     return standFrames;
   }
-
   var BG_BUILDERS = [bgBackyard, bgBasement, bgRooftop, bgBeach, bgArena];
   function stageBG(s) { return stageCache[s] || (stageCache[s] = withStage(s, BG_BUILDERS[s])); }
   function clampStage(stage) { stage = stage | 0; return ((stage % 5) + 5) % 5; }
@@ -1902,9 +1958,9 @@ body.m-landscape #dpad .plate{display:block}
       // wave foam
       for (x = 0; x < W; x += 8) { var wv = ((x >> 3) + (t >> 4)) % 4; if (wv === 0) R(ctx, x, 152, 6, 1, 'white'); else if (wv === 1) R(ctx, x + 2, 150, 4, 1, 'pblue'); }
       // bonfire
-      flame(ctx, 41, 171, t, 5); flame(ctx, 56, 171, t + 11, 5); flame(ctx, 48, 171, t + 5, 9);
-      for (i = 0; i < 6; i++) { var sp = (t + i * 29) % 60; P1(ctx, 48 + Math.round(Math.sin((t + i * 30) / 9) * 3) + (i - 3) * 3, 156 - sp, sp < 25 ? 'yellow' : sp < 45 ? 'orange' : 'red'); }
-      flame(ctx, 197, 136, t + 3, 0); flame(ctx, 121, 142, t + 8, 0);
+      flame(ctx, 69, 168, t, 5); flame(ctx, 84, 168, t + 11, 5); flame(ctx, 76, 168, t + 5, 9);
+      for (i = 0; i < 6; i++) { var sp = (t + i * 29) % 60; P1(ctx, 76 + Math.round(Math.sin((t + i * 30) / 9) * 3) + (i - 3) * 3, 153 - sp, sp < 25 ? 'yellow' : sp < 45 ? 'orange' : 'red'); }
+
     } else if (stage === 4) {
       // banner
       drawBox(ctx, 40, 44, 176, 22, 'red');
@@ -1933,17 +1989,19 @@ body.m-landscape #dpad .plate{display:block}
 
   // ------------------------------------------------------------------ tables
   var TABLES = [
-    { top: 'red', top2: 'dred', trim: 'white', stripe: 'white', apron: 'red', apron2: 'dred', leg: 'dgray', leg2: 'black' },
-    { top: 'brown', top2: 'dbrown', trim: 'gold', stripe: 'dbrown', apron: 'dbrown', apron2: 'maroon', leg: 'dgray', leg2: 'black', wood: 1 },
-    { top: 'dgray', top2: 'black', trim: 'lgray', stripe: 'cyan', apron: 'gray', apron2: 'dgray', leg: 'lgray', leg2: 'gray' },
-    { top: 'gold', top2: 'orange', trim: 'cream', stripe: 'olive', apron: 'olive', apron2: 'dbrown', leg: 'olive', leg2: 'dbrown', wood: 2 },
-    { top: 'dblue', top2: 'navy', trim: 'gold', stripe: 'white', apron: 'blue', apron2: 'dblue', leg: 'gold', leg2: 'orange', star: 1 }
+    { top: 'red', top2: 'dred', trim: 'white', stripe: 'white', apron: 'red', apron2: 'dred', leg: 'dgray', leg2: 'black', shadow: 'forest' },
+    { top: 'brown', top2: 'dbrown', trim: 'gold', stripe: 'dbrown', apron: 'dbrown', apron2: 'maroon', leg: 'dgray', leg2: 'black', wood: 1, shadow: 'maroon' },
+    { top: 'slate', top2: 'navy', trim: 'lgray', stripe: 'cyan', apron: 'gray', apron2: 'dgray', leg: 'lgray', leg2: 'gray', shadow: 'black' },
+    { top: 'gold', top2: 'orange', trim: 'cream', stripe: 'olive', apron: 'olive', apron2: 'dbrown', leg: 'olive', leg2: 'dbrown', wood: 2, shadow: 'dbrown' },
+    { top: 'dblue', top2: 'navy', trim: 'gold', stripe: 'white', apron: 'blue', apron2: 'dblue', leg: 'gold', leg2: 'orange', star: 1, shadow: 'navy' }
   ];
   var tableCache = [];
   function buildTable(s) {
     var T = TABLES[s], cv = mk(W, 48), c = cv._x, oy = 180, x, y;
     function r(x, y, w, h, col) { R(c, x, y - oy, w, h, col); }
     var X0 = 32, X1 = 224, Wd = X1 - X0;
+    // floor shadow under the table (solid, NES style) grounds it against the backdrop
+    r(42, 218, 172, 1, T.shadow); r(36, 219, 184, 3, T.shadow); r(42, 222, 172, 1, T.shadow);
     // legs (folding) - back legs first
     function leg(lx, top, bot, col, col2) { r(lx - 1, top, 4, bot - top, 'black'); r(lx, top, 2, bot - top, col); r(lx + 1, top, 1, bot - top, col2); r(lx - 2, bot - 1, 6, 2, 'black'); r(lx - 1, bot - 1, 4, 1, col2); }
     leg(48, 200, 219, T.leg2, 'black'); leg(206, 200, 219, T.leg2, 'black');
@@ -2016,23 +2074,28 @@ body.m-landscape #dpad .plate{display:block}
     if (fire) { R(ctx, x - 1, y - 1, 2, 2, ((x + y) & 2) ? 'orange' : 'yellow'); P1(ctx, x - 1, y - 1, 'red'); }
     else { R(ctx, x, y, 1, 1, 'white'); P1(ctx, x + 1, y, 'lgray'); }
   }
-  var SPL_DIRS = [[0, -1], [0.7, -0.7], [1, -0.2], [-0.7, -0.7], [-1, -0.2], [0.4, -0.9], [-0.4, -0.9]];
+  // sink splash: 6 snappy NES-style frames (3-5 ticks each) built from stamps: sparkle stars + beer droplets
+  var SPARK = [['.W.', 'WWW', '.W.'], ['..W..', '..W..', 'WWYWW', '..W..', '..W..'],
+    ['...W...', '...W...', '..WYW..', 'WWYWYWW', '..WYW..', '...W...', '...W...']];
+  var SPL_T = [0, 3, 6, 10, 14, 19, 25];
+  var SPL_F = [ // [kind, dx, dy]  kind: 0..2 sparkle size, 'D' 2x2 droplet w/ white glint, 'd' 2x2 droplet, 'p' 1px, 'w' foam
+    [[2, 0, -9], ['D', -4, -3], ['D', 3, -3], ['D', -1, -5], ['w', -2, -1], ['w', 0, -2], ['w', 2, -1]],
+    [[2, 0, -15], ['D', -6, -6], ['D', 5, -6], ['D', -3, -10], ['D', 2, -10], ['d', -8, -2], ['d', 7, -2], ['w', -4, -1], ['w', 4, -1], ['w', 0, -3]],
+    [[1, 0, -18], ['d', -9, -9], ['d', 8, -9], ['d', -4, -14], ['d', 3, -14], ['p', -11, -4], ['p', 11, -4], ['w', -6, -5], ['w', 6, -5]],
+    [[0, -7, -18], [0, 7, -16], ['d', -11, -8], ['d', 10, -8], ['p', -5, -15], ['p', 5, -15], ['p', -13, -2], ['p', 13, -2]],
+    [[0, 0, -19], ['p', -12, -3], ['p', 12, -3], ['p', -7, -8], ['p', 7, -8], ['p', -14, 2], ['p', 14, 2]],
+    [['p', -13, 3], ['p', 13, 3], ['p', -8, 1], ['p', 8, 1]]
+  ];
   function drawSplash(ctx, x, y, t) {
     if (!ctx) return; t = t | 0; if (t < 0 || t > 24) return; x = Math.round(x); y = Math.round(y);
-    var i;
-    if (t < 16) { // starburst lines (white core, amber tips) like a comic "plink"
-      var d0 = 2 + Math.round(t * 0.6), len = t < 10 ? 4 : 2;
-      for (i = 0; i < SPL_DIRS.length; i++) {
-        var dx = SPL_DIRS[i][0], dy = SPL_DIRS[i][1];
-        for (var s = 0; s < len; s++) P1(ctx, x + Math.round(dx * (d0 + s)), y + Math.round(dy * (d0 + s)), t < 6 || s < len - 1 ? 'white' : 'beer');
-      }
-      if (t < 5) { R(ctx, x - 2, y - 1, 5, 2, 'white'); R(ctx, x - 1, y - 3, 3, 2, 'beer'); P1(ctx, x, y - 4, 'white'); }
-    }
-    // droplets arcing out and falling
-    for (i = 0; i < 6; i++) {
-      var vx = [-1.1, 1.1, -0.6, 0.6, -1.6, 1.6][i], vy = [-2.2, -2.2, -2.8, -2.8, -1.6, -1.6][i];
-      var px = Math.round(x + vx * t * 0.7), py = Math.round(y + vy * t * 0.7 + 0.09 * t * t);
-      if (t > 3) { R(ctx, px, py, i < 2 && t < 14 ? 2 : 1, 1, i & 1 ? 'beer' : 'yellow'); if (t < 12) P1(ctx, px, py - 1, 'white'); }
+    var f = 0; while (f < 5 && t >= SPL_T[f + 1]) f++;
+    var L = SPL_F[f];
+    for (var i = 0; i < L.length; i++) {
+      var k = L[i][0], px = x + L[i][1], py = y + L[i][2];
+      if (k === 'd' || k === 'D') { R(ctx, px, py, 2, 2, 'beer'); P1(ctx, px, py, k === 'D' ? 'white' : 'gold'); }
+      else if (k === 'p') P1(ctx, px, py, 'beer');
+      else if (k === 'w') P1(ctx, px, py, 'white');
+      else { var sp = SPARK[k], h = sp.length >> 1; paint(ctx, sp, { W: 'white', Y: 'gold' }, px - h, py - h); }
     }
   }
   function drawCrosshair(ctx, x, y, t) {
@@ -2060,7 +2123,7 @@ body.m-landscape #dpad .plate{display:block}
       var gl = GL[ch];
       for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl[y] && gl[y].charAt(x) === '#') {
         for (var sy = 0; sy < sc; sy++) for (var sx = 0; sx < sc; sx++) {
-          var py = oy + y * sc + sy, px = cx + x * sc + sx + Math.round((20 - y * sc - sy) / 5);
+          var py = oy + y * sc + sy, px = cx + x * sc + sx + (6 - y);
           if (px >= 0 && px < LW && py < LH) { g[py * LW + px] = 1; band[py * LW + px] = y * sc + sy; }
         }
       }
@@ -2071,7 +2134,7 @@ body.m-landscape #dpad .plate{display:block}
     for (i = 0; i < str2.length; i++) {
       var gl2 = GL[str2.charAt(i)];
       for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl2[y].charAt(x) === '#') {
-        for (sy = 0; sy < sc2; sy++) for (sx = 0; sx < sc2; sx++) { var qy = oy2 + y * sc2 + sy, qx = cx + x * sc2 + sx + Math.round((14 - y * sc2 - sy) / 5); g[qy * LW + qx] = 2; }
+        for (sy = 0; sy < sc2; sy++) for (sx = 0; sx < sc2; sx++) { var qy = oy2 + y * sc2 + sy, qx = cx + x * sc2 + sx + ((6 - y) >> 1); g[qy * LW + qx] = 2; }
       }
       cx += 17;
     }
@@ -2137,7 +2200,7 @@ body.m-landscape #dpad .plate{display:block}
     if (inited) return; inited = true;
     try {
       S.cup = spr(CUPMAP.full, CUPMAP.pal);
-      S.cupDim = spr(CUPMAP.full, { W: 'lgray', g: 'gray', R: 'dred', L: 'red', D: 'maroon' });
+      S.cupDim = spr(CUPMAP.full, { W: 'lgray', g: 'gray', R: 'dred', L: 'red', D: 'maroon', K: 'black' });
       S.ball = spr(BALL, { W: 'white', g: 'lgray' });
       S.fire = FIRE.map(function (f) { return spr(f, { R: 'red', Y: 'gold', W: 'white', O: 'orange' }); });
       S.flame = FLAME.map(function (f) { return spr(f, { R: 'red', Y: 'gold', O: 'orange' }); });
@@ -2179,6 +2242,1317 @@ body.m-landscape #dpad .plate{display:block}
     drawCup: wrap(drawCup), drawCupTop: wrap(drawCupTop), drawBall: wrap(drawBall), drawShadow: wrap(drawShadow),
     drawSplash: wrap(drawSplash), drawCrosshair: wrap(drawCrosshair), drawIcon: wrap(drawIcon),
     drawLogo: wrap(drawLogo), drawFlame: wrap(drawFlame), drawPortrait: wrap(drawPortrait), drawTrailDot: wrap(drawTrailDot)
+  };
+})();
+
+</script>
+<script>
+/* ==== art-chars.js ==== */
+/* SUPER BEER PONG — BP.Art character sprites (overrides BP.Art.drawPlayer).
+   Hand-authored NES-style paper dolls: every part is a string pixel map, composed per pose and
+   pre-rendered once per facing to an offscreen canvas.  Frame = 32 (+wide) x 52, feet bottom row 51,
+   anchor = bottom-center of feet.  Hero faces RIGHT; CPU sprites are mirrored (logos re-stamped unmirrored).
+   Layer order: back arm, legs, torso, head, front arm (+ball/cup), chest logo.
+   Codes: K outline  S/s skin/shade  T/t shirt  V/v sleeve  k sleeve hem  P/p shorts  O/o shoe/trim
+          H/h hair  C/c cap  w cap logo  E pupil  e eye white  M mouth  G/g shades/glint  X/x/J crown
+          D/d beard  B/b ball  R/r/Q cup  Y chest logo.
+   Colors: only the shared sprite colors (black red dred white skin tan gold brown lgray) + each CPU's
+   stage colors (see the budget comment at the top of art.js). */
+(function () {
+  'use strict';
+  var BP = (window.BP = window.BP || {});
+  var A = BP.Art; if (!A || !A.PAL) return;
+  var PAL = A.PAL, baseInit = A.init, baseDraw = A.drawPlayer;
+
+  // ---------------------------------------------------------------- heads (20 wide, facing right)
+  // shared lower face (rows 8..15); eyes rows 9-10 (near eye e+E at 11-12, far eye E at 15), mouth row 12
+  var FACE = [
+    '..KHHHHSSSSSSSSSSK',
+    '..KHHHSSSSSeESSESK',
+    '..KHKSKSSSSeESSESSK',
+    '..KHSSKSSSSSSSSSSK',
+    '...KHSSSSSSSSMMMSK',
+    '...KKsSSSSSSSSSSK',
+    '.....KKssSSSSSKK',
+    '.......KKKKKKK'];
+  var TOPS = {
+    hero: [
+      '......KKKKKKK',
+      '....KKCCCCCCCKK',
+      '...KCCCCCCCCCwCwK',
+      '...KCCCCCCCCCwwwCK',
+      '..KcCCCCCCCCCCCCCK',
+      '..KccCCCCCCCCCCCCKKK',
+      '..KHcccccccccccCCCCK',
+      '..KHHKKKKKKKKKKKKKK'],
+    chad: [
+      '......KKKKKKK',
+      '....KKCCCCCCCKK',
+      '...KCCCCCCCCCCCK',
+      '..KCCCCCCCCCCCCCK',
+      '..KcCCCCCCCCCCKHK',
+      'KKKccCCCCCCCCKHHK',
+      'KcccccccccccKHHHHK',
+      'KKKKKKcccccKHHHKKK'],
+    sky: [
+      '.......KKKKKK',
+      '.....KKHHHHHHKK',
+      '....KHHHHHHHHHHKK',
+      '...KHHHhhHHHHHHHHK',
+      '..KHHHHHHhhHHHHHHHK',
+      '..KHHHHHHHHHhhHHHHK',
+      '..KHHHHHHHHHHHHKKK',
+      '..KHHHHSSSSSSHHK'],
+    brody: [
+      '....K...K...K',
+      '...KHK.KHK.KHK.K',
+      '..KHHHKHHHKHHHKHK',
+      '..KHHHHHHHHHHHHHHK',
+      '.KHHHHHHHHHHHHHHHHK',
+      '..KHHHHHHHHHHHHHHK',
+      '..KHHHHHSSSSSHHHK',
+      '..KHHHSSSSSSSSHK'],
+    kegmaster: [
+      '....K....K....K',
+      '...KXK..KXK..KXK',
+      '...KXXK.KXK.KXXK',
+      '...KXXXKXJXKXXXK',
+      '...KxxxxxxxxxxxxK',
+      '..KHHHHSSSSSSSSSK',
+      '..KHHHSSSSSSSSSSSK',
+      '..KHHSSSSSKKKSKKSK']
+  };
+  // wide build (TANK / KEGMASTER): face template widened by 2 (col 8 duplicated)
+  var TOPS_W = {
+    tank: [
+      '...KKKKKKKKKKKKKK',
+      '..KHHHHHHHHHHHHHHK',
+      '..KHHHHHHHHHHHHHHK',
+      '..KHHHHHHHHHHHHHHK',
+      '..KHHHHHHHHHHHHHHHK',
+      '..KHHHSSSSSSSSSSSHK',
+      '..KHHSSSSSSSSSSSSSK',
+      '..KHHSSSSKKSSSSKKSK']
+  };
+  // per-head overlays (rows from 8 onward), eye/mouth anchors for expressions
+  var OVER = {
+    sky: [null, '.......KKKKGGGGGGK', '...........GgGKGgG'],
+    brody: [null, '.......KKKKGGGGGGK', '...........GgGKGgG'],
+    kegmaster: [null, null, null,
+      '..KHDDKDSSSSdddddK',
+      '...KDDDDDDDDDMMMDK',
+      '...KDDDDDDDDDDDDDK',
+      '....KDDDDDDDDDDDK',
+      '.....KDDDDDDDDDK',
+      '......KKDDDDDKK',
+      '........KKKKK'],
+    chad: [null, null, null, '..KHSSKSSSSSSSSSMK', '...KHSSSSSSSSSMMSK']
+  };
+  var HEADS = {
+    hero: { top: 'hero' }, chad: { top: 'chad' }, sky: { top: 'sky', shades: 1 }, brody: { top: 'brody', shades: 1 },
+    tank: { top: 'tank', wide: 1 }, kegmaster: { top: 'kegmaster', beard: 1 }
+  };
+
+  function widenRows(rows, col, n) {
+    return rows.map(function (r) { if (r.length <= col) return r; var c = r.charAt(col); var s = ''; for (var i = 0; i < n; i++) s += c; return r.slice(0, col) + s + r.slice(col); });
+  }
+  var FACE_W = widenRows(FACE, 8, 2);
+
+  // returns {g: grid rows (array of char arrays), w, h}
+  function headGrid(who, expr) {
+    var hd = HEADS[who] || HEADS.chad, wide = hd.wide ? 2 : 0;
+    var top = (wide ? TOPS_W : TOPS)[hd.top], face = wide ? FACE_W : FACE, W = 20 + wide, rows = [], y, x;
+    for (y = 0; y < 18; y++) { rows.push([]); for (x = 0; x < W; x++) rows[y].push('.'); }
+    function put(r, oy) { for (var i = 0; i < r.length; i++) if (r[i]) for (var j = 0; j < r[i].length; j++) { var c = r[i].charAt(j); if (c !== '.' && rows[oy + i]) rows[oy + i][j] = c; } }
+    put(face, 8); put(top, 0); if (OVER[who]) put(OVER[who], 8);
+    var ex = 11 + wide, fx = 15 + wide, mx = 13 + wide;
+    function px(x, y, c) { if (rows[y] && x >= 0 && x < W) rows[y][x] = c; }
+    if (!hd.shades) {
+      if (expr === 'c') { px(ex, 9, 'S'); px(ex + 1, 9, 'S'); px(fx, 9, 'S'); px(ex, 10, 'K'); px(ex + 1, 10, 'K'); px(fx, 10, 'K'); }
+      if (expr === 's') { px(ex, 9, 'K'); px(ex + 1, 9, 'K'); px(fx, 9, 'K'); }
+    }
+    if (expr === 'h') { // open shout
+      var my = 12;
+      px(mx, my, 'K'); px(mx + 1, my, 'K'); px(mx + 2, my, 'K'); px(mx, my + 1, 'K'); px(mx + 1, my + 1, 'M'); px(mx + 2, my + 1, 'K');
+      if (who === 'chad') px(mx + 3, 11, 'S');
+    } else if (expr === 's') { // frown
+      var sy = 12;
+      for (var i = 0; i < 4; i++) px(mx - 1 + i, sy, hd.beard ? 'D' : 'S');
+      if (who === 'chad') px(mx + 3, 11, 'S');
+      px(mx, sy, 'M'); px(mx + 1, sy, 'M'); px(mx + 2, sy, 'M'); px(mx - 1, sy + 1, 'M'); px(mx + 3, sy + 1, 'M');
+    }
+    return { rows: rows, w: W, h: 18 };
+  }
+
+  // ---------------------------------------------------------------- torso (shoulders row 18, hem row 30)
+  var TORSO = [
+    '.........KKKKKKKKKKKKKK',
+    '........KvVVTTTTTTTTVVVK',
+    '...........KtTTTTTTTK',
+    '...........KtTTTTTTTK',
+    '...........KtTTTTTTTK',
+    '...........KtTTTTTTTK',
+    '...........KtTTTTTTTK',
+    '...........KtTTTTTTTK',
+    '...........KtTTTTTTTK',
+    '...........KtTTTTTTTK',
+    '...........KtTTTTTTTK',
+    '...........KtTTTTTTTK',
+    '...........KKKKKKKKKK'];
+  // ---------------------------------------------------------------- arms (front arm, facing right)
+  // a: [ax, ay] = map pixel placed on the front shoulder socket (canvas 21,20); back arm = mirrored + shaded
+  var ARMS = {
+    hang: { a: [1, 0], m: [
+      'KVVVK',
+      'KVVVK',
+      'KkkkK',
+      'KsSSK',
+      'KsSSK',
+      'KsSSK',
+      'KsSSK',
+      'KsSSK',
+      'KsSSK',
+      'KsSSK',
+      'KsSSSK',
+      'KsSSSK',
+      '.KKKK'] },
+    swing: { a: [1, 0], m: [
+      'KVVVK',
+      'KVVVVK',
+      'KkkkkK',
+      '.KsSSK',
+      '.KsSSK',
+      '..KsSSK',
+      '..KsSSK',
+      '...KsSSK',
+      '...KsSSK',
+      '...KsSSSK',
+      '...KsSSSK',
+      '....KKKK'] },
+    up: { a: [1, 19], m: [
+      '.....KKKK',
+      '....KSSSSK',
+      '....KSSSSK',
+      '....KsSSSK',
+      '....KsSSK',
+      '...KsSSK',
+      '...KsSSK',
+      '...KsSSK',
+      '..KsSSK',
+      '..KsSSK',
+      '..KsSSK',
+      '.KsSSK',
+      '.KkkkK',
+      '.KVVVK',
+      'KvVVVK',
+      'KvVVK',
+      'KvVVK',
+      'KvVVK',
+      'KVVVK',
+      'KVVVK'] },
+    pump: { a: [1, 10], m: [
+      '....KKKK',
+      '...KSSSSK',
+      '...KSSSSK',
+      '...KsSSSK',
+      '...KsSSK',
+      '...KsSSK',
+      '...KsSSK',
+      '...KsSSK',
+      'KKKKsSSK',
+      'KVVVKSSK',
+      'KVVVKSSK',
+      'KVVVKSSK',
+      'KkkkSSSK',
+      '.KKKKKK'] },
+    aim: { a: [1, 10], m: [
+      '....KKKK',
+      '...KBBBbK',
+      '...KBBbbK',
+      '...KSbbSK',
+      '...KsSSSK',
+      '...KsSSK',
+      '...KsSSK',
+      '...KsSSK',
+      'KKKKsSSK',
+      'KVVVKSSK',
+      'KVVVKSSK',
+      'KVVVKSSK',
+      'KkkkSSSK',
+      '.KKKKKK'] },
+    'throw': { a: [1, 10], m: [
+      '.......KKK',
+      '......KSSSK',
+      '.....KSSSSK',
+      '.....KsSSSK',
+      '....KsSSSK',
+      '....KsSSK',
+      '...KsSSK',
+      '..KkSSK',
+      '.KkVsK',
+      'KVkVK',
+      'KVVVK',
+      'KVVK',
+      'KVVK',
+      'KKK'] },
+    cup: { a: [1, 8], m: [
+      '.....KKKK',
+      '..KKKRRQK',
+      '.KrRRRRQK',
+      '.KrRRRRK',
+      '.KrKSSSK',
+      '..KKsSSK',
+      '...KsSSK',
+      'KKKKsSSK',
+      'KVVVKSSK',
+      'KVVVKSSK',
+      'KkkkkSSK',
+      '.KKKKKK'] },
+    hip: { a: [1, 0], m: [
+      'KVVVK',
+      'KVVVVK',
+      'KkkkkK',
+      '.KsSSK',
+      '..KsSSK',
+      '..KsSSK',
+      '..KsSSK',
+      '.KsSSK',
+      'KsSSK',
+      'KsSSK',
+      '.KKK'] }
+  };
+  // ---------------------------------------------------------------- legs (shorts top row 30, feet row 51)
+  var LEGS = {
+    stand: [
+      '..........KKKKKKKKKKKK',
+      '..........KpPPPPPPPPPK',
+      '..........KpPPPPPPPPPK',
+      '..........KpPPPPPPPPPK',
+      '..........KpPPPPPPPPPK',
+      '..........KpPPPKKpPPPK',
+      '..........KpPPPKKpPPPK',
+      '..........KKKKKKKKKKKK',
+      '..........KsSSK..KsSSK',
+      '..........KsSSK..KsSSK',
+      '..........KsSSK..KsSSK',
+      '..........KsSSK..KsSSK',
+      '..........KsSSK..KsSSK',
+      '..........KsSSK..KsSSK',
+      '..........KsSSK..KsSSK',
+      '..........KoooK..KoooK',
+      '..........KOOOK..KOOOK',
+      '..........KOOOOK.KOOOOK',
+      '..........KOOOOOKKOOOOOK',
+      '..........KOOOOOKKOOOOOK',
+      '..........KoooooKKoooooK',
+      '..........KKKKKKKKKKKKKK'],
+    stride: [
+      '..........KKKKKKKKKKKK',
+      '..........KpPPPPPPPPPK',
+      '..........KpPPPPPPPPPK',
+      '.........KpPPPPPPPPPPK',
+      '.........KpPPPPPPPPPPPK',
+      '.........KpPPPKKKpPPPPK',
+      '.........KpPPPK.KpPPPPK',
+      '.........KKKKKK.KKKKKKK',
+      '.........KsSSK...KsSSK',
+      '........KsSSK....KsSSK',
+      '........KsSSK.....KsSSK',
+      '........KsSSK.....KsSSK',
+      '.......KsSSK......KsSSK',
+      '.......KsSSK......KsSSK',
+      '.......KsSSK.......KsSSK',
+      '.......KoooK.......KoooK',
+      '.......KOOOK.......KOOOK',
+      '.......KOOOOK......KOOOOK',
+      '.......KOOOOOK.....KOOOOOK',
+      '.......KOOOOOK.....KOOOOOK',
+      '.......KoooooK.....KoooooK',
+      '.......KKKKKKK.....KKKKKKK']
+  };
+  LEGS.walkA = LEGS.stride;
+
+  // ---------------------------------------------------------------- poses
+  // u: torso offset, h: head offset [x,y], f/b: front/back arm [name, dx, dy, mirror], l: legs, e: expression
+  var POSES = {
+    idle0: { l: 'stand', h: [6, 3], f: ['hang'], b: ['hang'], lg: [14, 21] },
+    idle1: { l: 'stand', u: [0, 1], h: [6, 4], f: ['hang'], b: ['hang'], lg: [14, 22] },
+    aim: { l: 'stride', h: [6, 3], f: ['aim'], b: ['hang'], lg: [14, 21] },
+    'throw': { l: 'stride', u: [1, 0], h: [8, 4], f: ['throw', -1, 0], b: ['swing'], lg: [15, 21], fb: 1 },
+    cheer0: { l: 'stand', h: [6, 3], f: ['up'], b: ['up'], lg: [14, 21], e: 'h', fb: 1 },
+    cheer1: { l: 'stand', u: [0, 1], h: [6, 4], f: ['pump'], b: ['pump'], lg: [14, 22], e: 'h' },
+    drink: { l: 'stand', h: [5, 2], f: ['cup'], b: ['hip'], lg: [14, 21], e: 'c' },
+    sad: { l: 'stand', u: [0, 2], h: [7, 6], f: ['hang', 0, 2], b: ['hang', 0, 2], lg: [14, 23], e: 's' },
+    walk0: { l: 'stride', h: [6, 3], f: ['swing'], b: ['swing'], lg: [14, 21] },
+    walk1: { l: 'stand', u: [0, 1], h: [6, 4], f: ['hang'], b: ['hang'], lg: [14, 22] }
+  };
+  var FRAMES = { idle: ['idle0', 'idle1'], aim: ['aim'], 'throw': ['throw'], cheer: ['cheer0', 'cheer1'], drink: ['drink'], sad: ['sad'], walk: ['walk0', 'walk1'] };
+
+  var LOGOS = {
+    W: ['Y...Y', 'Y.Y.Y', 'YYYYY', '.Y.Y.'],
+    N8: ['YYY', 'Y.Y', 'YYY', 'Y.Y', 'YYY'],
+    bolt: ['..YY', '.YY.', 'YYYY', '.YY.', 'YY..'],
+    K: ['Y..Y', 'Y.Y.', 'YY..', 'Y.Y.', 'Y..Y']
+  };
+  var CHARS = {
+    hero: { logo: 'W', pal: { S: 'skin', s: 'tan', H: 'brown', h: 'dred', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', v: 'dred', k: 'black', Y: 'white', P: 'tan', p: 'gold', O: 'white', o: 'red' } },
+    chad: { logo: 'W', pal: { S: 'skin', s: 'tan', H: 'brown', h: 'dred', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', v: 'lgray', k: 'black', Y: 'red', P: 'red', p: 'dred', O: 'white', o: 'red' } },
+    tank: { logo: 'N8', wide: 4, pal: { S: 'brown', s: 'dred', H: 'dbrown', h: 'dbrown', z: 'brown', T: 'green', t: 'dgreen', V: 'green', v: 'dgreen', k: 'black', Y: 'white', P: 'lgray', p: 'gray', O: 'white', o: 'gray', e: 'white' } },
+    sky: { logo: 'bolt', pal: { S: 'skin', s: 'tan', H: 'navy', h: 'purple', G: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', v: 'dpurple', k: 'black', Y: 'gold', P: 'dgray', p: 'black', O: 'white', o: 'purple' } },
+    brody: { logo: null, pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'black', g: 'white', T: 'cyan', t: 'blue', V: 'orange', v: 'brown', k: 'brown', Y: 'white', P: 'rose', p: 'dmagenta', O: 'orange', o: 'dbrown' } },
+    kegmaster: { logo: 'K', wide: 4, belly: 1, pal: { S: 'skin', s: 'tan', H: 'brown', h: 'dred', D: 'brown', d: 'brown', X: 'gold', x: 'brown', J: 'red', T: 'blue', t: 'dblue', V: 'blue', v: 'dblue', k: 'black', Y: 'gold', P: 'navy', p: 'black', O: 'white', o: 'gold' } }
+  };
+  var BASE = { K: 'black', E: 'black', e: 'white', M: 'dred', B: 'white', b: 'lgray', R: 'red', r: 'white', Q: 'dred' };
+  var DARKEN = { S: 'z', V: 'v', T: 't' };
+
+  // ---------------------------------------------------------------- composition
+  function Grid(w, h) { this.w = w; this.h = h; this.a = []; for (var i = 0; i < w * h; i++) this.a.push(''); }
+  Grid.prototype.set = function (x, y, c) { if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.a[y * this.w + x] = c; };
+  Grid.prototype.get = function (x, y) { return (x >= 0 && y >= 0 && x < this.w && y < this.h) ? this.a[y * this.w + x] : ''; };
+  function stamp(g, rows, ox, oy, mirror, remap) {
+    var w = 0, y, x; for (y = 0; y < rows.length; y++) w = Math.max(w, rows[y].length);
+    for (y = 0; y < rows.length; y++) for (x = 0; x < rows[y].length; x++) {
+      var c = rows[y].charAt(x); if (c === '.' || c === ' ') continue;
+      if (remap && remap[c]) c = remap[c];
+      g.set(ox + (mirror ? w - 1 - x : x), oy + y, c);
+    }
+  }
+  // duplicate column `col` n times (n may vary per row via fn)
+  function widen(g, col, nfn) {
+    var mx = 0, y; for (y = 0; y < g.h; y++) mx = Math.max(mx, nfn(y));
+    var o = new Grid(g.w + mx, g.h);
+    for (y = 0; y < g.h; y++) {
+      var n = nfn(y), x2 = 0;
+      for (var x = 0; x < g.w; x++) { var c = g.get(x, y); o.set(x2++, y, c); if (x === col) for (var i = 0; i < n; i++) o.set(x2++, y, c); }
+    }
+    return o;
+  }
+  function over(dst, src, dx) { for (var y = 0; y < src.h; y++) for (var x = 0; x < src.w; x++) { var c = src.get(x, y); if (c) dst.set(x + (dx || 0), y, c); } }
+
+  function armLayer(spec, front, W, ux, uy) {
+    var g = new Grid(W, 52); if (!spec) return g;
+    var A2 = ARMS[spec[0]] || ARMS.hang, m = A2.m, mw = 0;
+    for (var i = 0; i < m.length; i++) mw = Math.max(mw, m[i].length);
+    var mirror = front ? !!spec[3] : !spec[3];
+    var ax = mirror ? mw - 1 - A2.a[0] : A2.a[0];
+    var sx = front ? 21 : 10, sy = 20;
+    stamp(g, m, sx - ax + (spec[1] || 0) + ux, sy - A2.a[1] + (spec[2] || 0) + uy, mirror, front ? null : DARKEN);
+    return g;
+  }
+
+  function build(who, pk) {
+    var ch = CHARS[who] || CHARS.chad, P = POSES[pk] || POSES.idle0, k = ch.wide || 0;
+    var u = P.u || [0, 0], W = 32;
+    var back = armLayer(P.b, false, W, u[0], u[1]), front = armLayer(P.f, true, W, u[0], u[1]);
+    var legs = new Grid(W, 52); stamp(legs, LEGS[P.l] || LEGS.stand, 0, 30);
+    var torso = new Grid(W, 52); stamp(torso, TORSO, u[0], 18 + u[1]);
+    var split = 15;
+    if (k) {
+      back = widen(back, split, function () { return k; });
+      front = widen(front, split, function () { return k; });
+      legs = widen(legs, split, function () { return k; });
+      var bt = 18 + u[1];
+      torso = widen(torso, split + u[0], function (y) {
+        if (!ch.belly) return k; var r = y - bt; return k + (r >= 6 && r <= 11 ? 2 : r === 5 || r === 12 ? 1 : 0);
+      });
+    }
+    var GW = W + k, out = new Grid(GW, 52);
+    over(out, back); over(out, legs); over(out, torso); if (P.fb) over(out, front);
+    // head
+    var hg = headGrid(who, P.e || 'n'), hx = P.h[0] + k - (hg.w - 20), hy = P.h[1];
+    if (k) hx -= (k >> 1) - (hg.w - 20); // centre wider head on widened torso
+    for (var y = 0; y < hg.h; y++) for (var x = 0; x < hg.w; x++) {
+      var c = hg.rows[y][x]; if (c === '.') continue;
+      out.set(hx + x, hy + y, c);
+    }
+    if (!P.fb) over(out, front);
+    return { g: out, k: k, logo: P.lg ? [P.lg[0] + (k >> 1) + (u[0] || 0), P.lg[1]] : null };
+  }
+
+  function render(who, pk, mirror) {
+    var ch = CHARS[who] || CHARS.chad, b = build(who, pk), g = b.g;
+    var map = {}, key; for (key in BASE) map[key] = BASE[key]; for (key in ch.pal) map[key] = ch.pal[key]; if (!map.z) map.z = map.s;
+    if (ch.logo && b.logo && LOGOS[ch.logo] && pk !== 'drink') {
+      var L = LOGOS[ch.logo], lw = L[0].length;
+      var lx = mirror ? g.w - b.logo[0] - lw : b.logo[0];
+      // stamp unmirrored after flip: pre-mirror the logo so the final image reads correctly
+      for (var y = 0; y < L.length; y++) for (var x = 0; x < lw; x++) if (L[y].charAt(x) === 'Y') {
+        var gx = mirror ? g.w - 1 - (lx + x) : lx + x; g.set(gx, b.logo[1] + y, 'Y');
+      }
+    }
+    var cv = document.createElement('canvas'); cv.width = g.w; cv.height = g.h;
+    var cx = cv.getContext('2d'), id = cx.createImageData(g.w, g.h), d = id.data;
+    for (var yy = 0; yy < g.h; yy++) for (var xx = 0; xx < g.w; xx++) {
+      var c = g.get(mirror ? g.w - 1 - xx : xx, yy); if (!c) continue;
+      var hex = PAL[map[c]] || PAL.black, n = parseInt(hex.slice(1), 16), i = (yy * g.w + xx) * 4;
+      d[i] = n >> 16 & 255; d[i + 1] = n >> 8 & 255; d[i + 2] = n & 255; d[i + 3] = 255;
+    }
+    cx.putImageData(id, 0, 0);
+    return cv;
+  }
+
+  var cache = {};
+  function sprite(who, pk, mirror) {
+    var key = who + '|' + pk + '|' + (mirror ? 1 : 0);
+    return cache[key] || (cache[key] = render(who, pk, mirror));
+  }
+  function prerender() { for (var w in CHARS) for (var p in POSES) { sprite(w, p, false); sprite(w, p, true); } }
+
+  A.init = function () {
+    var r = baseInit && baseInit.apply(A, arguments);
+    try { prerender(); } catch (e) { if (window.console) console.warn('ArtChars.init', e); }
+    return r;
+  };
+  var warned = false;
+  A.drawPlayer = function (ctx, who, pose, x, feetY, t, flip) {
+    if (!ctx) return 0;
+    try {
+      if (!CHARS[who]) who = who === 'p1' || who === 'player' ? 'hero' : 'chad';
+      var fr = FRAMES[pose] || FRAMES.idle; t = t | 0;
+      var f = fr.length > 1 ? fr[(pose === 'walk' ? t >> 3 : pose === 'cheer' ? t >> 4 : t >> 5) & 1] : fr[0];
+      var mirror = (who !== 'hero') !== !!flip, cv = sprite(who, f, mirror);
+      ctx.drawImage(cv, Math.round(x) - (cv.width >> 1), Math.round(feetY) - 52);
+    } catch (e) {
+      if (!warned) { warned = true; if (window.console) console.warn('ArtChars', e); }
+      if (baseDraw) return baseDraw(ctx, who, pose, x, feetY, t, flip);
+    }
+    return 0;
+  };
+  A.charSprite = sprite; // debug / tools
+  A.CHAR_POSES = FRAMES;
+})();
+
+</script>
+<script>
+/* ==== art-portraits.js ==== */
+/* SUPER BEER PONG — BP.Art portrait override (art-portraits.js, loaded after art.js / art-chars.js).
+   Hand-authored NES pixel maps for the VS-card (64x64) and speech-box (32x32) portraits.
+   Front-view busts are authored as LEFT HALVES (mirrored to full width so eyes/ears are always level),
+   then asymmetric patches add expression (smirks, raised brows, pupils, nose shade, logos).
+   Map chars -> per-character palette roles; '.' = background. Patches: '.' = keep, ',' = background. */
+(function () {
+  'use strict';
+  var BP = (window.BP = window.BP || {});
+  var A = BP.Art;
+  if (!A) return;
+
+  // ---------------------------------------------------------------- helpers
+  function mirror(half) {
+    var out = [];
+    for (var i = 0; i < half.length; i++) out.push(half[i] + half[i].split('').reverse().join(''));
+    return out;
+  }
+  function patch(rows, x, y, p) {
+    for (var j = 0; j < p.length; j++) {
+      var r = rows[y + j]; if (r == null) continue;
+      var a = r.split('');
+      for (var i = 0; i < p[j].length; i++) {
+        var ch = p[j].charAt(i); if (ch === '.') continue;
+        if (x + i >= 0 && x + i < a.length) a[x + i] = ch === ',' ? '.' : ch;
+      }
+      rows[y + j] = a.join('');
+    }
+    return rows;
+  }
+  // light from the upper left: skin within `w` px of the right-hand outline drops to the shade tone
+  function shadeRight(rows, y0, y1, w, size) {
+    for (var y = y0; y <= y1 && y < rows.length; y++) {
+      var a = rows[y].split('');
+      for (var x = size >> 1; x < a.length; x++) {
+        if (a[x] !== 'S') continue;
+        for (var d = 1; d <= w; d++) if (a[x + d] === 'K') { a[x] = 's'; break; }
+      }
+      rows[y] = a.join('');
+    }
+  }
+  function build(spec, size) {
+    var rows = mirror(spec.half);
+    if (spec.shade) shadeRight(rows, spec.shade[0], spec.shade[1], spec.shade[2], size);
+    for (var i = 0; spec.patches && i < spec.patches.length; i++) patch(rows, spec.patches[i][0], spec.patches[i][1], spec.patches[i][2]);
+    return rows;
+  }
+  function hex(name) { var P = A.PAL || {}; return P[name] || (typeof name === 'string' && name.charAt(0) === '#' ? name : '#FCFCFC'); }
+
+  // shared role colors (per character overrides below)
+  var BASE = { K: 'black', E: 'black', W: 'white', w: 'lgray', M: 'dred' };
+
+  // ---------------------------------------------------------------- characters
+  // roles: S/s skin + shade, H/h hair + shade, C/c cap/crown + shade, P cap highlight,
+  //        T/t shirt + shade, L logo, G shades, g shade glint, J jewel, D/d beard
+  var CH = {};
+
+  CH.hero = {
+    pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', C: 'red', c: 'dred', P: 'salmon', T: 'red', t: 'dred', L: 'white' },
+    bg: ['blue', 'dblue'],
+    p64: {
+      shade: [24, 47, 3],
+      half: [
+        '................................', // 0
+        '................................',
+        '................................',
+        '................................',
+        '................................',
+        '.......................KKKKKKKKK', // 5 cap crown
+        '....................KKKCCCCCCCCC',
+        '..................KKCCCCCCCCCCCC',
+        '.................KCCCCCCCCCCCCCC',
+        '................KcCCCCCCCCCCCCCC',
+        '...............KccCCCCCCCCCCCCCC', // 10
+        '...............KccCCCCCCCCCCCCCC',
+        '..............KccCCCCCCCCCCCCCCC',
+        '..............KccCCCCCCCCCCCCCCC',
+        '..............KccCCCCCCCCCCCCCCC',
+        '..............Kccccccccccccccccc', // 15 crown seam
+        '.............KCCCCCCCCCCCCCCCCCC', // 16 curved brim
+        '.............KCCCCCCCCCCCCCCCCCC',
+        '.............KcCCCCCCCCCCCCCCCCC',
+        '..............KKcCCCCCCCCCCCCCCC', // 19 brim curves down to center
+        '...............KHKKccCCCCCCCCCCC',
+        '...............KHHHKKKccCCCCCCCC',
+        '...............KHHHhhhKKKccccccc',
+        '...............KHHhshshsKKKKKKKK',
+        '...............KHHHSSSSShhhhhsss', // 24 brim shadow + brow
+        '...............KHHHSShhhhhhhSSSS', // 25 brow
+        '...............KHHSSSSSSSSSSSSSS',
+        '.............KKKHHSSSKKKKKKKSSSS', // 27 ear top, upper lid
+        '............KSSsHsSSSSWWEEWWSSSS',
+        '............KSsssSSSSSWWEEWWSSSS',
+        '............KSsSsSSSSSsWEEWsSSSS', // 30
+        '............KSsSsSSSSSSssssSSSSS',
+        '............KSSssSsSSSSSSSSSSSSS',
+        '.............KSssSsSSSSSSSSSSSSS',
+        '..............KKKsSSSSSSSSSSSSss', // 34 ear bottom, nose base
+        '................KsSSSSSSSSSSSSSS',
+        '................KsSSSSSSSSSSSSSS',
+        '.................KsSSSSSSKSSSSSS', // 37 mouth corner
+        '.................KsSSSSSSSKKKKKK',
+        '..................KsSSSSSSKWWWWW',
+        '..................KsSSSSSSSKKWWW', // 40
+        '...................KsSSSSSSSSKKK',
+        '....................KsSSSSSSSsss',
+        '.....................KsSSSSSSSSS',
+        '......................KKsSSSSSSS',
+        '........................KKKsSSSS', // 45
+        '.........................KsKKKKK', // 46 chin
+        '......................KKKKssssss',
+        '..................KKKKTTTKsssSSS',
+        '..............KKKKTTTTTTtKsSSSSS',
+        '...........KKKTTTTTTTTTTttKSSSSS', // 50
+        '........KKKTTTTTTTTTTTTTTttKKKKK',
+        '......KKTTTTTTTTTTTTTTTTTttttttt',
+        '.....KTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '....KTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '...KTTTTTTTTTTTTTTTTTTTTTTTTTTTT', // 55
+        '..KttTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT', // 60
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT'
+      ],
+      patches: [
+        [20, 7, ['PPP', 'PP', 'P']],                       // cap shine
+        [27, 8, ['WW......WW', 'WW......WW', 'WW..WW..WW', 'WW..WW..WW', 'WWWWWWWWWW', '.WW....WW.']], // cap W
+        [26, 55, ['LL........LL', 'LL........LL', 'LL...LL...LL', 'LL..LLLL..LL', 'LL.LL..LL.LL', 'LLLL....LLLL', '.LL......LL.']], // shirt W
+        [33, 31, ['s', 's', 'ss', 'ss']],                  // nose shade (light from left)
+        [22, 28, ['WWWEEW', 'WWWEEW', 'sWWEEs']],          // pupils glance right (at the rival)
+        [36, 28, ['WWWEEW', 'WWWEEW', 'sWWEEs']]
+      ]
+    },
+    p32: {
+      shade: [11, 25, 2],
+      half: [
+        '................',
+        '................',
+        '..........KKKKKK', // 2 cap
+        '........KKCCCCCC',
+        '.......KCCCCCCCC',
+        '......KcCCCCCCCC',
+        '......KcCCCCCCCC',
+        '......Kccccccccc', // 7
+        '.....KCCCCCCCCCC', // 8 brim
+        '.....KKcCCCCCCCC',
+        '......KHKKcccccc', // 10
+        '......KHHhKKKKKK',
+        '......KHHShsssss',
+        '......KHSShhhhSS', // 13 brow
+        '.....KKHSSKKKKSS', // 14 lid
+        '....KSssSSWEEWSS',
+        '....KSsSSSWEEWSS',
+        '....KsSsSSSSSSSS', // 17
+        '.....KKsSSSSSSSs',
+        '......KsSSSKSSSS', // 19
+        '......KsSSSSKKKK',
+        '.......KsSSSKWWW', // 21
+        '.......KsSSSSKKK',
+        '........KsSSSSss',
+        '.........KKKKKKK', // 24 chin
+        '.........Kssssss',
+        '.....KKKKTTtSSSS', // 26
+        '..KKKTTTTTTttttt',
+        '.KTTTTTTTTTTTTTT',
+        '.KtTTTTTTTTTTTTT',
+        '.KtTTTTTTTTTTTTT',
+        '.KtTTTTTTTTTTTTT'
+      ],
+      patches: [
+        [9, 4, ['PP', 'P']],
+        [13, 4, ['W....W', 'W.WW.W', '.W..W.']],
+        [13, 28, ['L....L', 'L.LL.L', '.L..L.']],
+        [16, 17, ['s', 's']]
+      ]
+    }
+  };
+
+  CH.chad = {
+    pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', C: 'white', c: 'lgray', T: 'white', t: 'lgray', L: 'red' },
+    bg: ['red', 'dred'],
+    p64: {
+      shade: [24, 47, 3],
+      half: [
+        '................................', // 0
+        '................................',
+        '................................',
+        '................................',
+        '................................',
+        '.......................KKKKKKKKK', // 5 backwards cap crown
+        '....................KKKCCCCCCCCC',
+        '..................KKCCCCCCCCCCCC',
+        '.................KCCCCCCCCCCCCCC',
+        '................KcCCCCCCCCCCCCCC',
+        '...............KccCCCCCCCCCCCCCC', // 10
+        '...............KccCCCCCCCCKKKKKK', // 11 strap-gap arch
+        '..............KccCCCCCCCKKhhhhhh',
+        '..............KccCCCCCCKhhHhhHhh',
+        '..............KccCCCCCCKHhHHhHHh',
+        '..............KccCCCCCKHHHhHHHHH', // 15
+        '..............KccCCCCCKKKKKKKKKK',
+        '..............KccCCCCCKccccccccc', // 17 snap strap
+        '..............KccCCCCCKKKKKKKKKK',
+        '..............Kccccccccccccccccc', // 19 sweatband
+        '..............KKKKKKKKKKKKKKKKKK', // 20
+        '...............KHHHHSSSSSSSSSSSS',
+        '...............KHHHhSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSShhhhhhSSSS', // 25 brow
+        '...............KHHSSShSSSSSSSSSS',
+        '.............KKKHHSSSSSSSSSSSSSS', // 27 ear top
+        '............KSSsHsSSSKKKKKKKSSSS', // 28 heavy (half-closed) lid
+        '............KSsssSSSSSWWEEWWSSSS',
+        '............KSsSsSSSSSsWEEWsSSSS', // 30
+        '............KSsSsSSSSSSssssSSSSS',
+        '............KSSssSsSSSSSSSSSSSSS',
+        '.............KSssSsSSSSSSSSSSSSS',
+        '..............KKKsSSSSSSSSSSSSss', // 34
+        '................KsSSSSSSSSSSSSSS',
+        '................KsSSSSSSSSSSSSSS',
+        '.................KsSSSSSSSSSSSSS',
+        '.................KsSSSSSSSSSSSSS',
+        '..................KsSSSSSSSSSSSS',
+        '..................KsSSSSSSSSSSSS', // 40
+        '...................KsSSSSSSSSSSS',
+        '....................KsSSSSSSSSSS',
+        '.....................KsSSSSSSSSS',
+        '......................KKsSSSSSSS',
+        '........................KKKsSSSS', // 45
+        '.........................KsKKKKK', // 46 chin
+        '......................KKKKssssss',
+        '..................KKKKTTTKsssSSS',
+        '..............KKKKTTTTTTtKsSSSSS',
+        '...........KKKTTTTTTTTTTttKSSSSS', // 50
+        '........KKKTTTTTTTTTTTTTTttKKKKK',
+        '......KKTTTTTTTTTTTTTTTTTttttttt',
+        '.....KTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '....KTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '...KTTTTTTTTTTTTTTTTTTTTTTTTTTTT', // 55
+        '..KttTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT', // 60
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KttTTTTTtTTTTTTTTTTTTTTTTTTTTT'
+      ],
+      patches: [
+        [26, 17, ['..W....W....W.']],                       // strap snaps
+        [21, 22, ['................hhhh', '...............hhhhhhh', '', '.hhhhhh........SSSSSS', 'hhhhhhh..............S']], // one brow cocked
+        [22, 29, ['WEEWWW', 'sEEWWs']],                   // side-eye at the hero
+        [36, 29, ['WEEWWW', 'sEEWWs']],
+        [33, 31, ['s', 's', 'ss', 'ss']],                 // nose shade
+        [26, 36, ['.............s', '............Ks', '..........KK..', 'KKKKKKKKKK....', '..ssssss......']], // smirk
+        [26, 55, ['LL........LL', 'LL........LL', 'LL...LL...LL', 'LL..LLLL..LL', 'LL.LL..LL.LL', 'LLLL....LLLL', '.LL......LL.']]
+      ]
+    },
+    p32: {
+      shade: [11, 25, 2],
+      half: [
+        '................',
+        '................',
+        '..........KKKKKK', // 2 backwards cap
+        '........KKCCCCCC',
+        '.......KCCCCCCCC',
+        '......KcCCCCKKKK', // 5 strap gap
+        '......KcCCCKHHHH',
+        '......KcCCCKHhHH',
+        '......KcCCCKcccc', // 8 strap
+        '......KKKKKKKKKK',
+        '......KHHSSSSSSS', // 10 forehead
+        '......KHHSSSSSSS',
+        '......KHSSSSSSSS',
+        '......KHSShhhhSS', // 13 brow
+        '.....KKHSSSSSSSS',
+        '....KSssSSKKKKSS', // 15 heavy lid
+        '....KSsSSSWEEWSS',
+        '....KsSsSSSssSSS',
+        '.....KKsSSSSSSSs',
+        '......KsSSSSSSSS',
+        '......KsSSSSSSSS', // 20
+        '.......KsSSSSSSS',
+        '.......KsSSSSSSS',
+        '........KsSSSSss',
+        '.........KKKKKKK', // 24 chin
+        '.........Kssssss',
+        '.....KKKKTTtSSSS',
+        '..KKKTTTTTTttttt',
+        '.KTTTTTTTTTTTTTT',
+        '.KtTTTTTTTTTTTTT',
+        '.KtTTTTTTTTTTTTT',
+        '.KtTTTTTTTTTTTTT'
+      ],
+      patches: [
+        [10, 12, ['........hhhh', 'hhhh....SSSS']],       // right brow raised
+        [16, 17, ['s', 's']],
+        [12, 20, ['.......K', 'KKKKKKK.', '..sss...']],      // smirk
+        [13, 28, ['L....L', 'L.LL.L', '.L..L.']]
+      ]
+    }
+  };
+
+  CH.tank = {
+    pal: { S: 'brown', s: 'maroon', H: 'dbrown', h: 'black', n: 'olive', T: 'green', t: 'dgreen', L: 'white' },
+    bg: ['gray', 'dgray'],
+    p64: {
+      shade: [15, 46, 3],
+      half: [
+        '................................', // 0
+        '................................',
+        '................................',
+        '................................',
+        '..............KKKKKKKKKKKKKKKKKK', // 4 flat-top
+        '.............KnHnHnHnHnHnHnHnHnH',
+        '.............KHnHHHnHHHnHHHnHHHn',
+        '.............KhHHHHHHHHHHHHHHHHH',
+        '.............KhHHHHHHHHHHHHHHHHH',
+        '.............KhHHHHHHHHHHHHHHHHH',
+        '.............KhHHHHHHHHHHHHHHHHH', // 10
+        '.............KhHHHHHHHHHHHHHHHHH',
+        '.............KhHHHHHHHHHHHHHHHHH',
+        '.............KhHHHHHHHHHHHHHHHHH',
+        '.............KhHHHHHHHHHHHHHHHHH',
+        '.............KhHHHSSSSSSSSSSSSSS', // 15 hairline
+        '.............KhHHSSSSSSSSSSSSSSS',
+        '.............KhHSSSSSSSSSSSSSSSS',
+        '.............KhHSSSSSSSSSSSSSSSS',
+        '.............KhSSSSSSSSSSSSSSSSS',
+        '.............KhSSSKKKKSSSSSSSSss', // 20 brows slam down to the center
+        '.............KhSSSSKKKKKKKSSSSss',
+        '.............KhSSSSSSSKKKKKKSSSs',
+        '..........KKKKSSSSSSKKKKKKKKSSSS', // 23 ear top, lid
+        '.........KSsssSSSSSSSKWWEEWWSSSS',
+        '.........KSsSsSSSSSSSSsWEEWsSSSS', // 25
+        '.........KSsSsSSSSSSSSSssssSSSSS',
+        '.........KSsSsSSSSSSSSSSSSSSSSSS',
+        '.........KSsSsSSSsSSSSSSSSSSSSSS',
+        '.........KSssssSSSSSSSSSSSSSSSSS',
+        '..........KSssSSSSSSSSSSSSSSSSSS', // 30
+        '...........KKKSSSSSSSSSSSSSSSSSS',
+        '.............KSSSSSSSSSSSSSSSSSS',
+        '.............KsSSSSSSSSSSSSSSSSS',
+        '..............KsSSSSSSSSSSSSSSSS',
+        '..............KsSSSSSSSSssssssss', // 35 thick upper lip
+        '..............KsSSSSSSSKKKKKKKKK',
+        '...............KsSSSSSKSssssssss',
+        '...............KsSSSSKSSSSSSSSSS',
+        '...............KsSSSSSSSSSSSSSSS',
+        '...............KsSSSSSSSSSSSssss', // 40
+        '...............KKKsSSSSSSSSSSSSS',
+        '...............KsKKKsSSSSSSSSSSS',
+        '...............KssssKKKKsSSSSSSS',
+        '..............KKsssssssKKKKKKKKK', // 44 square chin
+        '..........KKKKTKssssssssssssssss', // 45 bull neck
+        '.......KKKTTTTTKssssSSSSSSSSSSSS',
+        '.....KKTTTTTTTTTKssSSSSSSSSSSSSS',
+        '....KTTTTTTTTTTTWWKsSSSSSSSSSSSS', // 48 V-neck trim
+        '...KTTTTTTTTTTTTTTWWKSSSSSSSSSSS',
+        '..KTTTTTTTTTTTTTTTTTWWKSSSSSSSSS', // 50
+        '..KTTTTTTTTTTTTTTTTTTTWWKSSSSSSS',
+        '.KtTTTTTTTTTTTTTTTTTTTTTWWKSSSSS',
+        '.KtTTTTTTTTTTTTTTTTTTTTTTTWWKSSS',
+        '.KtTTTTTTTTTTTTTTTTTTTTTTTTTWWKs',
+        '.KtTTTTTTTTTTTTTTTTTTTTTTTTTTTWW', // 55
+        '.KtTTTTTTtTTTTTTTTTTTTTTTTTTTTTT',
+        '.KtTTTTTTtTTTTTTTTTTTTTTTTTTTTTT',
+        '.KtTTTTTTtTTTTTTTTTTTTTTTTTTTTTT',
+        '.KtTTTTTTtTTTTTTTTTTTTTTTTTTTTTT',
+        '.KtTTTTTTtTTTTTTTTTTTTTTTTTTTTTT', // 60
+        '.KtTTTTTTtTTTTTTTTTTTTTTTTTTTTTT',
+        '.KtTTTTTTtTTTTTTTTTTTTTTTTTTTTTT',
+        '.KtTTTTTTtTTTTTTTTTTTTTTTTTTTTTT'
+      ],
+      patches: [
+        [30, 20, ['ss', 'ss']],                                   // frown crease
+        [33, 26, ['s', 's', 'ss', 'ss']],                         // nose shade
+        [26, 29, ['..ssssss..', '.ssSSSSss.', 'sKsSSSSsKs', '.ssssssss.']], // broad nose
+        [29, 41, ['ssss']],                                       // chin shadow
+        [28, 56, ['.KKKKKK.', 'KKLLLLKK', 'KLLKKLLK', 'KKLLLLKK', 'KLLKKLLK', 'KKLLLLKK', '.KKKKKK.']] // #8
+      ]
+    },
+    p32: {
+      shade: [7, 22, 2],
+      half: [
+        '................',
+        '................',
+        '......KKKKKKKKKK', // 2 flat-top
+        '.....KnHnHnHnHnH',
+        '.....KhHHHHHHHHH',
+        '.....KhHHHHHHHHH',
+        '.....KhHHHHHHHHH',
+        '.....KhHSSSSSSSS', // 7
+        '.....KhSSSSSSSSS',
+        '.....KhSSSSSSSSS',
+        '.....KhSKKKSSSSs', // 10 brows
+        '....KKSSSSKKKKSs',
+        '...KSssSSKWEEWSS', // 12 eyes
+        '...KSsSSSSsssSSS',
+        '...KSsSSSSSSSSSS',
+        '....KKSSSSSSSsKs', // 15 nostrils
+        '.....KsSSSSSSSSS',
+        '.....KsSSSSKKKKK', // 17 frown
+        '.....KsSSSKsssss',
+        '.....KsSSSSSSSSS',
+        '.....KsSSSSSSSss', // 20
+        '.....KsKKsSSSSSS',
+        '....KKssKKKKKKKK', // 22 chin
+        '..KKTKssssssssss',
+        '.KTTTTKsssssSSSS',
+        '.KTTTTTWKSSSSSSS',
+        '.KTTTTTTTWKSSSSS',
+        '.KtTTTTTTTTWKSSS',
+        '.KtTTTTTTTTTTWKS',
+        '.KtTTTTTTTTTTTTW',
+        '.KtTTTTTTTTTTTTT',
+        '.KtTTTTTTTTTTTTT'
+      ],
+      patches: []
+    }
+  };
+
+  CH.sky = {
+    pal: { S: 'skin', s: 'salmon', H: 'blue', h: 'navy', n: 'lblue', G: 'black', g: 'white', T: 'purple', t: 'dpurple', P: 'lpurple', L: 'gold' },
+    bg: ['cyan', 'teal'],
+    p64: {
+      shade: [27, 47, 3],
+      half: [
+        '................................', // 0
+        '................................',
+        '................................',
+        '................................',
+        '................................',
+        '................................', // 5
+        '................................',
+        '................................',
+        '................................',
+        '................................',
+        '................................', // 10
+        '................................',
+        '................................',
+        '................................',
+        '................................',
+        '...............KHHHSSSSSSSSSSSSS', // 15 forehead (hair patch below)
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS', // 20
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHSSSSSSSSSSSSSS', // 25
+        '...............KHHSSSSSSSSSSSSSS',
+        '.............KKKHHSSSSSSSSSSSSSS', // 27 ear top
+        '............KSSsHsSSSSSSSSSSSSSS',
+        '............KSsssSSSSSSSSSSSSSSS',
+        '............KSsSsSSSSSSSSSSSSSSS', // 30
+        '............KSsSsSSSSSSSSSSSSSSS',
+        '............KSSssSsSSSSSSSSSSSSS',
+        '.............KSssSsSSSSSSSSSSSSS',
+        '..............KKKsSSSSSSSSSSSSss', // 34
+        '................KsSSSSSSSSSSSSSS',
+        '................KsSSSSSSSSSSSSSS',
+        '.................KsSSSSSSSSSSSSS',
+        '.................KsSSSSSSSSSSSSS',
+        '..................KsSSSSSSSSSSSS',
+        '..................KsSSSSSSSSSSSS', // 40
+        '...................KsSSSSSSSSSSS',
+        '.................KK.KsSSSSSSSSSS', // 42 popped collar tips
+        '................KPK..KsSSSSSSSSS',
+        '................KPPKttKKsSSSSSSS',
+        '................KPPPKtttKKKsSSSS', // 45
+        '................KPPPPKtttKsKKKKK',
+        '...............KTPPPPPKttKssssss',
+        '.............KKTTPPPPPPKtKsssSSS',
+        '...........KKTTTTTPPPPPPKKsSSSSS',
+        '.........KKTTTTTTTTPPPPPPKKSSSSS', // 50
+        '.......KKTTTTTTTTTTTTPPPPPPKKKKK',
+        '.....KKTTTTTTTTTTTTTTTTPPPPPKsSS',
+        '....KTTTTTTTTTTTTTTTTTTTTPPPPKsS',
+        '...KTTTTTTTTTTTTTTTTTTTTTTTPPPKs',
+        '..KtTTTTTTTTTTTTTTTTTTTTTTTTTKKK', // 55
+        '..KtTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT', // 60
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT'
+      ],
+      patches: [
+        [0, 0, [ // swoop: hand-placed, light catches the crest
+          '........................KKKKKKKKKK..............................',
+          '.....................KKKHHHHHHHHHHKKKKK.........................',
+          '...................KKHHHHHHHHHHHHHHHHHHKKK......................',
+          '..................KhHHHhHHnnnnnnnnnHHHHHHHKKK...................',
+          '.................KhhHHHhHHHHHHHHHHHnnnnHHHHHHK..................',
+          '................KhhhHHhHHHHHHHHHHHHHHHHnnHHHHHKK................',
+          '...............KhhhhHHhHnnnnnHHHHHHHHHHHHnnHHHHHK...............',
+          '...............KhhhhHhHHHHHHHnnnnnHHHHHHHHHnnHHHHK..............',
+          '..............KhhhhhHhHHHHHHHHHHHHnnnnnHHHHHHnHHHHK.............',
+          '..............KhhhhhHhHHHHHHHHHHHHHHHHHnnHHHHHHHHHK.............',
+          '..............KhhhhhhHHHHnnnHHHHHHHHHHHHHnnHHHHHHHHK............',
+          '..............KhhhhhhHHHHHHHnnnnHHHHHHHHHHHnnHHHHHHK............',
+          '..............KhhhhhhHHHHHHHHHHHnnnnHHHHHHHHHnnHHHHK............',
+          '..............KhhhhhHHHHHHHHHHHHHHHHnnHHHHHHHHHnHHHHK...........',
+          '..............KhHHHhhhHHHHHHHHHHHHHHHHnnnHHHHHHHHHHHK...........',
+          '..............KhHHHKKKhhHHHHHHnnHHHHHHHHHnnHHHHHHHHHK...........',
+          '..............KhHHHK..KKhhhhhHHHnnnHHHHHHHHnnHHHHHHHK...........',
+          '..............KhHHHK....KKKhhhhhHHHnnHHHHHHHHnHHHHHHK...........',
+          '..............KhHHHK.......KKhhhhhHHHnnnHHHHHHnHHHHHK...........',
+          '..............KhHHHK.........KKKhhhhhHHHnHHHHHHnnHHHK...........',
+          '..............KhHHHK............KKhhhhhHHnnnHHHHHnHHK...........',
+          '..............KhHHHK..............KKKhhhhhHHnHHHHHHHK...........',
+          '..............KhHHHK.................KKhhhhhHnnHHHHHK...........',
+          '..............KhHHHK...................KKKhhhhhHHHHHK...........',
+          '..............KhHHHK......................KKhhhhhHHHK...........',
+          '..............KhHHHK........................KKKhhhhhK...........',
+          '..............KhHHHK...........................KKhhhK...........',
+          '.................................................KKK............'
+        ]],
+        [20, 24, ['.hhhhhh', 'h']],                                   // the one brow you can see
+        [13, 27, ['KKKGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGKKK',          // wraparound shades
+                  '..KGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGK',
+                  '....GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+                  '....GGGGGGGGGGGGGGS..SGGGGGGGGGGGGGG',
+                  '.....GGGGGGGGGGGGGS..SGGGGGGGGGGGGG',
+                  '......GGGGGGGGGGGS....SGGGGGGGGGGG',
+                  '........GGGGGGGS........SGGGGGGG']],
+        [21, 28, ['...gg', '..gg', '.gg', 'g'], 0],
+        [36, 28, ['...gg', '..gg', '.gg', 'g']],
+        [19, 31, ['nnnnn'], 0],
+        [41, 31, ['nnnnn']],
+        [33, 34, ['s', 'ss']],                                        // nose shade
+        [28, 38, ['.......K', 'KKKKKKK.', '.ssss...']],               // too-cool half smile
+        [33, 55, ['....KKKK', '...KLLK.', '..KLLKKK', '.KLLLLLK', '.KKKLLK.', '...KLK..', '..KLK...', '..KK....']] // bolt
+      ]
+    },
+    p32: {
+      shade: [12, 25, 2],
+      half: [
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+        '................', // 5
+        '................',
+        '.......KHHSSSSSS', // 7 forehead
+        '.......KHHSSSSSS',
+        '.......KHHSSSSSS',
+        '.......KHSSSSSSS', // 10
+        '.......KHSSSSSSS',
+        '.......KHSSSSSSS',
+        '.....KKKHSSSSSSS', // 13 ear top
+        '....KSssSSSSSSSS',
+        '....KSsSSSSSSSSS', // 15
+        '....KsSsSSSSSSSS',
+        '.....KKsSSSSSSSs',
+        '......KsSSSSSSSS',
+        '......KsSSSSSSSS',
+        '......KsSSSSSSSS', // 20
+        '.......KsSSSSSSS',
+        '.....K.KsSSSSSss',
+        '....KPK.KKKKKKKK', // 23 chin + collar
+        '....KPPKtKssssss',
+        '...KTPPPKtKSSSSS', // 25
+        '..KTTTPPPPKKSSSS',
+        '.KTTTTTTPPPPKsSS',
+        '.KtTTTTTTTTPPPKs',
+        '.KtTTTTTTTTTTTKK',
+        '.KtTTTTTTTTTTTTT', // 30
+        '.KtTTTTTTTTTTTTT'
+      ],
+      patches: [
+        [0, 1, ['.............KKKKKK.............',
+                '...........KKHHnnHHKK...........',
+                '.........KKHhHHHHnnHHKK.........',
+                '........KhHhHHHHHHHnnHHK........',
+                '.......KhhhHHnnHHHHHHHHHK.......',
+                '.......KhhHHHHHnnnHHHHHHHK......',
+                '.......KhhKKhhHHHHnnHHHHHK......',
+                '.......KhH..KKhhHHHHnHHHHK......',
+                '.......KhH....KKhhHHHHHHHK......',
+                '.......KhH......KKhhHHHHK.......',
+                '.......KhH........KKhhhHK.......',
+                '.......Kh...........KKhhK.......']],
+        [10, 11, ['hhh']],
+        [6, 13, ['KKGGGGGGGGGGGGGGGGGGKK', '..GGGGGGGS..SGGGGGGG', '...GGGGGS....SGGGGG']],
+        [10, 13, ['g', 'g'], 0],
+        [19, 13, ['g', 'g']],
+        [16, 15, ['s', 's']],
+        [13, 19, ['.....K', 'KKKKK.']],
+        [17, 27, ['.KK', 'KLK', 'KK.']]
+      ]
+    }
+  };
+
+  CH.brody = {
+    pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', o: 'olive', G: 'black', g: 'white', r: 'red', y: 'gold', T: 'cyan', t: 'teal' },
+    bg: ['rose', 'dmagenta'],
+    p64: {
+      shade: [27, 47, 3],
+      half: [
+        '................................', // 0
+        '................................',
+        '................................',
+        '................................',
+        '................................',
+        '................................', // 5
+        '................................',
+        '................................',
+        '................................',
+        '................................',
+        '................................', // 10
+        '................................',
+        '................................',
+        '................................',
+        '................................',
+        '................................', // 15
+        '................................',
+        '................................',
+        '................................',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS', // 20
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHHSSSSSSSSSSSSS',
+        '...............KHHSSSSSSSSSSSSSS', // 25
+        '...............KHHSSSSSSSSSSSSSS',
+        '.............KKKHHSSSSSSSSSSSSSS', // 27 ear top
+        '............KSSsHsSSSSSSSSSSSSSS',
+        '............KSsssSSSSSSSSSSSSSSS',
+        '............KSsSsSSSSSSSSSSSSSSS', // 30
+        '............KSsSsSSSSSSSSSSSSSSS',
+        '............KSSssSsSSSSSSSSSSSSS',
+        '.............KSssSsSSSSSSSSSSSSS',
+        '..............KKKsSSSSSSSSSSSSss', // 34
+        '................KsSSSSSSSSSSSSSS',
+        '................KsSSSSSSSSSSSSSS',
+        '.................KsSSSSSKSSSSSSS', // 37 huge grin
+        '.................KsSSSSSSKKKKKKK',
+        '..................KsSSSSSKWWWWWW',
+        '..................KsSSSSSSKMMMMM', // 40
+        '...................KsSSSSSSKWWWW',
+        '....................KsSSSSSSKKKK',
+        '.....................KsSSSSSSSss',
+        '......................KKsSSSSSSS',
+        '........................KKKsSSSS', // 45
+        '.........................KsKKKKK',
+        '......................KKKKssssss',
+        '..................KKKKSSSKsssSSS', // 48 bare shoulders
+        '..............KKKKTTTTSSSssSSSSS',
+        '...........KKKSSTTTTSSSSSsSSSSSS', // 50
+        '........KKKSSSSSTTTTSSSSSSssSSSS',
+        '......KKSSSSSSSTTTTSSSSSSSSSSSSS',
+        '.....KSSSSSSSSsTTTTSSSSSSSSSSSSS',
+        '....KSSSSSSSSssTTTTSSSSSSSSSSSSS',
+        '...KSSSSSSSSsKTTTTTTSSSSSSSSSSSS', // 55 tank top
+        '..KSSSSSSSSsKtTTTTTTTTSSSSSSSSSS',
+        '..KSSSSSSSSsKtTTTTTTTTTTTSSSSSSS',
+        '..KSSSSSSSSsKtTTTTTTTTTTTTTTSSSS',
+        '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT',
+        '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT', // 60
+        '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT',
+        '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT',
+        '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT'
+      ],
+      patches: [
+        [0, 0, [ // bleached spikes, dark roots
+          '...............K.........K............K........K................',
+          '..............KHK.......KhK..........KhK......KhK...............',
+          '..............KHHK......KHhK...KK...KHhK.....KhhK...............',
+          '...............KHHK.....KHHhK.KHhK.KHHhK....KhhK................',
+          '...............KHHhK....KHHhK.KHhK.KHHhK...KHhhK................',
+          '.........K.....KHHHhK...KHHHhKHHHhKHHHhK..KHHhhK......K.........',
+          '........KHK.....KHHHhKKKHHHHhHHHHhHHHHhhKKHHHhhK.....KhK........',
+          '.........KHKK...KHHHHhhKHHHHhHHHHhHHHHhhKHHHhhK....KKhK.........',
+          '.........KHHHK..KHHHHhHHHHHHHhHHHhHHHhHHHHHHhhK...KHhhK.........',
+          '.........KHHHhK..KHHHHhHHHHHHhHHHhHHHhHHHHHHhhK..KHHhhK.........',
+          '..........KHHHhKKKHHHHHhHHHHHhHHHhHHHhHHHHHhhhKKKHHhhK..........',
+          '..........KHHHHhHKHHHHHhHHHHHHHHHhHHHHHHHHhHhhKHHHHhhK..........',
+          '...........KHHHhHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhhK...........',
+          '...........KHHHHhHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhhK...........',
+          '......K....KHHHHHhHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhhhK....K......',
+          '.....KHKKK..KHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhhK..KKKhK.....',
+          '......KHHHKKKKHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhhKKKKHhhK......',
+          '.......KHHHHHKHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhhKHHHhhK.......',
+          '........KhHHhHHHHHHHoHoHoHoHoHoHoHoHoHoHoHoHoHHHHHHHHhhK........',
+          '.........KhhhhhHHHHoHohhHoHohhHoHohhHoHohhHoHoHHHhhhhhK.........',
+          '..........KKKKKHHHHHHhKKHHHhKKhHHhKKHHHhKKhHHHHhhKKKKK..........',
+          '..............KHHHHhhK.KhHHhK.KhhK.KhHHhK.KhhHHhhK..............',
+          '..............KHHHHKK...KhhK...KK...KhhK...KKHHhhK..............',
+          '..............KHHHHK.....KK..........KK.....KHHhhK..............',
+          '..............KHHHHK........................KHHhhK..............',
+          '..............KHHHHK........................KHHhhK..............',
+          '..............KhhhhK........................KhhhhK..............'
+        ]],
+        [0, 26, ['............GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG............',
+                  '..............GrrrrrrrrrrrrrrrrGGrrrrrrrrrrrrrrrrG..............',
+                  '..............GrrrrrrrrrrrrrrrG..GrrrrrrrrrrrrrrrG..............',
+                  '...............GyyyyyyyyyyyyyG....GyyyyyyyyyyyyyG...............',
+                  '................GGGGGGGGGGGGG......GGGGGGGGGGGGG................']],
+        [17, 27, ['gg', 'g'], 0],
+        [35, 27, ['gg', 'g']],
+        [33, 33, ['s', 'ss']],
+        [28, 39, ['w.....w'], 0], [29, 41, ['.w..w']],
+        [22, 50, ['W.................W', '..W.............W', '....W.........W', '......W.....W', '........WWWW', '........KWWK', '.........WW', '.........KK']] // shark-tooth necklace
+      ]
+    },
+    p32: {
+      shade: [13, 25, 2],
+      half: [
+        '................',
+        '................',
+        '................',
+        '................',
+        '................',
+        '................', // 5
+        '................',
+        '................',
+        '................',
+        '................',
+        '................', // 10
+        '.......KHSSSSSSS',
+        '.......KHSSSSSSS',
+        '.....KKKHSSSSSSS', // 13 ear top
+        '....KSssSSSSSSSS',
+        '....KSsSSSSSSSSS', // 15
+        '....KsSsSSSSSSSS',
+        '.....KKsSSSSSSSs',
+        '......KsSSKSSSSS', // 18 grin
+        '......KsSSSKKKKK',
+        '.......KsSKWWWWW', // 20
+        '.......KsSSKMMMM',
+        '........KsSSKKKK',
+        '........KsSSSSss',
+        '.........KKKKKKK', // 24
+        '.........Kssssss',
+        '.....KKKKSSSSSSS',
+        '..KKKSTTSSSSSSSS',
+        '.KSSSSTTSSSWSSSS',
+        '.KSSSsTTTSSSSWWW',
+        '.KSSsKTTTTTSSSSS', // 30
+        '.KSSsKtTTTTTTTSS'
+      ],
+      patches: [
+        [0, 0, [
+                '.......KHK.....K.....KhK........',
+                '....K..KHHK...KhK...KHhK..K.....',
+                '...KHK.KHHHK.KHhK..KHHhK.KhK....',
+                '...KHHKKHHHhKKHHhKKHHHhKKHhK....',
+                '....KHHKKHHHHHHHHHHHHhKKHHhK....',
+                '....KHHHKHHHHHHHHHHHHHHHHHhK....',
+                '....KHHHHHHHHHHHHHHHHHHHHhK.....',
+                '.....KHHHHHHHHHHHHHHHHHHHhK.....',
+                '.....KHHHHHHHHHHHHHHHHHHHhK.....',
+                '......KHHHHhhHHhhHHhhHHHhK......',
+                '......KHHhhKKhhKKhhKKhhHhK......',
+                '......KHHKK..KK..KK..KKHhK......',
+                '......KHHK............KHhK......',
+                '......KhhK............KhhK......'
+        ]],
+        [0, 13, ['....GGGGGGGGGGGGGGGGGGGGGGGG....', '......GrrrrrrrGGrrrrrrrG', '.......GyyyyyG..GyyyyyG']],
+        [8, 14, ['g'], 0], [17, 14, ['g']],
+        [16, 17, ['s']],
+        [13, 20, ['w..w']]
+      ]
+    }
+  };
+
+  // ---------------------------------------------------------------- render
+  var cache = {};
+  function render(who, size) {
+    var def = CH[who], spec = def && (size === 64 ? def.p64 : def.p32);
+    if (!spec) return null;
+    var rows = build(spec, size), pal = {}, k;
+    for (k in BASE) pal[k] = hex(BASE[k]);
+    for (k in def.pal) pal[k] = hex(def.pal[k]);
+    var cv = document.createElement('canvas'); cv.width = size; cv.height = size;
+    var c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+    // NES-style striped backdrop in the character's color
+    c.fillStyle = hex(def.bg[0]); c.fillRect(0, 0, size, size);
+    c.fillStyle = hex(def.bg[1]);
+    var per = size === 64 ? 8 : 6, on = size === 64 ? 3 : 2, x, y;
+    for (y = 0; y < size; y++) for (x = 0; x < size; x++) if (((x + y) % per) < on) c.fillRect(x, y, 1, 1);
+    for (y = 0; y < rows.length && y < size; y++) {
+      var r = rows[y];
+      for (x = 0; x < r.length && x < size; x++) {
+        var col = pal[r.charAt(x)]; if (!col) continue;
+        c.fillStyle = col; c.fillRect(x, y, 1, 1);
+      }
+    }
+    c.fillStyle = hex('black');
+    c.fillRect(0, 0, size, 1); c.fillRect(0, size - 1, size, 1); c.fillRect(0, 0, 1, size); c.fillRect(size - 1, 0, 1, size);
+    return cv;
+  }
+  function get(who, size) {
+    var key = who + '|' + size;
+    if (!(key in cache)) { try { cache[key] = render(who, size); } catch (e) { cache[key] = null; } }
+    return cache[key];
+  }
+  var ALIAS = { p1: 'hero', player: 'hero', sal: 'hero', nate: 'chad', p2: 'chad', cpu: 'chad' };
+  var origDraw = A.drawPortrait, origInit = A.init;
+
+  A.drawPortrait = function (ctx, who, x, y, size) {
+    try {
+      if (!ctx) return 0;
+      var w = CH[who] ? who : ALIAS[who] || who, sz = (size | 0) >= 48 ? 64 : 32;
+      var cv = CH[w] ? get(w, sz) : null;
+      if (!cv) { if (origDraw) return origDraw(ctx, CH[w] ? w : w, x, y, size); cv = get('chad', sz) || get('hero', sz); }
+      if (cv) ctx.drawImage(cv, Math.round(x), Math.round(y));
+    } catch (e) { /* never throw from a draw call */ }
+    return 0;
+  };
+  A._portraitDefs = CH; // read by tools/portraits-check.mjs
+  A.init = function () {
+    var r = origInit ? origInit.apply(this, arguments) : undefined;
+    try { for (var w in CH) { get(w, 64); get(w, 32); } } catch (e) { /* lazily retried */ }
+    return r;
   };
 })();
 
@@ -4079,6 +5453,29 @@ BP.Scores = (function () {
   function sy(y, z) { return TMID - y + z * 0.5 }
   function blink(t, p) { return ((t / (p || 16)) | 0) % 2 === 0 }
 
+  // ---------------------------------------------------------------- UI system (one set of rules, every screen)
+  // * Text sits on the 8x8 tile grid and inside y 8..224 (no overscan). Windows are BP.Art.drawBox frames whose
+  //   top edge is at 8k+3, so a title tab printed over the top border lands on a tile row (8k) and body text at
+  //   8k+8 never touches a border.
+  // * Window styles: 'default' = info, 'red' = opponent, 'gold' = reward / armed, 'dim' = secondary.
+  // * Text colors: white = info / you, gold = highlight / prompts, red = opponent, lgray = labels / unselected,
+  //   gray = disabled, lgreen = good, orange = warning. Only colors every stage already shows (NES budget).
+  var UC = { info: 'white', hi: 'gold', foe: 'red', label: 'lgray', off: 'gray', good: 'lgreen', warn: 'orange' }
+  function gridX(s) { return Math.max(0, ((W - String(s).length * 8) / 16) | 0) * 8 } // = Art.textCenter's x
+  // title tab: text knocked out of a window's top border (Dragon Warrior / Zelda menu style)
+  function tab(x, y, s, c) { s = String(s); rect(x - 2, y - 1, s.length * 8 + 4, 9, 'black'); T(s, x, y, c || UC.hi) }
+  function win(x, y, w, h, st, title, tc) { box(x, y, w, h, st); if (title) tab(x + 8, y - 3, title, tc) }
+  // bottom message line (prompts, skip, chirps): one centered window, text on row y 208
+  function msgLine(s, c, st, hide) { if (hide) return; s = String(s); var x = gridX(s); box(x - 8, 203, s.length * 8 + 16, 18, st || 'default'); T(s, x, 208, c || UC.hi) }
+  // big message window (banners + callouts) centered on x 128; scale-2 text on a tile row
+  var BIG_Y = 123
+  function bigWin(s, y, c, st, h) {
+    s = String(s)
+    var bw = Math.min(248, Math.max(96, s.length * 16 + 32))
+    box(128 - bw / 2, y, bw, h || 28, st)
+    BIG(s, 128, y + 5, c, 2)
+  }
+
   // ---------------------------------------------------------------- global state
   var S = null // current screen {name, t, ...}
   var fade = null // {phase:'out'|'in', t, fn}
@@ -4827,7 +6224,7 @@ BP.Scores = (function () {
       case 'aim':
         if (human) {
           if (run && run.hints < 4) run.hintOn = true
-          var bt = tp && inR(tp, IX, IY + IH + 1, IW, 12)
+          var bt = tp && chipHit(tp, side)
           if (pr('b') || pr('select') || bt) {
             if (alive(1 - side) >= 2 || M.bounce) { M.bounce = !M.bounce; sfx(M.bounce ? 'select' : 'cancel') } else sfx('error')
           } else if (pr('a') && M.pt > 6) {
@@ -4908,7 +6305,6 @@ BP.Scores = (function () {
   }
 
   // ======================================================================== MATCH DRAW
-  var IX = 84, IY = 25, IW = 90, IH = 82
   function drawMatch(showHud) {
     var M = m, A = BP.Art
     ctx.save()
@@ -4966,79 +6362,91 @@ BP.Scores = (function () {
 
     var ph = M.phase
     var humanTurn = M.ctrl[M.turn] === 'human'
-    if (!paused && (ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight' || (ph === 'result' && M.missX))) drawInset()
+    var insetUp = ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight' || (ph === 'result' && M.missX)
+    if (!paused && insetUp) drawInset()
     if (!paused) drawCallouts()
     if ((ph === 'banner' || ph === 'ready') && M.banner && !paused) {
-      var txt = M.banner
-      if (ph === 'ready' && M.pt > 30) txt = 'GO!'
-      var w = Math.max(96, txt.length * 16 + 24)
+      var isGo = ph === 'ready' && M.pt > 30, txt = isGo ? 'GO!' : M.banner
       var withBalls = ph === 'banner' && !M.redemption
-      box(128 - w / 2, 108, w, withBalls ? 40 : 30, M.redemption ? 'gold' : M.turn === 1 && ph === 'banner' ? 'red' : 'default')
-      BIG(txt, 128, 115, ph === 'ready' && M.pt > 30 ? 'gold' : M.bannerC, 2)
-      if (withBalls) for (var bi = 0; bi < M.balls; bi++) A.drawIcon(ctx, 'ball', 128 - M.balls * 5 + bi * 10 + 1, 135)
+      var bst = M.redemption ? 'gold' : M.turn === 1 && ph === 'banner' ? 'red' : 'default'
+      if (withBalls) { // turn card: name + the balls you get, bottom edge shared with the callout window
+        bigWin(txt, BIG_Y - 16, M.bannerC, bst, 44)
+        for (var bi = 0; bi < M.balls; bi++) A.drawIcon(ctx, 'ball', 128 - M.balls * 6 + bi * 12 + 2, BIG_Y + 13)
+      } else bigWin(txt, BIG_Y, isGo ? 'gold' : M.bannerC, bst)
     }
-    // opponent speech (Punch-Out style): portrait + one line; hidden while the aim inset is up
-    var insetUp = ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight' || (ph === 'result' && M.missX)
-    if (M.speech && !paused && !insetUp) {
-      box(4, 26, 248, 40, 'red')
-      if (A.drawPortrait) A.drawPortrait(ctx, M.speech.who, 8, 30)
-      T(M.speech.name + ':', 46, 33, 'red')
-      T(M.speech.text.slice(0, Math.max(0, M.speech.t)), 46, 47, 'white')
-    }
+    // opponent speech (Punch-Out!! style): portrait window + name-tagged line; hidden while the shot window is up
+    if (M.speech && !paused && !insetUp) drawSpeech(M.speech)
+    // the stage-1 rival heckles from his side of the table
     if (M.chirp && !paused && humanTurn && (ph === 'aim' || ph === 'power')) {
-      box(52, 204, 152, 14, 'dim')
-      TC(M.chirp.text, 207, 'white')
+      var cw = M.chirp.text.length * 8 + 16
+      box(W - 8 - cw, 147, cw, 18, 'red')
+      T(M.chirp.text, W - cw, 152, UC.info)
     }
     if (showHud !== false) drawHUD()
-    if (!M.demo && M.turn === 1 && !M.ff && !paused && (ph === 'banner' || ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight')) {
-      rect(52, 213, 152, 11, 'black')
-      if (blink(frame, 24)) TC(isTouch() ? 'TAP TO SKIP ▶▶' : 'A: SKIP ▶▶', 215, 'gold')
-    }
-    if (M.demo) {
-      box(84, 188, 88, 18, 'dim')
-      if (blink(frame, 24)) TC('DEMO PLAY', 193, 'gold')
-      if (blink(frame, 30)) TC('PUSH START', 210, 'white', true)
-    }
+    // bottom message line: first-throw hints / CPU skip / attract prompt
+    if (!paused && humanTurn && !M.demo && run && run.hints < 4 && (ph === 'aim' || ph === 'power'))
+      msgLine(ph === 'aim' ? 'TAP OR A: LOCK AIM' : 'TAP IN THE GREEN!', UC.hi, 'default', !blink(frame, 20))
+    if (!M.demo && M.turn === 1 && !M.ff && !paused && (ph === 'banner' || ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight'))
+      msgLine(isTouch() ? 'TAP TO SKIP ▶▶' : 'A: SKIP ▶▶', UC.hi, 'dim', !blink(frame, 24))
+    if (M.demo) { var dp = blink(frame, 60); msgLine(dp ? ' DEMO PLAY' : 'PUSH START', dp ? UC.hi : UC.info) }
+  }
+
+  function drawSpeech(sp) {
+    // portrait window | text window with the speaker's name knocked into its border
+    box(8, 35, 48, 48, 'red')
+    if (BP.Art.drawPortrait) BP.Art.drawPortrait(ctx, sp.who, 16, 43)
+    win(56, 35, 192, 48, 'red', sp.name, UC.foe)
+    T(sp.text.slice(0, Math.max(0, sp.t)), 64, 56, UC.info)
   }
 
   function drawCallouts() {
     var cs = m.calls
     if (!cs.length) return
-    var y = 132
     var first = cs[0]
     if (first.t < 90) {
-      var w = first.text.length * 16 + 20
       var bob = first.t < 6 ? 6 - first.t : 0
-      box(128 - w / 2, y - 4 - bob, w, 26, first.c === 'red' ? 'red' : first.c === 'gold' ? 'gold' : 'default')
-      BIG(first.text, 128, y + 1 - bob, first.c, 2)
+      bigWin(first.text, BIG_Y - bob, first.c, first.c === 'red' ? 'red' : first.c === 'gold' ? 'gold' : 'default')
     }
     for (var i = 1; i < cs.length && i < 4; i++) {
       var c = cs[i]
       if (c.t < (i * 6)) continue
-      var tw = c.text.length * 8 + 12
-      box(128 - tw / 2, y + 22 + (i - 1) * 13, tw, 13, 'dim')
-      TC(c.text, y + 25 + (i - 1) * 13, c.c)
+      var tx = gridX(c.text), ty = BIG_Y + 32 + (i - 1) * 16
+      box(tx - 8, ty, c.text.length * 8 + 16, 16, 'dim')
+      T(c.text, tx, ty + 5, c.c)
     }
   }
 
-  // inset mapping (behind-the-shooter view of the target rack)
+  // ---- SHOT WINDOW: the rack seen from behind the shooter + the power meter in ONE frame with a title tab.
+  // It hangs on the shooter's side of the screen so the stage's centerpiece stays visible, and never reaches
+  // below y 120 (the ball's arc never climbs above y 128). Rack scale is unchanged: 2 px per table unit.
+  var SWW = 112, SWH = 84, SWY = 35
+  var IW = 90, IH = 82 // legacy inset size: BRO-DY's smoke drift range (updateMatch)
+  function shotWin(side) {
+    var x = side === 1 ? W - 8 - SWW : 8
+    return { x: x, y: SWY, vx: x + 4, vy: SWY + 4, vw: 84, vh: 76, dx: x + 90, fx: x + 96, fy: SWY + 6, fw: 8, fh: 72 }
+  }
+  // chips (h 14, slim frame) put their text on the tile row below the window: y 128
+  function bounceChip(side) { return { x: shotWin(side).x, y: SWY + SWH + 6, w: 80, h: 14 } }
+  function chipHit(p, side) { var c = bounceChip(side); return inR(p, c.x, c.y - 2, c.w, c.h + 4) } // 18-px tap target
   function insetXY(side, x, z) {
-    var icx = IX + IW / 2
-    if (side === 0) return { x: icx + z * 2, y: IY + 13 + (214 - x) * 2 } // anchored on the back row
-    return { x: icx - z * 2, y: IY + 13 + (x - 42) * 2 }
+    var g = shotWin(side), icx = g.vx + g.vw / 2, top = g.vy + 10
+    if (side === 0) return { x: icx + z * 2, y: top + (214 - x) * 2 } // anchored on the back row
+    return { x: icx - z * 2, y: top + (x - 42) * 2 }
   }
   function drawInset() {
-    var M = m, A = BP.Art, side = M.turn, human = M.ctrl[side] === 'human'
-    box(IX, IY, IW, IH, M.bounce ? 'gold' : side === 1 ? 'red' : 'default')
+    var M = m, A = BP.Art, side = M.turn, human = M.ctrl[side] === 'human', g = shotWin(side)
+    var st = M.bounce ? 'gold' : side === 1 ? 'red' : 'default'
+    box(g.x, g.y, SWW, SWH, st)
+    rect(g.dx, g.y + 1, 2, SWH - 2, st === 'gold' ? 'gold' : st === 'red' ? 'red' : 'white') // pane divider
     ctx.save()
-    ctx.beginPath(); ctx.rect(IX + 3, IY + 3, IW - 6, IH - 6); ctx.clip()
-    rect(IX + 3, IY + 3, IW - 6, IH - 6, 'black')
-    var icx = IX + IW / 2
+    ctx.beginPath(); ctx.rect(g.vx, g.vy, g.vw, g.vh); ctx.clip()
+    rect(g.vx, g.vy, g.vw, g.vh, 'black')
+    var icx = g.vx + g.vw / 2
     // table surface (top-down)
-    rect(icx - 29, IY + 3, 58, IH, 'dred')
-    rect(icx - 29, IY + 3, 1, IH, 'white')
-    rect(icx + 28, IY + 3, 1, IH, 'white')
-    rect(icx, IY + 3, 1, IH, 'red')
+    rect(icx - 29, g.vy, 58, g.vh, 'dred')
+    rect(icx - 29, g.vy, 1, g.vh, 'white')
+    rect(icx + 28, g.vy, 1, g.vh, 'white')
+    rect(icx, g.vy, 1, g.vh, 'red')
     // cups
     var cs = M.sides[1 - side].cups
     cs.forEach(function (c) {
@@ -5049,7 +6457,7 @@ BP.Scores = (function () {
     M.smoke.forEach(function (sm) {
       for (var py = 0; py < 16; py += 2) for (var px = 0; px < 28; px += 2) {
         var d = Math.hypot((px - 14) / 14, (py - 8) / 8)
-        if (d < 1 && ((px + py + (sm.t >> 3)) & 2) === 0) rect(IX + sm.x + px, IY + sm.y + py, 2, 2, d < 0.6 ? 'lgray' : 'gray')
+        if (d < 1 && ((px + py + (sm.t >> 3)) & 2) === 0) rect(g.vx - 3 + sm.x + px, g.vy - 3 + sm.y + py, 2, 2, d < 0.6 ? 'lgray' : 'gray')
       }
     })
     // wind arrow (shooter's view: the only wind arrow)
@@ -5087,22 +6495,27 @@ BP.Scores = (function () {
       if (M.lockAim) { var lq = insetXY(side, M.lockAim.x, M.lockAim.z); rect(lq.x - 1, lq.y, 3, 1, 'white'); rect(lq.x, lq.y - 1, 1, 3, 'white') }
     }
     ctx.restore()
-    // shooter tag
-    if (!human) T(M.demo && side === 0 ? 'HERO' : M.sides[side].name.slice(0, 9), IX + 4, IY + IH - 11, side === 0 ? 'white' : 'red', true)
-    // bounce toggle button (14 px: full NES frame)
-    if (human && (M.phase === 'aim')) {
-      box(IX, IY + IH + 1, IW, 14, M.bounce ? 'gold' : 'dim')
-      T(M.bounce ? (blink(frame, 10) ? 'BOUNCE ON' : 'B:BOUNCE') : 'B:BOUNCE', IX + (M.bounce && blink(frame, 10) ? 9 : 13), IY + IH + 4, M.bounce ? 'gold' : 'lgray')
+    // title tab: what to do now (you) / who is shooting (CPU)
+    var tt, tc
+    if (!human) { tt = M.demo && side === 0 ? 'HERO' : M.sides[side].name.slice(0, 9); tc = side === 0 ? UC.info : UC.foe }
+    else if (M.phase === 'aim' || M.phase === 'power') { tt = M.phase === 'aim' ? 'AIM' : 'POWER'; tc = UC.hi }
+    else { tt = M.sides[side].name; tc = UC.info }
+    tab(g.x + 8, g.y - 3, tt, tc)
+    // bounce toggle chip under the window (also the tap target)
+    if (human && M.phase === 'aim') {
+      var bc = bounceChip(side)
+      box(bc.x, bc.y, bc.w, bc.h, M.bounce ? 'gold' : 'dim')
+      T('B:BOUNCE', bc.x + 8, bc.y + 3, M.bounce ? (blink(frame, 10) ? UC.hi : UC.info) : UC.label)
     }
-    // KEGMASTER calls his shot
+    // KEGMASTER calls his shot: a red chip under his window
     if (!human && M.plan && M.plan.call && (M.phase === 'aim' || M.phase === 'power')) {
-      box(52, IY + IH + 1, 152, 14, 'red')
-      TC('KEG: ' + M.plan.call, IY + IH + 4, 'white')
+      var cl = M.plan.call
+      box(g.x, SWY + SWH + 6, SWW, 14, 'red')
+      T(cl, g.x + (((SWW - cl.length * 8) / 16) | 0) * 8, SWY + SWH + 9, UC.info)
     }
-    // power meter
-    var mx = IX + IW + 3, my = IY, mw = 16, mh = IH
-    box(mx, my, mw, mh, 'default')
-    var fx = mx + 4, fy = my + 4, fw = mw - 8, fh = mh - 8
+    // power meter pane
+    var fx = g.fx, fy = g.fy, fw = g.fw, fh = g.fh
+    rect(fx - 1, fy - 1, fw + 2, fh + 2, 'gray')
     rect(fx, fy, fw, fh, 'dgray')
     var sc = M.pow.sc, bw = M.pow.bw
     // the green zone is revealed only after the aim lock: its height depends on how far the target cup is
@@ -5127,15 +6540,6 @@ BP.Scores = (function () {
       rect(fx, zy0, fw, 1, 'lgreen'); rect(fx, zy1, fw, 1, 'lgreen')
       rect(fx - 3, zy0, 2, zy1 - zy0 + 1, 'lgreen'); rect(fx + fw + 1, zy0, 2, zy1 - zy0 + 1, 'lgreen')
     }
-    // hint for first-timers
-    if (human && run && run.hints < 4 && !M.demo) {
-      var hint = M.phase === 'aim' ? 'TAP OR A: LOCK AIM' : M.phase === 'power' ? 'TAP IN THE GREEN!' : ''
-      if (hint && blink(frame, 20)) {
-        var hw = hint.length * 8 + 8
-        rect(128 - hw / 2, IY + IH + (M.phase === 'aim' ? 16 : 3), hw, 10, 'black')
-        TC(hint, IY + IH + (M.phase === 'aim' ? 17 : 4), 'gold')
-      }
-    }
   }
   function reticle(x, y, c) {
     var o = 8, l = 3
@@ -5145,48 +6549,49 @@ BP.Scores = (function () {
     rect(x + o - l + 1, y + o, l, 1, c); rect(x + o, y + o - l + 1, 1, l, c)
   }
   function drawWindArrow(side) {
-    var M = m
+    var M = m, g = shotWin(side)
     var dx = Math.cos(M.wind.ang), dz = Math.sin(M.wind.ang)
     // to inset screen direction
     var sx = side === 0 ? dz : -dz, syy = side === 0 ? -dx : dx
-    var cx = IX + IW - 14, cy = IY + IH - 14, L = 4 + M.wind.s * 2
+    var cx = g.vx + g.vw - 11, cy = g.vy + g.vh - 11, L = 4 + M.wind.s * 2
     for (var i = -L; i <= L; i++) rect(cx + sx * i, cy + syy * i, 1, 1, 'white')
     var hx = cx + sx * L, hy = cy + syy * L
     for (var j = 1; j <= 3; j++) {
       rect(hx - sx * j - syy * j, hy - syy * j + sx * j, 1, 1, 'white')
       rect(hx - sx * j + syy * j, hy - syy * j - sx * j, 1, 1, 'white')
     }
-    T(String(M.wind.s), IX + IW - 26, IY + IH - 26 + 1, 'white')
+    T(String(M.wind.s), g.vx + g.vw - 23, g.vy + g.vh - 22, 'white')
   }
 
-  // HUD: two tile rows inside the NES safe area (y 8 and 16) on the black band y 0..23
+  // HUD: black status band y 0..23 (SMB3-style), two tile rows (y 8 and 16), every item on the 8-px grid.
+  //   row 1:  1P 000000        ST1         HI 000000
+  //   row 2:  [your cups] (balls) [buzz mugs] [fire]     [their cups]
   function drawHUD() {
     var M = m, A = BP.Art
     rect(0, 0, W, 24, 'black')
     var score = M.demo ? 0 : run.disp
-    T('1P', 8, 8, 'red')
-    T(pad(score, 6), 32, 8, 'white')
-    T('HI', 168, 8, 'red')
-    T(pad(Math.max(hi, run && !M.demo ? run.disp : 0), 6), 192, 8, 'white')
-    if (M.overtime || M.redemption) { if (blink(frame, 12)) T(M.overtime ? 'OT!' : 'RED!', 128 - 16, 8, 'gold') }
-    else { var stl = (M.loop > 0 ? 'R' + (M.loop + 1) + '-' : 'ST') + (M.stage + 1); T(stl, 128 - stl.length * 4 - 4, 8, 'gold') }
-    // row 2: your cups | balls | buzz mugs | fire | their cups
+    T('1P', 8, 8, UC.hi)
+    T(pad(score, 6), 32, 8, UC.info)
+    T('HI', 168, 8, UC.hi)
+    T(pad(Math.max(hi, run && !M.demo ? run.disp : 0), 6), 192, 8, UC.info)
+    if (M.overtime || M.redemption) { var ot = M.overtime ? 'OT!' : 'RED!'; if (blink(frame, 12)) T(ot, gridX(ot), 8, UC.hi) }
+    else { var stl = (M.loop > 0 ? 'R' + (M.loop + 1) + '-' : 'ST') + (M.stage + 1); T(stl, gridX(stl), 8, UC.info) }
     if (M.sides[0].cups.length > 6 || M.sides[1].cups.length > 6) { // 10-cup racks: icon + count (readable)
-      A.drawIcon(ctx, 'cup', 8, 16); T('\u00D7' + alive(0), 17, 16, 'white')
-      A.drawIcon(ctx, 'cup', 216, 16); T('\u00D7' + alive(1), 225, 16, 'white')
+      A.drawIcon(ctx, 'cup', 8, 16); T('×' + alive(0), 16, 16, UC.info)
+      A.drawIcon(ctx, 'cup', 216, 16); T('×' + alive(1), 224, 16, UC.info)
     } else {
-      M.sides[0].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 8 + i * 7, 16) })
+      M.sides[0].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 8 + i * 8, 16) })
       var n1 = M.sides[1].cups.length
-      M.sides[1].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 240 - (n1 - 1 - i) * 7, 16) })
+      M.sides[1].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', W - 8 - (n1 - i) * 8, 16) })
     }
     var bl = M.redemption ? 1 : M.balls
-    for (var i = 0; i < Math.min(bl, 2); i++) A.drawIcon(ctx, 'ball', 62 + i * 8, 16)
+    for (var i = 0; i < Math.min(bl, 2); i++) A.drawIcon(ctx, 'ball', 64 + i * 8, 16)
     if (!M.demo) {
-      for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 82 + k * 9, 16)
+      for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 88 + k * 8, 16)
       var st = run.streak
-      if (st >= 3) { if (blink(frame, 6)) T('FIRE', 130, 16, 'red'); A.drawIcon(ctx, 'fire', 164, 16) }
-      else for (var f = 0; f < 3; f++) if (f < st) A.drawIcon(ctx, 'fire', 130 + f * 9, 16)
-      if (M.cpuStreak >= 3 && blink(frame, 6)) A.drawIcon(ctx, 'fire', 176, 16)
+      if (st >= 3) { if (blink(frame, 6)) T('FIRE', 136, 16, UC.foe); A.drawIcon(ctx, 'fire', 168, 16) }
+      else for (var f = 0; f < 3; f++) if (f < st) A.drawIcon(ctx, 'fire', 136 + f * 8, 16)
+      if (M.cpuStreak >= 3 && blink(frame, 6)) A.drawIcon(ctx, 'fire', 184, 16)
     }
   }
 
@@ -5208,7 +6613,7 @@ BP.Scores = (function () {
       if (pr('down') || pr('select')) { titleCursor = (titleCursor + 1) % 3; sfx('select') }
       var choose = -1
       if (p && S.t > 10) {
-        var mt = menuTap(p, [[64, 104, 128, 14], [64, 118, 128, 14], [64, 132, 128, 14]], titleCursor)
+        var mt = menuTap(p, [[64, 100, 128, 16], [64, 116, 128, 16], [64, 132, 128, 16]], titleCursor)
         if (mt.move != null) { titleCursor = mt.move; sfx('select') } else choose = titleCursor
       } else if (okPr() && S.t > 10) choose = titleCursor
       if (choose >= 0) {
@@ -5251,17 +6656,17 @@ BP.Scores = (function () {
       if (ph === 70) { /* silent on title */ }
       // logo + menu
       A.drawLogo(ctx, 128, 26, frame)
-      box(64, 98, 128, 52, 'default')
+      // menu window: rows on tiles y 104/120/136, cursor in its own column, 8 px clear of every border
+      box(64, 93, 128, 62, 'default')
       for (var i = 0; i < 3; i++) {
-        var yy = 108 + i * 14
-        T(MENU[i], 88, yy, i === titleCursor ? 'white' : 'lgray')
-        if (i === titleCursor && blink(frame, 16)) T('▶', 74, yy, 'red')
+        var yy = 104 + i * 16
+        T(MENU[i], 88, yy, i === titleCursor ? UC.info : UC.label)
+        if (i === titleCursor && blink(frame, 16)) T('▶', 72, yy, UC.hi)
       }
-      rect(64, 152, 128, 12, 'black')
-      if (blink(frame, 30)) TC(isTouch() ? 'TAP TO START' : 'PUSH START', 154, 'white')
-      T('HI ' + pad(hi, 6), 8, 8, 'white', true)
-      rect(48, 213, 160, 11, 'black')
-      TC('© 1989 PARTY SOFT', 215, 'white')
+      var ps = isTouch() ? 'TAP TO START' : 'PUSH START'
+      if (blink(frame, 30)) tab(gridX(ps), 200, ps, UC.info)
+      tab(88, 8, 'HI ' + pad(hi, 6), UC.info); T('HI', 88, 8, UC.hi)
+      tab(gridX('© 1989 PARTY SOFT'), 216, '© 1989 PARTY SOFT', UC.info)
     },
   }
 
@@ -5342,11 +6747,11 @@ BP.Scores = (function () {
   }
   function scoresMode() { try { return BP.Scores.mode() === 'global' ? 'GLOBAL' : 'LOCAL' } catch (e) { return 'LOCAL' } }
   function drawScoreTable(rows, hl, t, label, myRank) {
-    if (myRank === 1) BIG('NEW HIGH SCORE!', 128, 12, blink(frame, 6) ? 'gold' : 'white', 2)
-    else if (myRank > 1) BIG("YOU'RE #" + myRank + '!', 128, 12, 'cyan', 2)
-    else BIG('HIGH SCORES', 128, 12, 'gold', 2)
+    if (myRank === 1) BIG('NEW HIGH SCORE!', 128, 8, blink(frame, 6) ? 'gold' : 'white', 2)
+    else if (myRank > 1) BIG("YOU'RE #" + myRank + '!', 128, 8, 'cyan', 2)
+    else BIG('HIGH SCORES', 128, 8, 'gold', 2)
     var mode = label || scoresMode() + ' RANKING'
-    TC(mode, 34, mode.indexOf('GLOBAL') >= 0 ? 'cyan' : mode.indexOf('SENDING') >= 0 ? 'yellow' : 'lgray')
+    TC(mode, 32, mode.indexOf('GLOBAL') >= 0 ? 'cyan' : mode.indexOf('SENDING') >= 0 ? 'yellow' : 'lgray')
     box(8, 46, 240, 146, 'default')
     T('RK', 18, 54, 'red'); T('NAME', 46, 54, 'red'); TR('SCORE', 184, 54, 'red'); T('STG', 200, 54, 'red')
     if (!rows) { if (blink(frame, 10)) TC('LOADING...', 110, 'white'); return }
@@ -5385,10 +6790,11 @@ BP.Scores = (function () {
   }
 
   // ---------------------------------------------------------------- HOW TO PLAY
-  // Layout rules (checked at 3x): the frame interior is x 8..247, y 40..212; text columns never reach a sprite.
+  // Layout (checked at 3x): one window x 8..248, y 27..203 with the page title in its tab; text rows from y 40,
+  // footer prompt on row 208. Pages 1-2 show the real shot window (same frame, tab and meter pane as a match).
   var HOWTO = [
-    { title: 'AIM', lines: ['THE CROSSHAIR', 'SWEEPS OVER THE', 'CUPS. PRESS A', 'OR TAP TO LOCK', 'IT ON A CUP.', '', 'HIT THE BEER', 'FOR A SWISH!'] },
-    { title: 'POWER', lines: ['PRESS A AGAIN', 'WHEN THE BAR', 'IS IN THE', 'GREEN ZONE.', '', 'LOW  = SHORT', 'HIGH = LONG'] },
+    { title: 'AIM', lines: ['THE CROSSHAIR', 'SWEEPS OVER', 'THE CUPS.', '', 'HIT THE BEER', 'FOR A SWISH!'] },
+    { title: 'POWER', lines: ['PRESS A AGAIN', 'WHEN THE BAR', 'IS IN THE', 'GREEN ZONE!', 'LOW  = SHORT', 'HIGH = LONG'] },
     { title: 'RULES', lines: ['2 BALLS A TURN. SINK BOTH', 'FOR BALLS BACK!', '', '2 IN A ROW: HEATING UP X2', '3 IN A ROW: ON FIRE!   X3', '', 'LOSE A CUP: +1 BUZZ. BUZZ', 'MAKES YOUR AIM SHAKY.', '', 'LAST CUP GONE? SINK THEM', 'ALL FOR REDEMPTION!', '', 'WIN 2 ROUNDS = CHAMPION!'] },
     { title: 'SCORING', lines: ['CUP ............ 100', 'SWISH ........... +50', 'RATTLED IN ...... +25', 'BOUNCE SHOT .... +200', 'ISLAND CUP ..... +250', 'BALLS BACK ..... +300', 'HEATING UP ....... X2', 'ON FIRE .......... X3', 'FAST CLEAR ... +3000', 'PERFECT ....... +3000', 'ROUND 2 .......... X2'] },
   ]
@@ -5408,58 +6814,64 @@ BP.Scores = (function () {
     draw: function () {
       var A = BP.Art, pg = HOWTO[S.page]
       rect(0, 0, W, H, 'black')
-      box(4, 4, 248, 28, 'red')
-      TC('HOW TO PLAY  ' + (S.page + 1) + '/' + HOWTO.length, 9, 'white')
-      TC(pg.title, 19, 'gold')
-      box(4, 36, 248, 168, 'default')
+      TC('HOW TO PLAY', 8, UC.info)
+      TR((S.page + 1) + '/' + HOWTO.length, 240, 8, UC.label)
+      win(8, 27, 240, 176, 'default', S.page < 2 ? 'STEP ' + (S.page + 1) : pg.title, UC.hi)
       if (S.page === 0 || S.page === 1) {
-        var ex = 14, ey = 46, ew = 90, eh = 82
-        box(ex, ey, ew, eh, 'default')
-        ctx.save(); ctx.beginPath(); ctx.rect(ex + 3, ey + 3, ew - 6, eh - 6); ctx.clip()
-        rect(ex + 3, ey + 3, ew - 6, eh - 6, 'black')
-        var icx = ex + ew / 2
-        rect(icx - 29, ey + 8, 58, eh, 'dred'); rect(icx - 29, ey + 8, 58, 1, 'white')
-        S.demoRack.forEach(function (c) { A.drawCupTop(ctx, R(icx + c.z * 2), R(ey + 14 + (TX1 - c.x) * 2), 'full') })
+        // the real shot window, same frame + tab + meter pane as in a match
+        var g = shotWin(0), ox2 = 16 - g.x, oy2 = 43 - g.y
+        var vx = g.vx + ox2, vy = g.vy + oy2, fx = g.fx + ox2, fy = g.fy + oy2
+        box(16, 43, SWW, SWH, 'default')
+        rect(g.dx + ox2, 44, 2, SWH - 2, 'white')
+        ctx.save(); ctx.beginPath(); ctx.rect(vx, vy, g.vw, g.vh); ctx.clip()
+        rect(vx, vy, g.vw, g.vh, 'black')
+        var icx = vx + g.vw / 2
+        rect(icx - 29, vy, 58, g.vh, 'dred'); rect(icx - 29, vy, 1, g.vh, 'white'); rect(icx + 28, vy, 1, g.vh, 'white'); rect(icx, vy, 1, g.vh, 'red')
+        var cy0 = vy + 10
+        S.demoRack.forEach(function (c) { A.drawCupTop(ctx, R(icx + c.z * 2), R(cy0 + (TX1 - c.x) * 2), 'full') })
         if (S.page === 0) {
-          var cxh = R(icx + 13 * Math.sin(frame * 0.05)), cyh = R(ey + 14 + 16 + 14 * Math.sin(frame * 0.035 + 1))
+          var cxh = R(icx + 13 * Math.sin(frame * 0.05)), cyh = R(cy0 + 16 + 14 * Math.sin(frame * 0.035 + 1))
           A.drawCrosshair(ctx, cxh, cyh, frame)
           var on = false
-          S.demoRack.forEach(function (c) { if (Math.hypot(icx + c.z * 2 - cxh, ey + 14 + (TX1 - c.x) * 2 - cyh) < 4.5) on = true })
+          S.demoRack.forEach(function (c) { if (Math.hypot(icx + c.z * 2 - cxh, cy0 + (TX1 - c.x) * 2 - cyh) < 4.5) on = true })
           reticle(cxh, cyh, on ? 'lgreen' : 'yellow')
-        } else A.drawCrosshair(ctx, R(icx), R(ey + 14 + 18), frame)
+        } else { A.drawCrosshair(ctx, R(icx), R(cy0 + 18), frame); reticle(R(icx), R(cy0 + 18), 'white') }
         ctx.restore()
+        var fh = g.fh, fw = g.fw
+        rect(fx - 1, fy - 1, fw + 2, fh + 2, 'gray'); rect(fx, fy, fw, fh, 'dgray')
         if (S.page === 1) {
-          var mx = ex + ew + 4, fh = eh - 8
-          box(mx, ey, 16, eh, 'default')
-          rect(mx + 4, ey + 4, 8, fh, 'dgray')
-          rect(mx + 4, ey + 4 + fh * (1 - 0.75), 8, fh * 0.18, 'green')
+          var sc = 0.66, bw = 0.09
+          rect(fx, fy + fh * (1 - (sc + bw)), fw, fh * 2 * bw, 'green')
           var u = (frame % 66) / 66, v = u < 0.5 ? u * 2 : 2 - u * 2
-          var inZ = Math.abs(v - 0.66) <= 0.09
-          rect(mx + 4, ey + 4 + fh * (1 - v), 8, fh * v, inZ ? 'lgreen' : v > 0.66 ? 'red' : 'orange')
-          rect(mx + 2, ey + 3 + fh * (1 - v), 12, 2, 'white')
+          var inZ = Math.abs(v - sc) <= bw
+          rect(fx, fy + fh * (1 - v), fw, fh * v, inZ ? 'lgreen' : v > sc ? 'red' : 'orange')
+          rect(fx - 2, R(fy + fh * (1 - v)) - 1, fw + 4, 2, 'white')
+          var zy0 = R(fy + fh * (1 - (sc + bw))), zy1 = R(fy + fh * (1 - (sc - bw)))
+          rect(fx - 3, zy0, 2, zy1 - zy0 + 1, 'lgreen'); rect(fx + fw + 1, zy0, 2, zy1 - zy0 + 1, 'lgreen')
         }
-        var tx = S.page === 1 ? 132 : 112
-        pg.lines.forEach(function (l, i) { T(l, tx, 48 + i * 11, i === pg.lines.length - 1 ? 'gold' : 'white') })
+        tab(24, 40, pg.title, UC.hi)
+        pg.lines.forEach(function (l, i) { T(l, 136, 40 + i * 16, i === pg.lines.length - 1 ? UC.hi : UC.info) })
         if (S.page === 0) {
           A.drawPlayer(ctx, 'hero', 'aim', 40, 198, frame)
-          T('A', 72, 150, 'red'); T('/ TAP = LOCK AIM', 88, 150, 'white')
-          T('GREEN BRACKETS =', 72, 168, 'lgreen')
-          T('RIGHT ON A CUP!', 72, 180, 'white')
+          T('A', 72, 144, UC.foe); T('/ TAP = LOCK AIM', 88, 144, UC.info)
+          T('GREEN BRACKETS =', 72, 160, UC.good)
+          T('RIGHT ON A CUP!', 72, 176, UC.info)
         } else {
           A.drawPlayer(ctx, 'hero', 'throw', 224, 198, frame)
-          T('B', 16, 146, 'red'); T(': BOUNCE SHOT ON/OFF', 24, 146, 'white')
-          T('HARDER TO SINK, BUT', 16, 160, 'white')
-          T('IT TAKES 2 CUPS!', 16, 172, 'gold')
+          box(16, 141, 80, 14, 'gold'); T('B:BOUNCE', 24, 144, UC.hi)
+          T('ON/OFF', 104, 144, UC.info)
+          T('HARDER TO SINK, BUT', 16, 160, UC.info)
+          T('IT TAKES 2 CUPS!', 16, 176, UC.hi)
         }
       } else if (S.page === 2) {
-        pg.lines.forEach(function (l, i) { T(l, 16, 44 + i * 12, l.indexOf('FIRE') >= 0 || l.indexOf('HEATING') >= 0 ? 'orange' : l.indexOf('BUZZ') >= 0 ? 'beer' : l.indexOf('CHAMPION') >= 0 || l.indexOf('REDEMPTION') >= 0 ? 'gold' : 'white') })
-        A.drawIcon(ctx, 'ball', 226, 44); A.drawIcon(ctx, 'ball', 236, 44)
-        A.drawIcon(ctx, 'fire', 230, 92); A.drawIcon(ctx, 'mugFull', 230, 116); A.drawIcon(ctx, 'trophy', 230, 188)
+        pg.lines.forEach(function (l, i) { T(l, 16, 40 + i * 12, l.indexOf('FIRE') >= 0 || l.indexOf('HEATING') >= 0 ? UC.warn : l.indexOf('BUZZ') >= 0 ? 'beer' : l.indexOf('CHAMPION') >= 0 || l.indexOf('REDEMPTION') >= 0 ? UC.hi : UC.info) })
+        A.drawIcon(ctx, 'ball', 224, 40); A.drawIcon(ctx, 'ball', 232, 40)
+        A.drawIcon(ctx, 'fire', 232, 88); A.drawIcon(ctx, 'mugFull', 232, 112); A.drawIcon(ctx, 'trophy', 232, 184)
       } else {
-        pg.lines.forEach(function (l, i) { T(l, 40, 46 + i * 14, i === 6 || i === 7 ? 'orange' : i >= 8 ? 'gold' : 'white') })
-        A.drawIcon(ctx, 'cup', 22, 46); A.drawIcon(ctx, 'star', 22, 60); A.drawIcon(ctx, 'fire', 22, 158); A.drawIcon(ctx, 'trophy', 22, 186)
+        pg.lines.forEach(function (l, i) { T(l, 40, 40 + i * 14, i === 6 || i === 7 ? UC.warn : i >= 8 ? UC.hi : UC.info) })
+        A.drawIcon(ctx, 'cup', 24, 40); A.drawIcon(ctx, 'star', 24, 54); A.drawIcon(ctx, 'fire', 24, 152); A.drawIcon(ctx, 'trophy', 24, 180)
       }
-      if (blink(frame, 30)) TC(S.page < HOWTO.length - 1 ? 'A: NEXT   B: BACK' : 'A: DONE   B: BACK', 210, 'lgray')
+      if (blink(frame, 30)) TC(S.page < HOWTO.length - 1 ? 'A: NEXT   B: BACK' : 'A: DONE   B: BACK', 208, UC.label)
     },
   }
 
@@ -5480,33 +6892,34 @@ BP.Scores = (function () {
       var A = BP.Art, st = STAGES[run.stage], t = S.t
       rect(0, 0, W, H, 'black')
       var hdr = (run.loop >= 2 ? 'GAUNTLET R' + (run.loop + 1) + '  ' : run.loop > 0 ? 'ROUND ' + (run.loop + 1) + '  ' : '') + 'STAGE ' + (run.stage + 1)
-      TC(hdr, 10, run.loop >= 2 ? 'red' : 'white')
-      TC(st.name, 24, 'gold')
+      TC(hdr, 8, run.loop >= 2 ? UC.foe : UC.info)
+      TC(st.name, 24, UC.hi)
       rect(0, 40, W, 72, st.band)
       for (var i = 0; i < 6; i++) rect(0, 44 + i * 12, W, 1, 'black')
       var slide = Math.max(0, 40 - t) * 3
       // native 64x64 portraits (no canvas scaling: one pixel scale everywhere)
       A.drawPortrait(ctx, 'hero', R(16 - slide), 44, 64)
       A.drawPortrait(ctx, st.who, R(176 + slide), 44, 64)
-      var go = t > S.dur - 50
-      if (go) BIG('GO!', 128, 64, 'gold', 3)
+      var isGo = t > S.dur - 50
+      if (isGo) BIG('GO!', 128, 64, UC.hi, 3)
       else if (t > 36) {
-        BIG('VS', 128, 60, blink(frame, 6) ? 'red' : 'white', 3)
-        if (t > 60 && blink(frame, 12)) TC('READY?', 96, 'white')
+        BIG('VS', 128, 60, blink(frame, 6) ? UC.foe : UC.info, 3)
+        if (t > 60 && blink(frame, 12)) TC('READY?', 96, UC.info)
       }
-      TR('SAL', 80, 116, 'white'); T(st.cpu, 176, 116, 'red')
-      T('BUZZ', 16, 128, 'beer')
-      for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 16 + k * 9, 138)
-      T('SKILL', 176, 128, 'lgray')
+      // name plates flush with the portraits (you: left edge, rival: right edge), one stat row on tile y 136
+      var cpn = st.cpu.slice(0, 8)
+      T('SAL', 16, 120, UC.info); T(cpn, 240 - cpn.length * 8, 120, UC.foe)
+      T('BUZZ', 16, 136, 'beer')
+      for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 56 + k * 8, 136)
       var stars = run.loop > 0 ? 5 : st.stars
-      for (var s2 = 0; s2 < stars; s2++) A.drawIcon(ctx, 'star', 176 + s2 * 9, 138)
-      if (t > 50) {
-        box(12, 152, 232, 56, 'dim')
+      T('SKILL', 152, 136, UC.label)
+      for (var s2 = 0; s2 < 5; s2++) if (s2 < stars) A.drawIcon(ctx, 'star', 240 - (5 - s2) * 8, 136)
+      if (t > 50) { // taunt: the same name-tagged window as the in-match speech
+        win(8, 155, 240, 56, 'red', st.cpu, UC.foe)
         var tn = run.loop > 0 ? st.taunt2 : st.taunt
         var shown = Math.min(tn[0].length + tn[1].length, ((t - 50) / 2) | 0)
-        T(st.cpu + ':', 22, 160, 'red')
-        T(tn[0].slice(0, shown), 22, 176, 'white')
-        if (shown > tn[0].length) T(tn[1].slice(0, shown - tn[0].length), 22, 192, 'white')
+        T(tn[0].slice(0, shown), 24, 168, UC.info)
+        if (shown > tn[0].length) T(tn[1].slice(0, shown - tn[0].length), 24, 184, UC.info)
         if (t % 2 === 0 && shown < tn[0].length + tn[1].length && !FAST) sfx('letter')
       }
     },
@@ -5558,15 +6971,15 @@ BP.Scores = (function () {
     if (pr('b')) return 'no'
     return null
   }
-  function drawYesNo(st, x, y) {
-    T('YES', x + 18, y, st.sel === 0 ? 'white' : 'gray')
-    T('NO', x + 74, y, st.sel === 1 ? 'white' : 'gray')
-    if (blink(ticks, 16)) T('▶', x + 6 + st.sel * 56, y, 'red')
+  function drawYesNo(st, x, y) { // x on a tile column: cursor x / x+56, YES x+16, NO x+72 (inside the tap rows)
+    T('YES', x + 16, y, st.sel === 0 ? UC.info : UC.off)
+    T('NO', x + 72, y, st.sel === 1 ? UC.info : UC.off)
+    if (blink(ticks, 16)) T('▶', x + st.sel * 56, y, UC.hi)
   }
   function updatePause() {
     pauseT++
     if (pauseConfirm) {
-      var r = yesNo(pauseConfirm, 76, 128)
+      var r = yesNo(pauseConfirm, 72, 128)
       if (r === 'no') { pauseConfirm = null; sfx('cancel') }
       else if (r === 'yes') {
         pauseConfirm = null
@@ -5584,24 +6997,24 @@ BP.Scores = (function () {
     if (pr('up') || pr('down') || pr('select')) { pauseSel = 1 - pauseSel; sfx('select') }
     var choose = -1
     if (p) {
-      var mt = menuTap(p, [[72, 108, 112, 14], [72, 122, 112, 14]], pauseSel)
+      var mt = menuTap(p, [[64, 106, 128, 16], [64, 122, 128, 16]], pauseSel)
       if (mt.move != null) { pauseSel = mt.move; sfx('select') } else choose = pauseSel
     } else if (pr('a')) choose = pauseSel
     if (choose === 0) unpause()
     else if (choose === 1) { pauseConfirm = { sel: 1, t: 0 }; sfx('select') } // default NO
   }
   function drawPause() {
-    box(40, 82, 176, 66, 'default')
+    box(48, 77, 160, 70, 'default')
     if (pauseConfirm) {
-      BIG('QUIT?', 128, 92, 'red', 2)
-      T('YOUR RUN ENDS', 76, 110, 'lgray')
-      drawYesNo(pauseConfirm, 76, 128)
+      BIG('QUIT?', 128, 88, UC.foe, 2)
+      TC('YOUR RUN ENDS', 112, UC.label)
+      drawYesNo(pauseConfirm, 72, 128)
       return
     }
-    BIG('PAUSE', 128, 92, 'white', 2)
-    T('RESUME', 104, 112, pauseSel === 0 ? 'white' : 'lgray')
-    T('QUIT', 104, 126, pauseSel === 1 ? 'white' : 'lgray')
-    if (blink(ticks, 16)) T('▶', 88, 112 + pauseSel * 14, 'red')
+    BIG('PAUSE', 128, 88, UC.info, 2)
+    T('RESUME', 104, 112, pauseSel === 0 ? UC.info : UC.label)
+    T('QUIT', 104, 128, pauseSel === 1 ? UC.info : UC.label)
+    if (blink(ticks, 16)) T('▶', 88, 112 + pauseSel * 16, UC.hi)
   }
 
   // ---------------------------------------------------------------- STAGE CLEAR TALLY
@@ -5667,28 +7080,27 @@ BP.Scores = (function () {
       else rect(0, 0, W, H, 'black')
       S.confetti.forEach(function (c) { rect(c.x, c.y, 2, 2, c.c) })
       rect(0, 0, W, 24, 'black')
-      T('1P', 8, 8, 'red'); T(pad(run.disp, 6), 32, 8, 'white')
-      T('HI', 168, 8, 'red'); T(pad(Math.max(hi, run.score), 6), 192, 8, 'white')
-      TC('STAGE ' + (run.stage + 1) + ' CLEAR!', 16, 'gold')
-      box(20, 34, 216, 148, 'gold')
-      BIG('YOU WIN!', 128, 42, 'gold', 2)
-      BP.Art.drawIcon(ctx, 'trophy', 30, 46); BP.Art.drawIcon(ctx, 'trophy', 218, 46)
+      T('1P', 8, 8, UC.hi); T(pad(run.disp, 6), 32, 8, UC.info)
+      T('HI', 168, 8, UC.hi); T(pad(Math.max(hi, run.score), 6), 192, 8, UC.info)
+      // tally window: every row is printed up front (pending rows grey), values count up one row at a time
+      win(32, 35, 192, 172, 'gold', 'STAGE ' + (run.stage + 1) + ' CLEAR!', UC.hi)
+      BIG('YOU WIN!', 128, 48, UC.hi, 2)
+      BP.Art.drawIcon(ctx, 'trophy', 48, 52); BP.Art.drawIcon(ctx, 'trophy', 200, 52)
       for (var i = 0; i < S.lines.length; i++) {
-        if (i > S.i) break
-        var ln = S.lines[i], y = 66 + i * 14
-        var v = i < S.i ? ln.v : S.cnt
-        T(ln.l, 30, y, ln.gold ? (blink(frame, 6) ? 'gold' : 'yellow') : 'white')
-        TR(pad(v, 5), 226, y, 'white')
+        var ln = S.lines[i], y = 80 + i * 16, todo = i > S.i
+        var v = i < S.i ? ln.v : i === S.i ? S.cnt : 0
+        T(ln.l, 40, y, todo ? UC.off : ln.gold ? (blink(frame, 6) ? UC.hi : UC.info) : UC.info)
+        TR(pad(v, 5), 216, y, todo ? UC.off : UC.info)
       }
+      rect(40, 155, 176, 1, S.done ? 'gold' : 'gray')
+      T('TOTAL', 40, 160, S.done ? UC.hi : UC.off)
+      TR(pad(S.total, 6), 216, 160, S.done ? UC.hi : UC.off)
       if (S.done) {
-        rect(30, 66 + S.lines.length * 14 - 4, 196, 1, 'white')
-        T('TOTAL', 30, 70 + S.lines.length * 14 - 2, 'gold')
-        TR(pad(S.total, 6), 226, 70 + S.lines.length * 14 - 2, 'gold')
         var nxt = run.stage >= 4 ? (run.loop === 1 ? 'YOU ARE THE CHAMPION!' : run.loop >= 2 ? 'GAUNTLET ROUND ' + (run.loop + 2) + '!' : 'ROUND 2: NO MERCY!') : 'NEXT: ' + STAGES[run.stage + 1].name
-        if (blink(frame, 16)) TC(nxt, 152, 'white')
+        if (blink(frame, 16)) TC(nxt, 176, UC.info)
         var holdT = run.stageT0 == null || FAST ? 0 : Math.ceil((45 * 60 - (ticks - run.stageT0)) / 60)
-        if (holdT > 0) TC('NEXT STAGE IN 0:' + pad(holdT, 2), 166, 'gold')
-        else if (S.wait > 10) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH A', 166, 'lgray')
+        if (holdT > 0) TC('NEXT STAGE IN 0:' + pad(holdT, 2), 192, UC.hi)
+        else if (S.wait > 10) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH A', 192, UC.label)
       }
     },
   }
@@ -5717,15 +7129,15 @@ BP.Scores = (function () {
       var y = Math.min(80, -20 + S.t * 3)
       BIG('GAME OVER', 128, y, 'red', 3)
       if (S.t > 30 && run) {
-        TC('FINAL SCORE', 118, 'lgray')
-        BIG(pad(run.score, 6), 128, 130, 'white', 2)
-        TC('REACHED ' + (run.loop > 0 ? 'ROUND ' + (run.loop + 1) + ' ' : '') + 'STAGE ' + (run.stage + 1), 156, 'gold')
+        TC('FINAL SCORE', 112, UC.label)
+        BIG(pad(run.score, 6), 128, 128, UC.info, 2)
+        TC('REACHED ' + (run.loop > 0 ? 'ROUND ' + (run.loop + 1) + ' ' : '') + 'STAGE ' + (run.stage + 1), 152, UC.hi)
         var acc = run.shots ? Math.round((100 * run.makes) / run.shots) : 0
-        TC('CUPS ' + run.cups + '   ACCURACY ' + acc + '%', 170, 'white')
+        TC('CUPS ' + run.cups + '  ACCURACY ' + acc + '%', 168, UC.info)
       }
       A.drawPlayer(ctx, 'hero', 'sad', 40, 228, frame)
       if (run) A.drawPlayer(ctx, STAGES[run.stage].who, 'cheer', 216, 228, frame)
-      if (S.t > 40 && blink(frame, 30)) TC('PUSH START', 206, 'white')
+      if (S.t > 40 && blink(frame, 30)) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH START', 208, UC.info)
     },
   }
 
@@ -5752,7 +7164,7 @@ BP.Scores = (function () {
       S.idle = anyPr() || tap() ? 0 : S.idle + 1
       if (S.msg > 0) S.msg--
       if (S.confirm) {
-        var r = yesNo(S.confirm, 92, 146)
+        var r = yesNo(S.confirm, 88, 144)
         if (r === 'yes') finishEntry()
         else if (r === 'no') { S.confirm = null; sfx('cancel') }
         return
@@ -5773,37 +7185,36 @@ BP.Scores = (function () {
     },
     draw: function () {
       rect(0, 0, W, H, 'black')
-      BIG('NAME ENTRY', 128, 8, 'gold', 2)
-      TC('SCORE ' + pad(run ? run.score : 0, 6), 28, 'white')
+      BIG('NAME ENTRY', 128, 8, UC.hi, 2)
+      TC('SCORE ' + pad(run ? run.score : 0, 6), 32, UC.info)
       for (var i = 0; i < 8; i++) {
         var x = 64 + i * 16
         rect(x, 62, 12, 2, i === S.nm.length ? (blink(frame, 8) ? 'red' : 'black') : 'gray')
         if (S.nm[i] && S.nm[i] !== ' ') BIG(S.nm[i], x + 6, 44, 'white', 2)
       }
-      if (S.msg > 0) TC('ENTER A NAME FIRST!', 70, 'red')
-      else if (S.fresh) TC('NEW PLAYER? B = CLEAR', 70, 'yellow')
-      else if (S.nm.length >= 8) TC('NAME FULL - PICK END', 70, 'lgray')
+      if (S.msg > 0) TC('ENTER A NAME FIRST!', 72, UC.warn)
+      else if (S.fresh) TC('NEW PLAYER? B = CLEAR', 72, UC.hi)
+      else if (S.nm.length >= 8) TC('NAME FULL - PICK END', 72, UC.label)
       box(GX - 10, GY - 8, 220, 108, 'default')
       for (var r = 0; r < 4; r++) for (var c = 0; c < 10; c++) {
         var ch = GRID[r][c], sel = !S.end && S.cy === r && S.cx === c
         var cx = GX + c * GCW, cy = GY + r * GCH
         if (sel) rect(cx - 3, cy - 3, 14, 14, blink(frame, 12) ? 'red' : 'dred')
-        T(ch === ' ' ? '_' : ch, cx, cy, sel ? 'white' : 'lgray')
+        T(ch === ' ' ? '_' : ch, cx, cy, sel ? UC.info : UC.label)
       }
       var dsel = S.cy === 4 && !S.end, esel = S.cy === 4 && S.end
       if (dsel) rect(GX + 20 - 3, GY + 4 * GCH - 3, 46, 14, blink(frame, 12) ? 'red' : 'dred')
       if (esel) rect(GX + 120 - 3, GY + 4 * GCH - 3, 46, 14, blink(frame, 12) ? 'red' : 'dred')
-      T('DEL', GX + 24, GY + 4 * GCH, dsel ? 'white' : 'lgray')
-      T('END', GX + 124, GY + 4 * GCH, esel ? 'white' : 'gold')
+      T('DEL', GX + 24, GY + 4 * GCH, dsel ? UC.info : UC.label)
+      T('END', GX + 124, GY + 4 * GCH, esel ? UC.info : UC.hi)
       if (S.confirm) {
-        box(56, 116, 144, 44, 'gold')
-        TC('NAME: ' + S.nm, 124, 'white')
-        T('OK?', 64, 146, 'gold')
-        drawYesNo(S.confirm, 92, 146)
+        win(40, 115, 176, 48, 'gold', 'OK?', UC.hi)
+        TC('NAME: ' + S.nm, 128, UC.info)
+        drawYesNo(S.confirm, 88, 144)
       }
-      if (S.sent) { box(64, 116, 128, 32, 'gold'); if (blink(frame, 8)) TC('SENDING...', 128, 'white') }
-      TC('A:ADD  B:DEL  START:GO TO END', 202, 'lgray')
-      TC('OR TAP THE LETTERS', 214, 'gray')
+      if (S.sent) { box(64, 115, 128, 32, 'gold'); if (blink(frame, 8)) TC('SENDING...', 128, UC.info) }
+      TC('A:ADD  B:DEL  START:GO TO END', 208, UC.label)
+      TC('OR TAP THE LETTERS', 216, UC.off)
     },
   }
   function cellAt(x, y) {
@@ -5935,10 +7346,10 @@ BP.Scores = (function () {
         A.drawPlayer(ctx, 'hero', 'cheer', 128, FEET, frame)
         A.drawIcon(ctx, 'trophy', 124, 166 - bob * 2)
         S.conf.forEach(function (c) { rect(c.x, c.y, 2, 2, c.c) })
-        box(8, 28, 240, 86, 'gold')
-        TC('CONGRATULATIONS!', 38, blink(frame, 8) ? 'gold' : 'yellow')
-        if (t > 60) TC('YOU ARE THE', 54, 'white')
-        if (t > 90) BIG('PONG CHAMPION!', 128, 68, 'gold', 2)
+        box(8, 27, 240, 88, 'gold')
+        TC('CONGRATULATIONS!', 40, blink(frame, 8) ? UC.hi : UC.info)
+        if (t > 60) TC('YOU ARE THE', 56, UC.info)
+        if (t > 90) BIG('PONG CHAMPION!', 128, 72, UC.hi, 2)
         if (t > 150) TC('CHAMPION BONUS +' + S.bonus, 96, 'cyan')
         return
       }
@@ -6151,8 +7562,7 @@ BP.Scores = (function () {
     draw: function () {
       rect(0, 0, W, H, 'black')
       BIG('HIGH SCORES', 128, 8, 'gold', 2)
-      TC(scoresMode() + ' RANKING', 25, scoresMode() === 'GLOBAL' ? 'cyan' : 'lgray')
-      box(0, 36, 157, 151, 'default')
+      win(0, 35, 157, 152, 'default', scoresMode() + ' RANKING', scoresMode() === 'GLOBAL' ? 'cyan' : UC.label)
       T('RK', 6, 43, 'red'); T('NAME', 28, 43, 'red'); TR('SCORE', 152, 43, 'red')
       var rows = S.rows
       if (!rows) { if (blink(frame, 10)) T('LOADING...', 30, 100, 'white') }
@@ -6401,6 +7811,15 @@ BP.Scores = (function () {
     // QA: leave only n cups alive on a side (0 = hero, 1 = cpu)
     setCups: function (side, n) { if (!m) return; m.sides[side].cups.forEach(function (c, i) { c.alive = i < n; c.hitT = 99 }) },
     go: function (name, data) { fade = null; pendingGo = null; setState(name, data || {}) },
+    // QA (UI captures): inject overlays without touching rules — ui('call', [[text, color], ...]) | ui('say', kind) | ui('chirp', text) | ui('popup', text)
+    ui: function (k, a) {
+      if (!m) return
+      if (k === 'call') callouts(a)
+      else if (k === 'say') { var L = LINES[m.st.who], arr = (L && L[a]) || ['...']; m.speech = { who: m.st.who, name: m.st.cpu, text: arr[0], t: 99 } }
+      else if (k === 'chirp') m.chirp = { text: a, t: 0 }
+      else if (k === 'popup') popup(140, 150, a, 'gold')
+      else if (k === 'state') return { phase: m.phase, missX: !!m.missX, speech: !!m.speech, calls: m.calls.length, bounce: m.bounce }
+    },
     // QA: jump straight into a match (stage 0-4, loop 0+, starting buzz)
     startAt: function (stg, loop, buzz) {
       fade = null; newRun(); run.stage = stg || 0; run.loop = loop || 0; run.buzz = buzz || 0

@@ -98,6 +98,29 @@
   function sy(y, z) { return TMID - y + z * 0.5 }
   function blink(t, p) { return ((t / (p || 16)) | 0) % 2 === 0 }
 
+  // ---------------------------------------------------------------- UI system (one set of rules, every screen)
+  // * Text sits on the 8x8 tile grid and inside y 8..224 (no overscan). Windows are BP.Art.drawBox frames whose
+  //   top edge is at 8k+3, so a title tab printed over the top border lands on a tile row (8k) and body text at
+  //   8k+8 never touches a border.
+  // * Window styles: 'default' = info, 'red' = opponent, 'gold' = reward / armed, 'dim' = secondary.
+  // * Text colors: white = info / you, gold = highlight / prompts, red = opponent, lgray = labels / unselected,
+  //   gray = disabled, lgreen = good, orange = warning. Only colors every stage already shows (NES budget).
+  var UC = { info: 'white', hi: 'gold', foe: 'red', label: 'lgray', off: 'gray', good: 'lgreen', warn: 'orange' }
+  function gridX(s) { return Math.max(0, ((W - String(s).length * 8) / 16) | 0) * 8 } // = Art.textCenter's x
+  // title tab: text knocked out of a window's top border (Dragon Warrior / Zelda menu style)
+  function tab(x, y, s, c) { s = String(s); rect(x - 2, y - 1, s.length * 8 + 4, 9, 'black'); T(s, x, y, c || UC.hi) }
+  function win(x, y, w, h, st, title, tc) { box(x, y, w, h, st); if (title) tab(x + 8, y - 3, title, tc) }
+  // bottom message line (prompts, skip, chirps): one centered window, text on row y 208
+  function msgLine(s, c, st, hide) { if (hide) return; s = String(s); var x = gridX(s); box(x - 8, 203, s.length * 8 + 16, 18, st || 'default'); T(s, x, 208, c || UC.hi) }
+  // big message window (banners + callouts) centered on x 128; scale-2 text on a tile row
+  var BIG_Y = 123
+  function bigWin(s, y, c, st, h) {
+    s = String(s)
+    var bw = Math.min(248, Math.max(96, s.length * 16 + 32))
+    box(128 - bw / 2, y, bw, h || 28, st)
+    BIG(s, 128, y + 5, c, 2)
+  }
+
   // ---------------------------------------------------------------- global state
   var S = null // current screen {name, t, ...}
   var fade = null // {phase:'out'|'in', t, fn}
@@ -846,7 +869,7 @@
       case 'aim':
         if (human) {
           if (run && run.hints < 4) run.hintOn = true
-          var bt = tp && inR(tp, IX, IY + IH + 1, IW, 12)
+          var bt = tp && chipHit(tp, side)
           if (pr('b') || pr('select') || bt) {
             if (alive(1 - side) >= 2 || M.bounce) { M.bounce = !M.bounce; sfx(M.bounce ? 'select' : 'cancel') } else sfx('error')
           } else if (pr('a') && M.pt > 6) {
@@ -927,7 +950,6 @@
   }
 
   // ======================================================================== MATCH DRAW
-  var IX = 84, IY = 25, IW = 90, IH = 82
   function drawMatch(showHud) {
     var M = m, A = BP.Art
     ctx.save()
@@ -985,79 +1007,91 @@
 
     var ph = M.phase
     var humanTurn = M.ctrl[M.turn] === 'human'
-    if (!paused && (ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight' || (ph === 'result' && M.missX))) drawInset()
+    var insetUp = ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight' || (ph === 'result' && M.missX)
+    if (!paused && insetUp) drawInset()
     if (!paused) drawCallouts()
     if ((ph === 'banner' || ph === 'ready') && M.banner && !paused) {
-      var txt = M.banner
-      if (ph === 'ready' && M.pt > 30) txt = 'GO!'
-      var w = Math.max(96, txt.length * 16 + 24)
+      var isGo = ph === 'ready' && M.pt > 30, txt = isGo ? 'GO!' : M.banner
       var withBalls = ph === 'banner' && !M.redemption
-      box(128 - w / 2, 108, w, withBalls ? 40 : 30, M.redemption ? 'gold' : M.turn === 1 && ph === 'banner' ? 'red' : 'default')
-      BIG(txt, 128, 115, ph === 'ready' && M.pt > 30 ? 'gold' : M.bannerC, 2)
-      if (withBalls) for (var bi = 0; bi < M.balls; bi++) A.drawIcon(ctx, 'ball', 128 - M.balls * 5 + bi * 10 + 1, 135)
+      var bst = M.redemption ? 'gold' : M.turn === 1 && ph === 'banner' ? 'red' : 'default'
+      if (withBalls) { // turn card: name + the balls you get, bottom edge shared with the callout window
+        bigWin(txt, BIG_Y - 16, M.bannerC, bst, 44)
+        for (var bi = 0; bi < M.balls; bi++) A.drawIcon(ctx, 'ball', 128 - M.balls * 6 + bi * 12 + 2, BIG_Y + 13)
+      } else bigWin(txt, BIG_Y, isGo ? 'gold' : M.bannerC, bst)
     }
-    // opponent speech (Punch-Out style): portrait + one line; hidden while the aim inset is up
-    var insetUp = ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight' || (ph === 'result' && M.missX)
-    if (M.speech && !paused && !insetUp) {
-      box(4, 26, 248, 40, 'red')
-      if (A.drawPortrait) A.drawPortrait(ctx, M.speech.who, 8, 30)
-      T(M.speech.name + ':', 46, 33, 'red')
-      T(M.speech.text.slice(0, Math.max(0, M.speech.t)), 46, 47, 'white')
-    }
+    // opponent speech (Punch-Out!! style): portrait window + name-tagged line; hidden while the shot window is up
+    if (M.speech && !paused && !insetUp) drawSpeech(M.speech)
+    // the stage-1 rival heckles from his side of the table
     if (M.chirp && !paused && humanTurn && (ph === 'aim' || ph === 'power')) {
-      box(52, 204, 152, 14, 'dim')
-      TC(M.chirp.text, 207, 'white')
+      var cw = M.chirp.text.length * 8 + 16
+      box(W - 8 - cw, 147, cw, 18, 'red')
+      T(M.chirp.text, W - cw, 152, UC.info)
     }
     if (showHud !== false) drawHUD()
-    if (!M.demo && M.turn === 1 && !M.ff && !paused && (ph === 'banner' || ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight')) {
-      rect(52, 213, 152, 11, 'black')
-      if (blink(frame, 24)) TC(isTouch() ? 'TAP TO SKIP ▶▶' : 'A: SKIP ▶▶', 215, 'gold')
-    }
-    if (M.demo) {
-      box(84, 188, 88, 18, 'dim')
-      if (blink(frame, 24)) TC('DEMO PLAY', 193, 'gold')
-      if (blink(frame, 30)) TC('PUSH START', 210, 'white', true)
-    }
+    // bottom message line: first-throw hints / CPU skip / attract prompt
+    if (!paused && humanTurn && !M.demo && run && run.hints < 4 && (ph === 'aim' || ph === 'power'))
+      msgLine(ph === 'aim' ? 'TAP OR A: LOCK AIM' : 'TAP IN THE GREEN!', UC.hi, 'default', !blink(frame, 20))
+    if (!M.demo && M.turn === 1 && !M.ff && !paused && (ph === 'banner' || ph === 'aim' || ph === 'power' || ph === 'throw' || ph === 'flight'))
+      msgLine(isTouch() ? 'TAP TO SKIP ▶▶' : 'A: SKIP ▶▶', UC.hi, 'dim', !blink(frame, 24))
+    if (M.demo) { var dp = blink(frame, 60); msgLine(dp ? ' DEMO PLAY' : 'PUSH START', dp ? UC.hi : UC.info) }
+  }
+
+  function drawSpeech(sp) {
+    // portrait window | text window with the speaker's name knocked into its border
+    box(8, 35, 48, 48, 'red')
+    if (BP.Art.drawPortrait) BP.Art.drawPortrait(ctx, sp.who, 16, 43)
+    win(56, 35, 192, 48, 'red', sp.name, UC.foe)
+    T(sp.text.slice(0, Math.max(0, sp.t)), 64, 56, UC.info)
   }
 
   function drawCallouts() {
     var cs = m.calls
     if (!cs.length) return
-    var y = 132
     var first = cs[0]
     if (first.t < 90) {
-      var w = first.text.length * 16 + 20
       var bob = first.t < 6 ? 6 - first.t : 0
-      box(128 - w / 2, y - 4 - bob, w, 26, first.c === 'red' ? 'red' : first.c === 'gold' ? 'gold' : 'default')
-      BIG(first.text, 128, y + 1 - bob, first.c, 2)
+      bigWin(first.text, BIG_Y - bob, first.c, first.c === 'red' ? 'red' : first.c === 'gold' ? 'gold' : 'default')
     }
     for (var i = 1; i < cs.length && i < 4; i++) {
       var c = cs[i]
       if (c.t < (i * 6)) continue
-      var tw = c.text.length * 8 + 12
-      box(128 - tw / 2, y + 22 + (i - 1) * 13, tw, 13, 'dim')
-      TC(c.text, y + 25 + (i - 1) * 13, c.c)
+      var tx = gridX(c.text), ty = BIG_Y + 32 + (i - 1) * 16
+      box(tx - 8, ty, c.text.length * 8 + 16, 16, 'dim')
+      T(c.text, tx, ty + 5, c.c)
     }
   }
 
-  // inset mapping (behind-the-shooter view of the target rack)
+  // ---- SHOT WINDOW: the rack seen from behind the shooter + the power meter in ONE frame with a title tab.
+  // It hangs on the shooter's side of the screen so the stage's centerpiece stays visible, and never reaches
+  // below y 120 (the ball's arc never climbs above y 128). Rack scale is unchanged: 2 px per table unit.
+  var SWW = 112, SWH = 84, SWY = 35
+  var IW = 90, IH = 82 // legacy inset size: BRO-DY's smoke drift range (updateMatch)
+  function shotWin(side) {
+    var x = side === 1 ? W - 8 - SWW : 8
+    return { x: x, y: SWY, vx: x + 4, vy: SWY + 4, vw: 84, vh: 76, dx: x + 90, fx: x + 96, fy: SWY + 6, fw: 8, fh: 72 }
+  }
+  // chips (h 14, slim frame) put their text on the tile row below the window: y 128
+  function bounceChip(side) { return { x: shotWin(side).x, y: SWY + SWH + 6, w: 80, h: 14 } }
+  function chipHit(p, side) { var c = bounceChip(side); return inR(p, c.x, c.y - 2, c.w, c.h + 4) } // 18-px tap target
   function insetXY(side, x, z) {
-    var icx = IX + IW / 2
-    if (side === 0) return { x: icx + z * 2, y: IY + 13 + (214 - x) * 2 } // anchored on the back row
-    return { x: icx - z * 2, y: IY + 13 + (x - 42) * 2 }
+    var g = shotWin(side), icx = g.vx + g.vw / 2, top = g.vy + 10
+    if (side === 0) return { x: icx + z * 2, y: top + (214 - x) * 2 } // anchored on the back row
+    return { x: icx - z * 2, y: top + (x - 42) * 2 }
   }
   function drawInset() {
-    var M = m, A = BP.Art, side = M.turn, human = M.ctrl[side] === 'human'
-    box(IX, IY, IW, IH, M.bounce ? 'gold' : side === 1 ? 'red' : 'default')
+    var M = m, A = BP.Art, side = M.turn, human = M.ctrl[side] === 'human', g = shotWin(side)
+    var st = M.bounce ? 'gold' : side === 1 ? 'red' : 'default'
+    box(g.x, g.y, SWW, SWH, st)
+    rect(g.dx, g.y + 1, 2, SWH - 2, st === 'gold' ? 'gold' : st === 'red' ? 'red' : 'white') // pane divider
     ctx.save()
-    ctx.beginPath(); ctx.rect(IX + 3, IY + 3, IW - 6, IH - 6); ctx.clip()
-    rect(IX + 3, IY + 3, IW - 6, IH - 6, 'black')
-    var icx = IX + IW / 2
+    ctx.beginPath(); ctx.rect(g.vx, g.vy, g.vw, g.vh); ctx.clip()
+    rect(g.vx, g.vy, g.vw, g.vh, 'black')
+    var icx = g.vx + g.vw / 2
     // table surface (top-down)
-    rect(icx - 29, IY + 3, 58, IH, 'dred')
-    rect(icx - 29, IY + 3, 1, IH, 'white')
-    rect(icx + 28, IY + 3, 1, IH, 'white')
-    rect(icx, IY + 3, 1, IH, 'red')
+    rect(icx - 29, g.vy, 58, g.vh, 'dred')
+    rect(icx - 29, g.vy, 1, g.vh, 'white')
+    rect(icx + 28, g.vy, 1, g.vh, 'white')
+    rect(icx, g.vy, 1, g.vh, 'red')
     // cups
     var cs = M.sides[1 - side].cups
     cs.forEach(function (c) {
@@ -1068,7 +1102,7 @@
     M.smoke.forEach(function (sm) {
       for (var py = 0; py < 16; py += 2) for (var px = 0; px < 28; px += 2) {
         var d = Math.hypot((px - 14) / 14, (py - 8) / 8)
-        if (d < 1 && ((px + py + (sm.t >> 3)) & 2) === 0) rect(IX + sm.x + px, IY + sm.y + py, 2, 2, d < 0.6 ? 'lgray' : 'gray')
+        if (d < 1 && ((px + py + (sm.t >> 3)) & 2) === 0) rect(g.vx - 3 + sm.x + px, g.vy - 3 + sm.y + py, 2, 2, d < 0.6 ? 'lgray' : 'gray')
       }
     })
     // wind arrow (shooter's view: the only wind arrow)
@@ -1106,22 +1140,27 @@
       if (M.lockAim) { var lq = insetXY(side, M.lockAim.x, M.lockAim.z); rect(lq.x - 1, lq.y, 3, 1, 'white'); rect(lq.x, lq.y - 1, 1, 3, 'white') }
     }
     ctx.restore()
-    // shooter tag
-    if (!human) T(M.demo && side === 0 ? 'HERO' : M.sides[side].name.slice(0, 9), IX + 4, IY + IH - 11, side === 0 ? 'white' : 'red', true)
-    // bounce toggle button (14 px: full NES frame)
-    if (human && (M.phase === 'aim')) {
-      box(IX, IY + IH + 1, IW, 14, M.bounce ? 'gold' : 'dim')
-      T(M.bounce ? (blink(frame, 10) ? 'BOUNCE ON' : 'B:BOUNCE') : 'B:BOUNCE', IX + (M.bounce && blink(frame, 10) ? 9 : 13), IY + IH + 4, M.bounce ? 'gold' : 'lgray')
+    // title tab: what to do now (you) / who is shooting (CPU)
+    var tt, tc
+    if (!human) { tt = M.demo && side === 0 ? 'HERO' : M.sides[side].name.slice(0, 9); tc = side === 0 ? UC.info : UC.foe }
+    else if (M.phase === 'aim' || M.phase === 'power') { tt = M.phase === 'aim' ? 'AIM' : 'POWER'; tc = UC.hi }
+    else { tt = M.sides[side].name; tc = UC.info }
+    tab(g.x + 8, g.y - 3, tt, tc)
+    // bounce toggle chip under the window (also the tap target)
+    if (human && M.phase === 'aim') {
+      var bc = bounceChip(side)
+      box(bc.x, bc.y, bc.w, bc.h, M.bounce ? 'gold' : 'dim')
+      T('B:BOUNCE', bc.x + 8, bc.y + 3, M.bounce ? (blink(frame, 10) ? UC.hi : UC.info) : UC.label)
     }
-    // KEGMASTER calls his shot
+    // KEGMASTER calls his shot: a red chip under his window
     if (!human && M.plan && M.plan.call && (M.phase === 'aim' || M.phase === 'power')) {
-      box(52, IY + IH + 1, 152, 14, 'red')
-      TC('KEG: ' + M.plan.call, IY + IH + 4, 'white')
+      var cl = M.plan.call
+      box(g.x, SWY + SWH + 6, SWW, 14, 'red')
+      T(cl, g.x + (((SWW - cl.length * 8) / 16) | 0) * 8, SWY + SWH + 9, UC.info)
     }
-    // power meter
-    var mx = IX + IW + 3, my = IY, mw = 16, mh = IH
-    box(mx, my, mw, mh, 'default')
-    var fx = mx + 4, fy = my + 4, fw = mw - 8, fh = mh - 8
+    // power meter pane
+    var fx = g.fx, fy = g.fy, fw = g.fw, fh = g.fh
+    rect(fx - 1, fy - 1, fw + 2, fh + 2, 'gray')
     rect(fx, fy, fw, fh, 'dgray')
     var sc = M.pow.sc, bw = M.pow.bw
     // the green zone is revealed only after the aim lock: its height depends on how far the target cup is
@@ -1146,15 +1185,6 @@
       rect(fx, zy0, fw, 1, 'lgreen'); rect(fx, zy1, fw, 1, 'lgreen')
       rect(fx - 3, zy0, 2, zy1 - zy0 + 1, 'lgreen'); rect(fx + fw + 1, zy0, 2, zy1 - zy0 + 1, 'lgreen')
     }
-    // hint for first-timers
-    if (human && run && run.hints < 4 && !M.demo) {
-      var hint = M.phase === 'aim' ? 'TAP OR A: LOCK AIM' : M.phase === 'power' ? 'TAP IN THE GREEN!' : ''
-      if (hint && blink(frame, 20)) {
-        var hw = hint.length * 8 + 8
-        rect(128 - hw / 2, IY + IH + (M.phase === 'aim' ? 16 : 3), hw, 10, 'black')
-        TC(hint, IY + IH + (M.phase === 'aim' ? 17 : 4), 'gold')
-      }
-    }
   }
   function reticle(x, y, c) {
     var o = 8, l = 3
@@ -1164,48 +1194,49 @@
     rect(x + o - l + 1, y + o, l, 1, c); rect(x + o, y + o - l + 1, 1, l, c)
   }
   function drawWindArrow(side) {
-    var M = m
+    var M = m, g = shotWin(side)
     var dx = Math.cos(M.wind.ang), dz = Math.sin(M.wind.ang)
     // to inset screen direction
     var sx = side === 0 ? dz : -dz, syy = side === 0 ? -dx : dx
-    var cx = IX + IW - 14, cy = IY + IH - 14, L = 4 + M.wind.s * 2
+    var cx = g.vx + g.vw - 11, cy = g.vy + g.vh - 11, L = 4 + M.wind.s * 2
     for (var i = -L; i <= L; i++) rect(cx + sx * i, cy + syy * i, 1, 1, 'white')
     var hx = cx + sx * L, hy = cy + syy * L
     for (var j = 1; j <= 3; j++) {
       rect(hx - sx * j - syy * j, hy - syy * j + sx * j, 1, 1, 'white')
       rect(hx - sx * j + syy * j, hy - syy * j - sx * j, 1, 1, 'white')
     }
-    T(String(M.wind.s), IX + IW - 26, IY + IH - 26 + 1, 'white')
+    T(String(M.wind.s), g.vx + g.vw - 23, g.vy + g.vh - 22, 'white')
   }
 
-  // HUD: two tile rows inside the NES safe area (y 8 and 16) on the black band y 0..23
+  // HUD: black status band y 0..23 (SMB3-style), two tile rows (y 8 and 16), every item on the 8-px grid.
+  //   row 1:  1P 000000        ST1         HI 000000
+  //   row 2:  [your cups] (balls) [buzz mugs] [fire]     [their cups]
   function drawHUD() {
     var M = m, A = BP.Art
     rect(0, 0, W, 24, 'black')
     var score = M.demo ? 0 : run.disp
-    T('1P', 8, 8, 'red')
-    T(pad(score, 6), 32, 8, 'white')
-    T('HI', 168, 8, 'red')
-    T(pad(Math.max(hi, run && !M.demo ? run.disp : 0), 6), 192, 8, 'white')
-    if (M.overtime || M.redemption) { if (blink(frame, 12)) T(M.overtime ? 'OT!' : 'RED!', 128 - 16, 8, 'gold') }
-    else { var stl = (M.loop > 0 ? 'R' + (M.loop + 1) + '-' : 'ST') + (M.stage + 1); T(stl, 128 - stl.length * 4 - 4, 8, 'gold') }
-    // row 2: your cups | balls | buzz mugs | fire | their cups
+    T('1P', 8, 8, UC.hi)
+    T(pad(score, 6), 32, 8, UC.info)
+    T('HI', 168, 8, UC.hi)
+    T(pad(Math.max(hi, run && !M.demo ? run.disp : 0), 6), 192, 8, UC.info)
+    if (M.overtime || M.redemption) { var ot = M.overtime ? 'OT!' : 'RED!'; if (blink(frame, 12)) T(ot, gridX(ot), 8, UC.hi) }
+    else { var stl = (M.loop > 0 ? 'R' + (M.loop + 1) + '-' : 'ST') + (M.stage + 1); T(stl, gridX(stl), 8, UC.info) }
     if (M.sides[0].cups.length > 6 || M.sides[1].cups.length > 6) { // 10-cup racks: icon + count (readable)
-      A.drawIcon(ctx, 'cup', 8, 16); T('\u00D7' + alive(0), 17, 16, 'white')
-      A.drawIcon(ctx, 'cup', 216, 16); T('\u00D7' + alive(1), 225, 16, 'white')
+      A.drawIcon(ctx, 'cup', 8, 16); T('×' + alive(0), 16, 16, UC.info)
+      A.drawIcon(ctx, 'cup', 216, 16); T('×' + alive(1), 224, 16, UC.info)
     } else {
-      M.sides[0].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 8 + i * 7, 16) })
+      M.sides[0].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 8 + i * 8, 16) })
       var n1 = M.sides[1].cups.length
-      M.sides[1].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', 240 - (n1 - 1 - i) * 7, 16) })
+      M.sides[1].cups.forEach(function (c, i) { A.drawIcon(ctx, c.alive ? 'cup' : 'cupEmpty', W - 8 - (n1 - i) * 8, 16) })
     }
     var bl = M.redemption ? 1 : M.balls
-    for (var i = 0; i < Math.min(bl, 2); i++) A.drawIcon(ctx, 'ball', 62 + i * 8, 16)
+    for (var i = 0; i < Math.min(bl, 2); i++) A.drawIcon(ctx, 'ball', 64 + i * 8, 16)
     if (!M.demo) {
-      for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 82 + k * 9, 16)
+      for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 88 + k * 8, 16)
       var st = run.streak
-      if (st >= 3) { if (blink(frame, 6)) T('FIRE', 130, 16, 'red'); A.drawIcon(ctx, 'fire', 164, 16) }
-      else for (var f = 0; f < 3; f++) if (f < st) A.drawIcon(ctx, 'fire', 130 + f * 9, 16)
-      if (M.cpuStreak >= 3 && blink(frame, 6)) A.drawIcon(ctx, 'fire', 176, 16)
+      if (st >= 3) { if (blink(frame, 6)) T('FIRE', 136, 16, UC.foe); A.drawIcon(ctx, 'fire', 168, 16) }
+      else for (var f = 0; f < 3; f++) if (f < st) A.drawIcon(ctx, 'fire', 136 + f * 8, 16)
+      if (M.cpuStreak >= 3 && blink(frame, 6)) A.drawIcon(ctx, 'fire', 184, 16)
     }
   }
 
@@ -1227,7 +1258,7 @@
       if (pr('down') || pr('select')) { titleCursor = (titleCursor + 1) % 3; sfx('select') }
       var choose = -1
       if (p && S.t > 10) {
-        var mt = menuTap(p, [[64, 104, 128, 14], [64, 118, 128, 14], [64, 132, 128, 14]], titleCursor)
+        var mt = menuTap(p, [[64, 100, 128, 16], [64, 116, 128, 16], [64, 132, 128, 16]], titleCursor)
         if (mt.move != null) { titleCursor = mt.move; sfx('select') } else choose = titleCursor
       } else if (okPr() && S.t > 10) choose = titleCursor
       if (choose >= 0) {
@@ -1270,17 +1301,17 @@
       if (ph === 70) { /* silent on title */ }
       // logo + menu
       A.drawLogo(ctx, 128, 26, frame)
-      box(64, 98, 128, 52, 'default')
+      // menu window: rows on tiles y 104/120/136, cursor in its own column, 8 px clear of every border
+      box(64, 93, 128, 62, 'default')
       for (var i = 0; i < 3; i++) {
-        var yy = 108 + i * 14
-        T(MENU[i], 88, yy, i === titleCursor ? 'white' : 'lgray')
-        if (i === titleCursor && blink(frame, 16)) T('▶', 74, yy, 'red')
+        var yy = 104 + i * 16
+        T(MENU[i], 88, yy, i === titleCursor ? UC.info : UC.label)
+        if (i === titleCursor && blink(frame, 16)) T('▶', 72, yy, UC.hi)
       }
-      rect(64, 152, 128, 12, 'black')
-      if (blink(frame, 30)) TC(isTouch() ? 'TAP TO START' : 'PUSH START', 154, 'white')
-      T('HI ' + pad(hi, 6), 8, 8, 'white', true)
-      rect(48, 213, 160, 11, 'black')
-      TC('© 1989 PARTY SOFT', 215, 'white')
+      var ps = isTouch() ? 'TAP TO START' : 'PUSH START'
+      if (blink(frame, 30)) tab(gridX(ps), 200, ps, UC.info)
+      tab(88, 8, 'HI ' + pad(hi, 6), UC.info); T('HI', 88, 8, UC.hi)
+      tab(gridX('© 1989 PARTY SOFT'), 216, '© 1989 PARTY SOFT', UC.info)
     },
   }
 
@@ -1361,11 +1392,11 @@
   }
   function scoresMode() { try { return BP.Scores.mode() === 'global' ? 'GLOBAL' : 'LOCAL' } catch (e) { return 'LOCAL' } }
   function drawScoreTable(rows, hl, t, label, myRank) {
-    if (myRank === 1) BIG('NEW HIGH SCORE!', 128, 12, blink(frame, 6) ? 'gold' : 'white', 2)
-    else if (myRank > 1) BIG("YOU'RE #" + myRank + '!', 128, 12, 'cyan', 2)
-    else BIG('HIGH SCORES', 128, 12, 'gold', 2)
+    if (myRank === 1) BIG('NEW HIGH SCORE!', 128, 8, blink(frame, 6) ? 'gold' : 'white', 2)
+    else if (myRank > 1) BIG("YOU'RE #" + myRank + '!', 128, 8, 'cyan', 2)
+    else BIG('HIGH SCORES', 128, 8, 'gold', 2)
     var mode = label || scoresMode() + ' RANKING'
-    TC(mode, 34, mode.indexOf('GLOBAL') >= 0 ? 'cyan' : mode.indexOf('SENDING') >= 0 ? 'yellow' : 'lgray')
+    TC(mode, 32, mode.indexOf('GLOBAL') >= 0 ? 'cyan' : mode.indexOf('SENDING') >= 0 ? 'yellow' : 'lgray')
     box(8, 46, 240, 146, 'default')
     T('RK', 18, 54, 'red'); T('NAME', 46, 54, 'red'); TR('SCORE', 184, 54, 'red'); T('STG', 200, 54, 'red')
     if (!rows) { if (blink(frame, 10)) TC('LOADING...', 110, 'white'); return }
@@ -1404,10 +1435,11 @@
   }
 
   // ---------------------------------------------------------------- HOW TO PLAY
-  // Layout rules (checked at 3x): the frame interior is x 8..247, y 40..212; text columns never reach a sprite.
+  // Layout (checked at 3x): one window x 8..248, y 27..203 with the page title in its tab; text rows from y 40,
+  // footer prompt on row 208. Pages 1-2 show the real shot window (same frame, tab and meter pane as a match).
   var HOWTO = [
-    { title: 'AIM', lines: ['THE CROSSHAIR', 'SWEEPS OVER THE', 'CUPS. PRESS A', 'OR TAP TO LOCK', 'IT ON A CUP.', '', 'HIT THE BEER', 'FOR A SWISH!'] },
-    { title: 'POWER', lines: ['PRESS A AGAIN', 'WHEN THE BAR', 'IS IN THE', 'GREEN ZONE.', '', 'LOW  = SHORT', 'HIGH = LONG'] },
+    { title: 'AIM', lines: ['THE CROSSHAIR', 'SWEEPS OVER', 'THE CUPS.', '', 'HIT THE BEER', 'FOR A SWISH!'] },
+    { title: 'POWER', lines: ['PRESS A AGAIN', 'WHEN THE BAR', 'IS IN THE', 'GREEN ZONE!', 'LOW  = SHORT', 'HIGH = LONG'] },
     { title: 'RULES', lines: ['2 BALLS A TURN. SINK BOTH', 'FOR BALLS BACK!', '', '2 IN A ROW: HEATING UP X2', '3 IN A ROW: ON FIRE!   X3', '', 'LOSE A CUP: +1 BUZZ. BUZZ', 'MAKES YOUR AIM SHAKY.', '', 'LAST CUP GONE? SINK THEM', 'ALL FOR REDEMPTION!', '', 'WIN 2 ROUNDS = CHAMPION!'] },
     { title: 'SCORING', lines: ['CUP ............ 100', 'SWISH ........... +50', 'RATTLED IN ...... +25', 'BOUNCE SHOT .... +200', 'ISLAND CUP ..... +250', 'BALLS BACK ..... +300', 'HEATING UP ....... X2', 'ON FIRE .......... X3', 'FAST CLEAR ... +3000', 'PERFECT ....... +3000', 'ROUND 2 .......... X2'] },
   ]
@@ -1427,58 +1459,64 @@
     draw: function () {
       var A = BP.Art, pg = HOWTO[S.page]
       rect(0, 0, W, H, 'black')
-      box(4, 4, 248, 28, 'red')
-      TC('HOW TO PLAY  ' + (S.page + 1) + '/' + HOWTO.length, 9, 'white')
-      TC(pg.title, 19, 'gold')
-      box(4, 36, 248, 168, 'default')
+      TC('HOW TO PLAY', 8, UC.info)
+      TR((S.page + 1) + '/' + HOWTO.length, 240, 8, UC.label)
+      win(8, 27, 240, 176, 'default', S.page < 2 ? 'STEP ' + (S.page + 1) : pg.title, UC.hi)
       if (S.page === 0 || S.page === 1) {
-        var ex = 14, ey = 46, ew = 90, eh = 82
-        box(ex, ey, ew, eh, 'default')
-        ctx.save(); ctx.beginPath(); ctx.rect(ex + 3, ey + 3, ew - 6, eh - 6); ctx.clip()
-        rect(ex + 3, ey + 3, ew - 6, eh - 6, 'black')
-        var icx = ex + ew / 2
-        rect(icx - 29, ey + 8, 58, eh, 'dred'); rect(icx - 29, ey + 8, 58, 1, 'white')
-        S.demoRack.forEach(function (c) { A.drawCupTop(ctx, R(icx + c.z * 2), R(ey + 14 + (TX1 - c.x) * 2), 'full') })
+        // the real shot window, same frame + tab + meter pane as in a match
+        var g = shotWin(0), ox2 = 16 - g.x, oy2 = 43 - g.y
+        var vx = g.vx + ox2, vy = g.vy + oy2, fx = g.fx + ox2, fy = g.fy + oy2
+        box(16, 43, SWW, SWH, 'default')
+        rect(g.dx + ox2, 44, 2, SWH - 2, 'white')
+        ctx.save(); ctx.beginPath(); ctx.rect(vx, vy, g.vw, g.vh); ctx.clip()
+        rect(vx, vy, g.vw, g.vh, 'black')
+        var icx = vx + g.vw / 2
+        rect(icx - 29, vy, 58, g.vh, 'dred'); rect(icx - 29, vy, 1, g.vh, 'white'); rect(icx + 28, vy, 1, g.vh, 'white'); rect(icx, vy, 1, g.vh, 'red')
+        var cy0 = vy + 10
+        S.demoRack.forEach(function (c) { A.drawCupTop(ctx, R(icx + c.z * 2), R(cy0 + (TX1 - c.x) * 2), 'full') })
         if (S.page === 0) {
-          var cxh = R(icx + 13 * Math.sin(frame * 0.05)), cyh = R(ey + 14 + 16 + 14 * Math.sin(frame * 0.035 + 1))
+          var cxh = R(icx + 13 * Math.sin(frame * 0.05)), cyh = R(cy0 + 16 + 14 * Math.sin(frame * 0.035 + 1))
           A.drawCrosshair(ctx, cxh, cyh, frame)
           var on = false
-          S.demoRack.forEach(function (c) { if (Math.hypot(icx + c.z * 2 - cxh, ey + 14 + (TX1 - c.x) * 2 - cyh) < 4.5) on = true })
+          S.demoRack.forEach(function (c) { if (Math.hypot(icx + c.z * 2 - cxh, cy0 + (TX1 - c.x) * 2 - cyh) < 4.5) on = true })
           reticle(cxh, cyh, on ? 'lgreen' : 'yellow')
-        } else A.drawCrosshair(ctx, R(icx), R(ey + 14 + 18), frame)
+        } else { A.drawCrosshair(ctx, R(icx), R(cy0 + 18), frame); reticle(R(icx), R(cy0 + 18), 'white') }
         ctx.restore()
+        var fh = g.fh, fw = g.fw
+        rect(fx - 1, fy - 1, fw + 2, fh + 2, 'gray'); rect(fx, fy, fw, fh, 'dgray')
         if (S.page === 1) {
-          var mx = ex + ew + 4, fh = eh - 8
-          box(mx, ey, 16, eh, 'default')
-          rect(mx + 4, ey + 4, 8, fh, 'dgray')
-          rect(mx + 4, ey + 4 + fh * (1 - 0.75), 8, fh * 0.18, 'green')
+          var sc = 0.66, bw = 0.09
+          rect(fx, fy + fh * (1 - (sc + bw)), fw, fh * 2 * bw, 'green')
           var u = (frame % 66) / 66, v = u < 0.5 ? u * 2 : 2 - u * 2
-          var inZ = Math.abs(v - 0.66) <= 0.09
-          rect(mx + 4, ey + 4 + fh * (1 - v), 8, fh * v, inZ ? 'lgreen' : v > 0.66 ? 'red' : 'orange')
-          rect(mx + 2, ey + 3 + fh * (1 - v), 12, 2, 'white')
+          var inZ = Math.abs(v - sc) <= bw
+          rect(fx, fy + fh * (1 - v), fw, fh * v, inZ ? 'lgreen' : v > sc ? 'red' : 'orange')
+          rect(fx - 2, R(fy + fh * (1 - v)) - 1, fw + 4, 2, 'white')
+          var zy0 = R(fy + fh * (1 - (sc + bw))), zy1 = R(fy + fh * (1 - (sc - bw)))
+          rect(fx - 3, zy0, 2, zy1 - zy0 + 1, 'lgreen'); rect(fx + fw + 1, zy0, 2, zy1 - zy0 + 1, 'lgreen')
         }
-        var tx = S.page === 1 ? 132 : 112
-        pg.lines.forEach(function (l, i) { T(l, tx, 48 + i * 11, i === pg.lines.length - 1 ? 'gold' : 'white') })
+        tab(24, 40, pg.title, UC.hi)
+        pg.lines.forEach(function (l, i) { T(l, 136, 40 + i * 16, i === pg.lines.length - 1 ? UC.hi : UC.info) })
         if (S.page === 0) {
           A.drawPlayer(ctx, 'hero', 'aim', 40, 198, frame)
-          T('A', 72, 150, 'red'); T('/ TAP = LOCK AIM', 88, 150, 'white')
-          T('GREEN BRACKETS =', 72, 168, 'lgreen')
-          T('RIGHT ON A CUP!', 72, 180, 'white')
+          T('A', 72, 144, UC.foe); T('/ TAP = LOCK AIM', 88, 144, UC.info)
+          T('GREEN BRACKETS =', 72, 160, UC.good)
+          T('RIGHT ON A CUP!', 72, 176, UC.info)
         } else {
           A.drawPlayer(ctx, 'hero', 'throw', 224, 198, frame)
-          T('B', 16, 146, 'red'); T(': BOUNCE SHOT ON/OFF', 24, 146, 'white')
-          T('HARDER TO SINK, BUT', 16, 160, 'white')
-          T('IT TAKES 2 CUPS!', 16, 172, 'gold')
+          box(16, 141, 80, 14, 'gold'); T('B:BOUNCE', 24, 144, UC.hi)
+          T('ON/OFF', 104, 144, UC.info)
+          T('HARDER TO SINK, BUT', 16, 160, UC.info)
+          T('IT TAKES 2 CUPS!', 16, 176, UC.hi)
         }
       } else if (S.page === 2) {
-        pg.lines.forEach(function (l, i) { T(l, 16, 44 + i * 12, l.indexOf('FIRE') >= 0 || l.indexOf('HEATING') >= 0 ? 'orange' : l.indexOf('BUZZ') >= 0 ? 'beer' : l.indexOf('CHAMPION') >= 0 || l.indexOf('REDEMPTION') >= 0 ? 'gold' : 'white') })
-        A.drawIcon(ctx, 'ball', 226, 44); A.drawIcon(ctx, 'ball', 236, 44)
-        A.drawIcon(ctx, 'fire', 230, 92); A.drawIcon(ctx, 'mugFull', 230, 116); A.drawIcon(ctx, 'trophy', 230, 188)
+        pg.lines.forEach(function (l, i) { T(l, 16, 40 + i * 12, l.indexOf('FIRE') >= 0 || l.indexOf('HEATING') >= 0 ? UC.warn : l.indexOf('BUZZ') >= 0 ? 'beer' : l.indexOf('CHAMPION') >= 0 || l.indexOf('REDEMPTION') >= 0 ? UC.hi : UC.info) })
+        A.drawIcon(ctx, 'ball', 224, 40); A.drawIcon(ctx, 'ball', 232, 40)
+        A.drawIcon(ctx, 'fire', 232, 88); A.drawIcon(ctx, 'mugFull', 232, 112); A.drawIcon(ctx, 'trophy', 232, 184)
       } else {
-        pg.lines.forEach(function (l, i) { T(l, 40, 46 + i * 14, i === 6 || i === 7 ? 'orange' : i >= 8 ? 'gold' : 'white') })
-        A.drawIcon(ctx, 'cup', 22, 46); A.drawIcon(ctx, 'star', 22, 60); A.drawIcon(ctx, 'fire', 22, 158); A.drawIcon(ctx, 'trophy', 22, 186)
+        pg.lines.forEach(function (l, i) { T(l, 40, 40 + i * 14, i === 6 || i === 7 ? UC.warn : i >= 8 ? UC.hi : UC.info) })
+        A.drawIcon(ctx, 'cup', 24, 40); A.drawIcon(ctx, 'star', 24, 54); A.drawIcon(ctx, 'fire', 24, 152); A.drawIcon(ctx, 'trophy', 24, 180)
       }
-      if (blink(frame, 30)) TC(S.page < HOWTO.length - 1 ? 'A: NEXT   B: BACK' : 'A: DONE   B: BACK', 210, 'lgray')
+      if (blink(frame, 30)) TC(S.page < HOWTO.length - 1 ? 'A: NEXT   B: BACK' : 'A: DONE   B: BACK', 208, UC.label)
     },
   }
 
@@ -1499,33 +1537,34 @@
       var A = BP.Art, st = STAGES[run.stage], t = S.t
       rect(0, 0, W, H, 'black')
       var hdr = (run.loop >= 2 ? 'GAUNTLET R' + (run.loop + 1) + '  ' : run.loop > 0 ? 'ROUND ' + (run.loop + 1) + '  ' : '') + 'STAGE ' + (run.stage + 1)
-      TC(hdr, 10, run.loop >= 2 ? 'red' : 'white')
-      TC(st.name, 24, 'gold')
+      TC(hdr, 8, run.loop >= 2 ? UC.foe : UC.info)
+      TC(st.name, 24, UC.hi)
       rect(0, 40, W, 72, st.band)
       for (var i = 0; i < 6; i++) rect(0, 44 + i * 12, W, 1, 'black')
       var slide = Math.max(0, 40 - t) * 3
       // native 64x64 portraits (no canvas scaling: one pixel scale everywhere)
       A.drawPortrait(ctx, 'hero', R(16 - slide), 44, 64)
       A.drawPortrait(ctx, st.who, R(176 + slide), 44, 64)
-      var go = t > S.dur - 50
-      if (go) BIG('GO!', 128, 64, 'gold', 3)
+      var isGo = t > S.dur - 50
+      if (isGo) BIG('GO!', 128, 64, UC.hi, 3)
       else if (t > 36) {
-        BIG('VS', 128, 60, blink(frame, 6) ? 'red' : 'white', 3)
-        if (t > 60 && blink(frame, 12)) TC('READY?', 96, 'white')
+        BIG('VS', 128, 60, blink(frame, 6) ? UC.foe : UC.info, 3)
+        if (t > 60 && blink(frame, 12)) TC('READY?', 96, UC.info)
       }
-      TR('SAL', 80, 116, 'white'); T(st.cpu, 176, 116, 'red')
-      T('BUZZ', 16, 128, 'beer')
-      for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 16 + k * 9, 138)
-      T('SKILL', 176, 128, 'lgray')
+      // name plates flush with the portraits (you: left edge, rival: right edge), one stat row on tile y 136
+      var cpn = st.cpu.slice(0, 8)
+      T('SAL', 16, 120, UC.info); T(cpn, 240 - cpn.length * 8, 120, UC.foe)
+      T('BUZZ', 16, 136, 'beer')
+      for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 56 + k * 8, 136)
       var stars = run.loop > 0 ? 5 : st.stars
-      for (var s2 = 0; s2 < stars; s2++) A.drawIcon(ctx, 'star', 176 + s2 * 9, 138)
-      if (t > 50) {
-        box(12, 152, 232, 56, 'dim')
+      T('SKILL', 152, 136, UC.label)
+      for (var s2 = 0; s2 < 5; s2++) if (s2 < stars) A.drawIcon(ctx, 'star', 240 - (5 - s2) * 8, 136)
+      if (t > 50) { // taunt: the same name-tagged window as the in-match speech
+        win(8, 155, 240, 56, 'red', st.cpu, UC.foe)
         var tn = run.loop > 0 ? st.taunt2 : st.taunt
         var shown = Math.min(tn[0].length + tn[1].length, ((t - 50) / 2) | 0)
-        T(st.cpu + ':', 22, 160, 'red')
-        T(tn[0].slice(0, shown), 22, 176, 'white')
-        if (shown > tn[0].length) T(tn[1].slice(0, shown - tn[0].length), 22, 192, 'white')
+        T(tn[0].slice(0, shown), 24, 168, UC.info)
+        if (shown > tn[0].length) T(tn[1].slice(0, shown - tn[0].length), 24, 184, UC.info)
         if (t % 2 === 0 && shown < tn[0].length + tn[1].length && !FAST) sfx('letter')
       }
     },
@@ -1577,15 +1616,15 @@
     if (pr('b')) return 'no'
     return null
   }
-  function drawYesNo(st, x, y) {
-    T('YES', x + 18, y, st.sel === 0 ? 'white' : 'gray')
-    T('NO', x + 74, y, st.sel === 1 ? 'white' : 'gray')
-    if (blink(ticks, 16)) T('▶', x + 6 + st.sel * 56, y, 'red')
+  function drawYesNo(st, x, y) { // x on a tile column: cursor x / x+56, YES x+16, NO x+72 (inside the tap rows)
+    T('YES', x + 16, y, st.sel === 0 ? UC.info : UC.off)
+    T('NO', x + 72, y, st.sel === 1 ? UC.info : UC.off)
+    if (blink(ticks, 16)) T('▶', x + st.sel * 56, y, UC.hi)
   }
   function updatePause() {
     pauseT++
     if (pauseConfirm) {
-      var r = yesNo(pauseConfirm, 76, 128)
+      var r = yesNo(pauseConfirm, 72, 128)
       if (r === 'no') { pauseConfirm = null; sfx('cancel') }
       else if (r === 'yes') {
         pauseConfirm = null
@@ -1603,24 +1642,24 @@
     if (pr('up') || pr('down') || pr('select')) { pauseSel = 1 - pauseSel; sfx('select') }
     var choose = -1
     if (p) {
-      var mt = menuTap(p, [[72, 108, 112, 14], [72, 122, 112, 14]], pauseSel)
+      var mt = menuTap(p, [[64, 106, 128, 16], [64, 122, 128, 16]], pauseSel)
       if (mt.move != null) { pauseSel = mt.move; sfx('select') } else choose = pauseSel
     } else if (pr('a')) choose = pauseSel
     if (choose === 0) unpause()
     else if (choose === 1) { pauseConfirm = { sel: 1, t: 0 }; sfx('select') } // default NO
   }
   function drawPause() {
-    box(40, 82, 176, 66, 'default')
+    box(48, 77, 160, 70, 'default')
     if (pauseConfirm) {
-      BIG('QUIT?', 128, 92, 'red', 2)
-      T('YOUR RUN ENDS', 76, 110, 'lgray')
-      drawYesNo(pauseConfirm, 76, 128)
+      BIG('QUIT?', 128, 88, UC.foe, 2)
+      TC('YOUR RUN ENDS', 112, UC.label)
+      drawYesNo(pauseConfirm, 72, 128)
       return
     }
-    BIG('PAUSE', 128, 92, 'white', 2)
-    T('RESUME', 104, 112, pauseSel === 0 ? 'white' : 'lgray')
-    T('QUIT', 104, 126, pauseSel === 1 ? 'white' : 'lgray')
-    if (blink(ticks, 16)) T('▶', 88, 112 + pauseSel * 14, 'red')
+    BIG('PAUSE', 128, 88, UC.info, 2)
+    T('RESUME', 104, 112, pauseSel === 0 ? UC.info : UC.label)
+    T('QUIT', 104, 128, pauseSel === 1 ? UC.info : UC.label)
+    if (blink(ticks, 16)) T('▶', 88, 112 + pauseSel * 16, UC.hi)
   }
 
   // ---------------------------------------------------------------- STAGE CLEAR TALLY
@@ -1686,28 +1725,27 @@
       else rect(0, 0, W, H, 'black')
       S.confetti.forEach(function (c) { rect(c.x, c.y, 2, 2, c.c) })
       rect(0, 0, W, 24, 'black')
-      T('1P', 8, 8, 'red'); T(pad(run.disp, 6), 32, 8, 'white')
-      T('HI', 168, 8, 'red'); T(pad(Math.max(hi, run.score), 6), 192, 8, 'white')
-      TC('STAGE ' + (run.stage + 1) + ' CLEAR!', 16, 'gold')
-      box(20, 34, 216, 148, 'gold')
-      BIG('YOU WIN!', 128, 42, 'gold', 2)
-      BP.Art.drawIcon(ctx, 'trophy', 30, 46); BP.Art.drawIcon(ctx, 'trophy', 218, 46)
+      T('1P', 8, 8, UC.hi); T(pad(run.disp, 6), 32, 8, UC.info)
+      T('HI', 168, 8, UC.hi); T(pad(Math.max(hi, run.score), 6), 192, 8, UC.info)
+      // tally window: every row is printed up front (pending rows grey), values count up one row at a time
+      win(32, 35, 192, 172, 'gold', 'STAGE ' + (run.stage + 1) + ' CLEAR!', UC.hi)
+      BIG('YOU WIN!', 128, 48, UC.hi, 2)
+      BP.Art.drawIcon(ctx, 'trophy', 48, 52); BP.Art.drawIcon(ctx, 'trophy', 200, 52)
       for (var i = 0; i < S.lines.length; i++) {
-        if (i > S.i) break
-        var ln = S.lines[i], y = 66 + i * 14
-        var v = i < S.i ? ln.v : S.cnt
-        T(ln.l, 30, y, ln.gold ? (blink(frame, 6) ? 'gold' : 'yellow') : 'white')
-        TR(pad(v, 5), 226, y, 'white')
+        var ln = S.lines[i], y = 80 + i * 16, todo = i > S.i
+        var v = i < S.i ? ln.v : i === S.i ? S.cnt : 0
+        T(ln.l, 40, y, todo ? UC.off : ln.gold ? (blink(frame, 6) ? UC.hi : UC.info) : UC.info)
+        TR(pad(v, 5), 216, y, todo ? UC.off : UC.info)
       }
+      rect(40, 155, 176, 1, S.done ? 'gold' : 'gray')
+      T('TOTAL', 40, 160, S.done ? UC.hi : UC.off)
+      TR(pad(S.total, 6), 216, 160, S.done ? UC.hi : UC.off)
       if (S.done) {
-        rect(30, 66 + S.lines.length * 14 - 4, 196, 1, 'white')
-        T('TOTAL', 30, 70 + S.lines.length * 14 - 2, 'gold')
-        TR(pad(S.total, 6), 226, 70 + S.lines.length * 14 - 2, 'gold')
         var nxt = run.stage >= 4 ? (run.loop === 1 ? 'YOU ARE THE CHAMPION!' : run.loop >= 2 ? 'GAUNTLET ROUND ' + (run.loop + 2) + '!' : 'ROUND 2: NO MERCY!') : 'NEXT: ' + STAGES[run.stage + 1].name
-        if (blink(frame, 16)) TC(nxt, 152, 'white')
+        if (blink(frame, 16)) TC(nxt, 176, UC.info)
         var holdT = run.stageT0 == null || FAST ? 0 : Math.ceil((45 * 60 - (ticks - run.stageT0)) / 60)
-        if (holdT > 0) TC('NEXT STAGE IN 0:' + pad(holdT, 2), 166, 'gold')
-        else if (S.wait > 10) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH A', 166, 'lgray')
+        if (holdT > 0) TC('NEXT STAGE IN 0:' + pad(holdT, 2), 192, UC.hi)
+        else if (S.wait > 10) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH A', 192, UC.label)
       }
     },
   }
@@ -1736,15 +1774,15 @@
       var y = Math.min(80, -20 + S.t * 3)
       BIG('GAME OVER', 128, y, 'red', 3)
       if (S.t > 30 && run) {
-        TC('FINAL SCORE', 118, 'lgray')
-        BIG(pad(run.score, 6), 128, 130, 'white', 2)
-        TC('REACHED ' + (run.loop > 0 ? 'ROUND ' + (run.loop + 1) + ' ' : '') + 'STAGE ' + (run.stage + 1), 156, 'gold')
+        TC('FINAL SCORE', 112, UC.label)
+        BIG(pad(run.score, 6), 128, 128, UC.info, 2)
+        TC('REACHED ' + (run.loop > 0 ? 'ROUND ' + (run.loop + 1) + ' ' : '') + 'STAGE ' + (run.stage + 1), 152, UC.hi)
         var acc = run.shots ? Math.round((100 * run.makes) / run.shots) : 0
-        TC('CUPS ' + run.cups + '   ACCURACY ' + acc + '%', 170, 'white')
+        TC('CUPS ' + run.cups + '  ACCURACY ' + acc + '%', 168, UC.info)
       }
       A.drawPlayer(ctx, 'hero', 'sad', 40, 228, frame)
       if (run) A.drawPlayer(ctx, STAGES[run.stage].who, 'cheer', 216, 228, frame)
-      if (S.t > 40 && blink(frame, 30)) TC('PUSH START', 206, 'white')
+      if (S.t > 40 && blink(frame, 30)) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH START', 208, UC.info)
     },
   }
 
@@ -1771,7 +1809,7 @@
       S.idle = anyPr() || tap() ? 0 : S.idle + 1
       if (S.msg > 0) S.msg--
       if (S.confirm) {
-        var r = yesNo(S.confirm, 92, 146)
+        var r = yesNo(S.confirm, 88, 144)
         if (r === 'yes') finishEntry()
         else if (r === 'no') { S.confirm = null; sfx('cancel') }
         return
@@ -1792,37 +1830,36 @@
     },
     draw: function () {
       rect(0, 0, W, H, 'black')
-      BIG('NAME ENTRY', 128, 8, 'gold', 2)
-      TC('SCORE ' + pad(run ? run.score : 0, 6), 28, 'white')
+      BIG('NAME ENTRY', 128, 8, UC.hi, 2)
+      TC('SCORE ' + pad(run ? run.score : 0, 6), 32, UC.info)
       for (var i = 0; i < 8; i++) {
         var x = 64 + i * 16
         rect(x, 62, 12, 2, i === S.nm.length ? (blink(frame, 8) ? 'red' : 'black') : 'gray')
         if (S.nm[i] && S.nm[i] !== ' ') BIG(S.nm[i], x + 6, 44, 'white', 2)
       }
-      if (S.msg > 0) TC('ENTER A NAME FIRST!', 70, 'red')
-      else if (S.fresh) TC('NEW PLAYER? B = CLEAR', 70, 'yellow')
-      else if (S.nm.length >= 8) TC('NAME FULL - PICK END', 70, 'lgray')
+      if (S.msg > 0) TC('ENTER A NAME FIRST!', 72, UC.warn)
+      else if (S.fresh) TC('NEW PLAYER? B = CLEAR', 72, UC.hi)
+      else if (S.nm.length >= 8) TC('NAME FULL - PICK END', 72, UC.label)
       box(GX - 10, GY - 8, 220, 108, 'default')
       for (var r = 0; r < 4; r++) for (var c = 0; c < 10; c++) {
         var ch = GRID[r][c], sel = !S.end && S.cy === r && S.cx === c
         var cx = GX + c * GCW, cy = GY + r * GCH
         if (sel) rect(cx - 3, cy - 3, 14, 14, blink(frame, 12) ? 'red' : 'dred')
-        T(ch === ' ' ? '_' : ch, cx, cy, sel ? 'white' : 'lgray')
+        T(ch === ' ' ? '_' : ch, cx, cy, sel ? UC.info : UC.label)
       }
       var dsel = S.cy === 4 && !S.end, esel = S.cy === 4 && S.end
       if (dsel) rect(GX + 20 - 3, GY + 4 * GCH - 3, 46, 14, blink(frame, 12) ? 'red' : 'dred')
       if (esel) rect(GX + 120 - 3, GY + 4 * GCH - 3, 46, 14, blink(frame, 12) ? 'red' : 'dred')
-      T('DEL', GX + 24, GY + 4 * GCH, dsel ? 'white' : 'lgray')
-      T('END', GX + 124, GY + 4 * GCH, esel ? 'white' : 'gold')
+      T('DEL', GX + 24, GY + 4 * GCH, dsel ? UC.info : UC.label)
+      T('END', GX + 124, GY + 4 * GCH, esel ? UC.info : UC.hi)
       if (S.confirm) {
-        box(56, 116, 144, 44, 'gold')
-        TC('NAME: ' + S.nm, 124, 'white')
-        T('OK?', 64, 146, 'gold')
-        drawYesNo(S.confirm, 92, 146)
+        win(40, 115, 176, 48, 'gold', 'OK?', UC.hi)
+        TC('NAME: ' + S.nm, 128, UC.info)
+        drawYesNo(S.confirm, 88, 144)
       }
-      if (S.sent) { box(64, 116, 128, 32, 'gold'); if (blink(frame, 8)) TC('SENDING...', 128, 'white') }
-      TC('A:ADD  B:DEL  START:GO TO END', 202, 'lgray')
-      TC('OR TAP THE LETTERS', 214, 'gray')
+      if (S.sent) { box(64, 115, 128, 32, 'gold'); if (blink(frame, 8)) TC('SENDING...', 128, UC.info) }
+      TC('A:ADD  B:DEL  START:GO TO END', 208, UC.label)
+      TC('OR TAP THE LETTERS', 216, UC.off)
     },
   }
   function cellAt(x, y) {
@@ -1954,10 +1991,10 @@
         A.drawPlayer(ctx, 'hero', 'cheer', 128, FEET, frame)
         A.drawIcon(ctx, 'trophy', 124, 166 - bob * 2)
         S.conf.forEach(function (c) { rect(c.x, c.y, 2, 2, c.c) })
-        box(8, 28, 240, 86, 'gold')
-        TC('CONGRATULATIONS!', 38, blink(frame, 8) ? 'gold' : 'yellow')
-        if (t > 60) TC('YOU ARE THE', 54, 'white')
-        if (t > 90) BIG('PONG CHAMPION!', 128, 68, 'gold', 2)
+        box(8, 27, 240, 88, 'gold')
+        TC('CONGRATULATIONS!', 40, blink(frame, 8) ? UC.hi : UC.info)
+        if (t > 60) TC('YOU ARE THE', 56, UC.info)
+        if (t > 90) BIG('PONG CHAMPION!', 128, 72, UC.hi, 2)
         if (t > 150) TC('CHAMPION BONUS +' + S.bonus, 96, 'cyan')
         return
       }
@@ -2170,8 +2207,7 @@
     draw: function () {
       rect(0, 0, W, H, 'black')
       BIG('HIGH SCORES', 128, 8, 'gold', 2)
-      TC(scoresMode() + ' RANKING', 25, scoresMode() === 'GLOBAL' ? 'cyan' : 'lgray')
-      box(0, 36, 157, 151, 'default')
+      win(0, 35, 157, 152, 'default', scoresMode() + ' RANKING', scoresMode() === 'GLOBAL' ? 'cyan' : UC.label)
       T('RK', 6, 43, 'red'); T('NAME', 28, 43, 'red'); TR('SCORE', 152, 43, 'red')
       var rows = S.rows
       if (!rows) { if (blink(frame, 10)) T('LOADING...', 30, 100, 'white') }
@@ -2420,6 +2456,15 @@
     // QA: leave only n cups alive on a side (0 = hero, 1 = cpu)
     setCups: function (side, n) { if (!m) return; m.sides[side].cups.forEach(function (c, i) { c.alive = i < n; c.hitT = 99 }) },
     go: function (name, data) { fade = null; pendingGo = null; setState(name, data || {}) },
+    // QA (UI captures): inject overlays without touching rules — ui('call', [[text, color], ...]) | ui('say', kind) | ui('chirp', text) | ui('popup', text)
+    ui: function (k, a) {
+      if (!m) return
+      if (k === 'call') callouts(a)
+      else if (k === 'say') { var L = LINES[m.st.who], arr = (L && L[a]) || ['...']; m.speech = { who: m.st.who, name: m.st.cpu, text: arr[0], t: 99 } }
+      else if (k === 'chirp') m.chirp = { text: a, t: 0 }
+      else if (k === 'popup') popup(140, 150, a, 'gold')
+      else if (k === 'state') return { phase: m.phase, missX: !!m.missX, speech: !!m.speech, calls: m.calls.length, bounce: m.bounce }
+    },
     // QA: jump straight into a match (stage 0-4, loop 0+, starting buzz)
     startAt: function (stg, loop, buzz) {
       fade = null; newRun(); run.stage = stg || 0; run.loop = loop || 0; run.buzz = buzz || 0

@@ -20,7 +20,7 @@ for (const p of panels) {
   const url = pathToFileURL(join(here, "artsheet.html")).href + "?panel=" + name + (extra ? "&" + extra : "")
   await page.goto(url)
   await page.waitForFunction(() => window.DONE === true, null, { timeout: 10000 }).catch(() => {})
-  const scale = name === "all" ? 2 : name === "one" ? 10 : name === "por" || name === "p64" ? 4 : 3
+  const scm = /sc=(\d+)/.exec(extra || ""), scale = scm ? +scm[1] : name === "all" ? 2 : name === "one" ? 10 : name === "por" || name === "p64" ? 4 : 3
   const data = await page.evaluate((s) => { const c = document.getElementById("c"); const o = document.createElement("canvas"); o.width = c.width * s; o.height = c.height * s; const x = o.getContext("2d"); x.imageSmoothingEnabled = false; x.drawImage(c, 0, 0, o.width, o.height); return o.toDataURL() }, scale)
   const f = join(out, (p.replace(/[:=&]/g, "_")) + ".png")
   fs.writeFileSync(f, Buffer.from(data.split(",")[1], "base64"))

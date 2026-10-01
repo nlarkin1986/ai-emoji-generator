@@ -79,6 +79,14 @@ if (panel === 'one') { cv.width = 64; cv.height = 64; A.drawPortrait(c, q.get('w
 else if (panel === 'p64') { cv.width = 204; cv.height = 136; c.fillStyle = '#000'; c.fillRect(0, 0, 204, 136); ['hero', 'chad', 'tank', 'sky', 'brody', 'kegmaster'].forEach(function (w, i) { A.drawPortrait(c, w, 2 + (i % 3) * 68, 2 + (i / 3 | 0) * 68, 64); }); }
 else if (panel === 'fade') { scene(c, 0, T, 0); A.fade(c, +(q.get('lv') || 1)); }
 else if (panel === 'por') { cv.width = 200; cv.height = 76; c.fillStyle = '#000'; c.fillRect(0, 0, 200, 76); ['hero', 'chad', 'tank', 'sky', 'brody', 'kegmaster'].forEach(function (w, i) { A.drawPortrait(c, w, 2 + (i % 3) * 66, 2 + (i / 3 | 0) * 38); A.drawPlayer(c, w, 'idle', 50 + (i % 3) * 66, 36 + (i / 3 | 0) * 38, 0); }); }
+else if (panel === 'crowd') { cv.width = 256; cv.height = 5 * 2 * 46; c.imageSmoothingEnabled = false;
+  var off2 = document.createElement('canvas'); off2.width = 256; off2.height = 240; var o2 = off2.getContext('2d'); o2.imageSmoothingEnabled = false;
+  for (var st = 0; st < 5; st++) for (var e = 0; e < 2; e++) { scene(o2, st, e ? T + 24 : T, e ? 1 : 0); c.drawImage(off2, 0, 150, 256, 46, 0, (st * 2 + e) * 46, 256, 46); }
+}
+else if (panel === 'crowdz') { var zs = +(q.get('st') || 0); cv.width = 184; cv.height = 3 * 40; c.imageSmoothingEnabled = false;
+  var off3 = document.createElement('canvas'); off3.width = 256; off3.height = 240; var o3 = off3.getContext('2d'); o3.imageSmoothingEnabled = false;
+  [[T, 0], [T + 24, 1], [T + 40, 1]].forEach(function (k, j) { scene(o3, zs, k[0], k[1]); c.drawImage(off3, 38, 152, 184, 40, 0, j * 40, 184, 40); });
+}
 else if (panel === 'fx') fx(c); else if (/^s\d$/.test(panel)) { var s = +panel[1]; scene(c, s, T, EX, q.get('pl'), q.get('pr')); }
 else if (panel === 'chars') { cv.width = 440; cv.height = 360; c.imageSmoothingEnabled = false; chars(c); }
 else if (panel === 'misc') { misc(c); }

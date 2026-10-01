@@ -53,14 +53,14 @@
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'forest', 'dgreen', 'green', 'brown'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'maroon', 'dbrown', 'olive', 'gray', 'dgray', 'navy', 'blue', 'brown', 'green', 'dgreen'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'magenta', 'purple', 'dpurple', 'cyan', 'brown'],
-    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'dpurple', 'dmagenta', 'rose', 'cream', 'dblue', 'blue', 'olive', 'orange', 'dbrown', 'cyan'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'dpurple', 'dmagenta', 'rose', 'cream', 'dblue', 'blue', 'olive', 'orange', 'dbrown', 'cyan', 'brown'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'dgray', 'gray', 'cream', 'navy', 'dblue', 'blue', 'brown']
   ];
   var STAGE_OVR = [
     { maroon: 'dred', olive: 'dgray', orange: 'gold', salmon: 'red', xlgray: 'lgray', lime2: 'gold', yellow: 'gold', blue: 'slate', dbrown: 'dgray', skin2: 'tan', skin3: 'brown', sky: 'white' },
     { orange: 'gold', salmon: 'red', purple: 'blue', magenta: 'blue', sky: 'white', cream: 'white', forest: 'dgreen', slate: 'navy', skin2: 'tan', skin3: 'brown', cyan: 'white', lgreen: 'green' },
     { orange: 'gold', salmon: 'red', teal: 'slate', blue: 'slate', green: 'cyan', dbrown: 'dgray', olive: 'dgray', dmagenta: 'dpurple', skin2: 'tan', skin3: 'dred', sky: 'cyan', maroon: 'dred' },
-    { salmon: 'rose', pblue: 'white', forest: 'dbrown', brown: 'dbrown', gray: 'dbrown', teal: 'blue', pink: 'rose', lgreen: 'cyan', green: 'cyan', yellow: 'gold', skin2: 'orange', skin3: 'dbrown', maroon: 'dred' },
+    { salmon: 'rose', pblue: 'white', forest: 'dbrown', gray: 'dbrown', teal: 'blue', pink: 'rose', lgreen: 'cyan', green: 'cyan', yellow: 'gold', skin2: 'orange', skin3: 'brown', maroon: 'dred' },
     { lblue: 'blue', purple: 'navy', dpurple: 'navy', orange: 'gold', salmon: 'red', green: 'blue', maroon: 'dred', dbrown: 'brown', skin2: 'tan', skin3: 'brown', slate: 'navy', yellow: 'gold' }
   ];
   var subCache = [];
@@ -336,8 +336,9 @@
   // ------------------------------------------------------------------ small sprites
   var S = {}; // prerendered sprite canvases
   var CUPMAP = {
-    full: ['WWWWWWWW', 'gWWWWWWg', 'RLRRRRRD', 'RLRRRRRD', '.DDDDDD.', '.RLRRRD.', '.RLRRRD.', '.RLRRRD.', '.RLRRDD.', '.DDDDDD.'],
-    pal: { W: 'white', g: 'lgray', R: 'red', L: 'red', D: 'dred' }
+    // classic red party cup: white rolled rim, black outline, white highlight stripe, dred ridge band, slight taper
+    full: ['gWWWWWWg', 'KWWWWWWK', 'KRLRRRDK', 'KRLRRRDK', 'KDDDDDDK', '.KLRRDK.', '.KLRRDK.', '.KRRRDK.', '.KRRDDK.', '.KKKKKK.'],
+    pal: { W: 'white', g: 'lgray', R: 'red', L: 'white', D: 'dred', K: 'black' }
   };
   var BALL = ['.WWW.', 'WWWWW', 'WWWWg', 'WWWgg', '.ggg.'];
   var FIRE = [ // 8x8 fireball, 2 flicker frames (red/orange/gold + white-hot core)
@@ -876,118 +877,175 @@
     ctx.drawImage(cv, Math.round(x), Math.round(y));
   }
 
-  // ------------------------------------------------------------------ crowd (background partygoers 12x24)
-  var CROWD = {
-    stand: [
-      '....KKKK....',
-      '...KHHHHK...',
-      '..KHHHHHHK..',
-      '..KHSSSSHK..',
-      '..KSESSESK..',
-      '..KSSSSSSK..',
-      '...KSMMSK...',
-      '...KKSSKK...',
-      '..KTTTTTTK..',
-      '.KTTTTTTTTK.',
-      'KTTTTLLTTTTK',
-      'KTKTTLLTTKTK',
-      'KTKTTTTTTKTK',
-      'KSKTTTTTRRSK',
-      'KSKTTTTTRRK.',
-      '.KKPPPPPPKK.',
-      '..KPPPPPPK..',
-      '..KPPKKPPK..',
-      '..KPPKKPPK..',
-      '..KSSKKSSK..',
-      '..KSSK.KSSK.',
-      '..KSSK.KSSK.',
-      '.KWWWK.KWWWK',
-      '.KKKKK.KKKKK'],
-    cheer: [
-      'KK..KKKK..KK',
-      'SK.KHHHHK.KS',
-      'SKKHHHHHHKKS',
-      'SKKHSSSSHKKS',
-      'SKKSESSESKKS',
-      'TKKSSSSSSKKT',
-      'TTKKSMMSKKTT',
-      '.TTKKMMKKTT.',
-      '..KTTTTTTK..',
-      '..KTTTTTTK..',
-      '..KTTLLTTK..',
-      '..KTTLLTTK..',
-      '..KTTTTTTK..',
-      '..KTTTTTTK..',
-      '..KTTTTTTK..',
-      '.KKPPPPPPKK.',
-      '..KPPPPPPK..',
-      '..KPPKKPPK..',
-      '..KPPKKPPK..',
-      '..KSSKKSSK..',
-      '..KSSK.KSSK.',
-      '..KSSK.KSSK.',
-      '.KWWWK.KWWWK',
-      '.KKKKK.KKKKK'],
-    cup: [
-      '....KKKK.RR.',
-      '...KHHHHKRRK',
-      '..KHHHHHHKSK',
-      '..KHSSSSHKSK',
-      '..KSESSESKSK',
-      '..KSSSSSSKTK',
-      '...KSMMSKTTK',
-      '...KKSSKKTK.',
-      '..KTTTTTTTK.',
-      '.KTTTTTTTK..',
-      'KTTTTLLTTK..',
-      'KTKTTLLTTK..',
-      'KTKTTTTTTK..',
-      'KSKTTTTTTK..',
-      'KSKTTTTTTK..',
-      '.KKPPPPPPKK.',
-      '..KPPPPPPK..',
-      '..KPPKKPPK..',
-      '..KPPKKPPK..',
-      '..KSSKKSSK..',
-      '..KSSK.KSSK.',
-      '..KSSK.KSSK.',
-      '.KWWWK.KWWWK',
-      '.KKKKK.KKKKK']
+  // ------------------------------------------------------------------ crowd (background partygoers 20x32)
+  // Hand-authored pixel maps. A partygoer = body frame (20 wide, arms) + head/hair style (12 wide, stamped
+  // at col 4). Head is 10x10 with 1-px eyes; the table (y 182..200) hides everything below the waist.
+  // K outline, S skin, T shirt, t shirt shade, A sleeve/arm (shirt or skin for tank tops), L chest print,
+  // P pants, H hair, C cap, c cap brim, W white, R cup red, E eye, M mouth, G shades.
+  var CB = { // body halves are mirrored: each pose lists the LEFT 10 columns; right side = mirror of a pose
+    idle: [
+      '..........', '..........', '..........', '..........', '..........', '..........', '..........',
+      '..........', '..........', '..........', '..........', '..........', '..........', '..........',
+      '........KS',
+      '...KKTTTTS',
+      '..KAATTTTT',
+      '..KAAKTTTT',
+      '..KAAKTTTT',
+      '..KSSKTTTL',
+      '..KSSKTTTL',
+      '..KSSKTTTT',
+      '..KSSKTTTT',
+      '..KSSKTTTT',
+      '..KSSKPPPP',
+      '...KKKPPPP',
+      '.....KPPPP',
+      '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK'],
+    up: [ // arm straight up, fist above the head
+      '..........',
+      '.KKK......',
+      'KSSSK.....',
+      'KSSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KAAK.....',
+      '.KAAK.....',
+      '.KAAAK....',
+      '..KAAAK.KS',
+      '...KAAATTS',
+      '....KTTTTT',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KTTTL',
+      '.....KTTTL',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KPPPP',
+      '.....KPPPP',
+      '.....KPPPP',
+      '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK'],
+    cup: [ // raised red cup at head height ("cheers!")
+      '..........',
+      '..........',
+      '..........',
+      'WWWWW.....',
+      'KRRRK.....',
+      'KRRRK.....',
+      'KSSSK.....',
+      'KSSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KSSK.....',
+      '.KAAK.....',
+      '.KAAK.....',
+      '.KAAAK....',
+      '..KAAAK.KS',
+      '...KAAATTS',
+      '....KTTTTT',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KTTTL',
+      '.....KTTTL',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KTTTT',
+      '.....KPPPP',
+      '.....KPPPP',
+      '.....KPPPP',
+      '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK', '.....KPPPK']
   };
+  var CH = { // head + hair styles, 12 wide, rows 0..15 (row 4 = top of a plain head)
+    short: ['', '', '', '',
+      '...KKKKKK...', '..KHHHHHHK..', '.KHHHHHHHHK.', '.KHHHHHHHHK.', '.KHSSSSSSHK.',
+      'KSSSESSESSSK', '.KSSSSSSSSK.', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    long: ['', '', '', '',
+      '...KKKKKK...', '..KHHHHHHK..', '.KHHHHHHHHK.', 'KHHHHHHHHHHK', 'KHHSSSSSSHHK',
+      'KHSSESSESSHK', 'KHSSSSSSSSHK', 'KHSSSMMSSSHK', 'KHHKSSSSKHHK', 'KHHHKKKKHHHK', 'KHHK....KHHK', '.KK......KK.'],
+    cap: ['', '', '', '',
+      '...KKKKKK...', '..KCCCCCCK..', '.KCCCWWCCCK.', '.KCCCCCCCCK.', 'KccccccccccK',
+      'KSSSESSESSSK', '.KSSSSSSSSK.', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    beanie: ['', '', '',
+      '....KKKK....', '...KCCCCK...', '..KCCCCCCK..', '.KCCCCCCCCK.', '.KccccccccK.', '.KHSSSSSSHK.',
+      'KSSSESSESSSK', '.KSSSSSSSSK.', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    afro: ['',
+      '...KKKKKK...', '..KHHHHHHK..', '.KHHHHHHHHK.', 'KHHHHHHHHHHK', 'KHHHHHHHHHHK', 'KHHHHHHHHHHK', 'KHHHHHHHHHHK', 'KHHSSSSSSHHK',
+      'KHSSESSESSHK', '.KSSSSSSSSK.', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    bun: ['',
+      '....KKKK....', '...KHHHHK...', '...KHHHHK...', '...KKKKKK...', '..KHHHHHHK..', '.KHHHHHHHHK.', '.KHHHHHHHHK.', 'KHHHSSSSHHHK',
+      'KHSSESSESSHK', 'KHSSSSSSSSHK', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    spiky: ['', '',
+      '..K..KK..K..', '.KHKKHHKKHK.', '.KHHHHHHHHK.', '.KHHHHHHHHK.', '.KHHHHHHHHK.', '.KHHHHHHHHK.', '.KHSSSSSSHK.',
+      'KSSSESSESSSK', '.KSSSSSSSSK.', '.KSSSMMSSSK.', '..KSSSSSSK..', '...KKKKKK...'],
+    bald: ['', '', '', '',
+      '...KKKKKK...', '..KSSWWSSK..', '.KSSSSSSSSK.', '.KSSSSSSSSK.', '.KSSSSSSSSK.',
+      'KSSSESSESSSK', '.KHSSSSSSHK.', '.KHHSMMSHHK.', '..KHHHHHHK..', '...KKKKKK...']
+  };
+  var SHADES_ROW = 'KSKWKKKKWKSK';
+  function mirrorRow(r) { return r.split('').reverse().join(''); }
   var crowdCache = {};
+  // v: [style, hair, skin, shirt, print, pants, cap, flags]  flags: 's' shades, 'k' tank top (bare arms)
   function crowdSprite(v, frame, st) {
-    var key = v.join(',') + frame + st; if (crowdCache[key]) return crowdCache[key];
-    var map = { K: 'black', E: 'black', M: 'dred', R: 'red', H: v[0], S: v[1], T: v[2], L: v[3], P: v[4], W: 'white' };
-    return (crowdCache[key] = spr(CROWD[frame], map, false));
+    var key = v.join(',') + '|' + frame + '|' + st; if (crowdCache[key]) return crowdCache[key];
+    var L = CB[frame === 'cheer' || frame === 'pumpL' ? 'up' : 'idle'];
+    var Rt = CB[frame === 'cheer' || frame === 'wave' ? 'up' : frame === 'cup' ? 'cup' : 'idle'];
+    var rows = [], y;
+    for (y = 0; y < 32; y++) rows.push((L[y] + mirrorRow(Rt[y])).split(''));
+    // body shading: right edge of the torso one shade darker
+    for (y = 15; y < 24; y++) if (rows[y][13] === 'T') rows[y][13] = 't';
+    var hs = CH[v[0]] || CH.short, open = frame === 'cheer' || frame === 'pumpL' || frame === 'wave';
+    for (y = 0; y < hs.length; y++) {
+      var hr = hs[y]; if (y === 9 && v[7] && v[7].indexOf('s') >= 0) hr = SHADES_ROW;
+      for (var x = 0; x < hr.length; x++) { var ch = hr.charAt(x); if (ch !== '.') rows[y][x + 4] = (open && ch === 'M') ? 'K' : ch; }
+    }
+    var tank = v[7] && v[7].indexOf('k') >= 0;
+    var map = { K: 'black', E: 'black', M: 'dred', S: v[2], T: v[3], t: CSHADE[v[3]] || v[3], A: tank ? v[2] : v[3], L: v[4], P: v[5],
+      H: v[1], C: v[6] || 'red', c: CSHADE[v[6] || 'red'] || 'black', W: 'white', R: 'red', G: 'black' };
+    return (crowdCache[key] = spr(rows.map(function (r) { return r.join(''); }), map, false));
   }
-  // variant: [hair, skin, shirt, logo, pants]
+  var CSHADE = { white: 'lgray', lgray: 'gray', red: 'dred', gold: 'brown', green: 'dgreen', blue: 'dblue', slate: 'navy',
+    cyan: 'blue', magenta: 'purple', purple: 'dpurple', orange: 'brown', rose: 'dmagenta', gray: 'dgray', navy: 'black', olive: 'dbrown', cream: 'gold' };
+  // per stage: [centerX, dy, [style, hair, skin, shirt, print, pants, cap, flags], role]  role: 0 plain, 1 drinker
+  // 5-6 per stage between the racks (10-cup racks reach x 72 / 184) so cups and splashes always read against the backdrop
   var CROWDS = [
-    [[46, ['maroon', 'skin', 'red', 'white', 'slate']], [66, ['yellow', 'skin', 'white', 'red', 'blue']], [88, ['dbrown', 'skin3', 'red', 'white', 'tan']],
-      [112, ['orange', 'skin', 'white', 'red', 'slate']], [146, ['black', 'skin2', 'red', 'white', 'dgray']], [168, ['cream', 'skin', 'lgray', 'red', 'blue']],
-      [190, ['maroon', 'skin', 'red', 'red', 'tan']], [212, ['dbrown', 'skin3', 'white', 'red', 'slate']]],
-    [[44, ['dbrown', 'skin', 'blue', 'white', 'tan']], [64, ['yellow', 'skin', 'green', 'white', 'slate']], [90, ['black', 'skin3', 'white', 'blue', 'dgray']],
-      [116, ['maroon', 'skin', 'orange', 'white', 'blue']], [144, ['cream', 'skin', 'lgray', 'green', 'slate']], [170, ['dbrown', 'skin2', 'red', 'white', 'tan']],
-      [196, ['black', 'skin', 'purple', 'white', 'blue']]],
-    [[48, ['black', 'skin', 'magenta', 'white', 'dgray']], [72, ['cream', 'skin', 'cyan', 'navy', 'slate']], [100, ['maroon', 'skin2', 'white', 'purple', 'dgray']],
-      [130, ['dbrown', 'skin', 'lgray', 'red', 'blue']], [158, ['yellow', 'skin', 'purple', 'white', 'dgray']], [184, ['black', 'skin3', 'blue', 'white', 'slate']],
-      [208, ['orange', 'skin', 'green', 'white', 'dgray']]],
-    [[86, ['cream', 'skin2', 'pink', 'white', 'cyan']], [108, ['dbrown', 'skin3', 'yellow', 'red', 'blue']], [132, ['yellow', 'skin', 'cyan', 'white', 'pink']],
-      [156, ['maroon', 'skin2', 'orange', 'white', 'teal']], [180, ['black', 'skin', 'lgreen', 'white', 'blue']], [204, ['cream', 'skin2', 'white', 'cyan', 'orange']]],
-    [[44, ['black', 'skin', 'gold', 'blue', 'dgray']], [66, ['maroon', 'skin3', 'blue', 'gold', 'slate']], [90, ['yellow', 'skin', 'red', 'white', 'dgray']],
-      [114, ['dbrown', 'skin2', 'gold', 'red', 'blue']], [142, ['cream', 'skin', 'white', 'blue', 'slate']], [166, ['black', 'skin3', 'red', 'gold', 'dgray']],
-      [190, ['orange', 'skin', 'blue', 'white', 'slate']], [212, ['maroon', 'skin', 'gold', 'blue', 'dgray']]]
+    [[78, 0, ['cap', 'brown', 'skin', 'red', 'white', 'navy', 'white'], 1], [98, 1, ['long', 'gold', 'tan', 'white', 'red', 'slate'], 0],
+      [118, -1, ['afro', 'black', 'brown', 'red', 'white', 'dgray'], 0], [138, 1, ['bun', 'black', 'tan', 'lgray', 'red', 'navy'], 1],
+      [158, 0, ['spiky', 'gold', 'skin', 'white', 'red', 'navy'], 1], [178, -1, ['beanie', 'brown', 'tan', 'slate', 'white', 'dgray', 'red'], 0]],
+    [[78, 0, ['short', 'dbrown', 'skin', 'blue', 'white', 'navy'], 1], [98, 1, ['long', 'gold', 'skin', 'red', 'white', 'navy'], 0],
+      [118, -1, ['cap', 'black', 'brown', 'white', 'blue', 'dgray', 'green'], 1], [138, 0, ['bald', 'dbrown', 'tan', 'green', 'white', 'navy', null, 's'], 0],
+      [158, 1, ['bun', 'maroon', 'skin', 'gold', 'red', 'navy'], 0], [178, -1, ['afro', 'dbrown', 'brown', 'red', 'white', 'navy'], 1]],
+    [[78, 1, ['long', 'black', 'tan', 'magenta', 'white', 'navy'], 0], [98, -1, ['cap', 'brown', 'skin', 'white', 'purple', 'dgray', 'purple'], 1],
+      [118, 0, ['afro', 'black', 'brown', 'cyan', 'navy', 'navy'], 0], [138, 1, ['spiky', 'gold', 'skin', 'purple', 'white', 'dgray', null, 's'], 1],
+      [158, 0, ['bun', 'brown', 'tan', 'white', 'magenta', 'navy'], 0], [178, -1, ['short', 'black', 'skin', 'red', 'white', 'dgray'], 1]],
+    [[102, 0, ['long', 'gold', 'tan', 'rose', 'white', 'blue', null, 'k'], 0], [122, -1, ['spiky', 'gold', 'skin', 'cyan', 'white', 'dblue', null, 'sk'], 1],
+      [142, 1, ['bun', 'dbrown', 'orange', 'white', 'rose', 'blue'], 0], [162, 0, ['cap', 'dbrown', 'tan', 'orange', 'white', 'dblue', 'cyan'], 1],
+      [182, -1, ['afro', 'black', 'brown', 'gold', 'red', 'blue', null, 'k'], 0]],
+    [[88, 0, ['cap', 'black', 'skin', 'gold', 'blue', 'navy', 'blue'], 1], [108, 1, ['long', 'brown', 'tan', 'blue', 'gold', 'navy'], 0],
+      [128, -1, ['afro', 'black', 'brown', 'red', 'white', 'navy'], 1], [148, 0, ['spiky', 'gold', 'skin', 'white', 'blue', 'navy', null, 's'], 0],
+      [168, 1, ['bald', 'black', 'tan', 'blue', 'gold', 'navy'], 1]]
   ];
+  var CROWD_TOP = 157; // sprite row 0; row 25 (= y 182) is the table's far edge, so legs never show
+  var JUMP = [0, -2, -3, -4, -4, -3, -2, 0], FR_I = { idle: 0, cheer: 1, pumpL: 2, wave: 3, cup: 4 };
   function drawCrowd(ctx, stage, t, ex) {
     var list = CROWDS[stage] || CROWDS[0];
     for (var i = 0; i < list.length; i++) {
-      var m = list[i], ph = (t + i * 23) | 0, fr = 'stand', dy = 0;
-      if (i % 3 === 1) fr = 'cup';
-      if (ex > 0.05) {
-        var lively = ((i * 5 + (ph >> 5)) % 4) < Math.ceil(ex * 4);
-        if (lively) { fr = ((ph >> 3) & 1) ? 'cheer' : (i % 3 === 1 ? 'cup' : 'stand'); var j = (ph >> 2) % 6; dy = -Math.round([0, 2, 3, 3, 2, 0][j] * Math.min(1, ex * 1.4)); }
-      } else if (((ph >> 5) & 3) === 0) dy = -1;
-      if (((ph >> 6) % 5) === 0 && ex <= 0.05 && i % 2 === 0) fr = 'cup';
-      ctx.drawImage(crowdSprite(m[1], fr, stage), m[0] - 6, 167 + dy);
+      var m = list[i], ph = (t + i * 37) | 0, fr = 'idle', dy = 0, drinker = m[3] === 1;
+      var lively = ex > 0.05 && ((i * 3 + (ph >> 6)) % 5) < Math.ceil(ex * 5);
+      if (lively) {
+        var beat = (ph >> 4) & 3; // 4 beats of 16 ticks: arms-up / pump / arms-up / cup or wave
+        fr = beat === 1 ? (i & 1 ? 'pumpL' : 'wave') : beat === 3 ? (drinker ? 'cup' : 'idle') : 'cheer';
+        if (ex > 0.5) dy = JUMP[(ph >> 2) & 7] * (i & 1 ? 1 : 0) + (i & 1 ? 0 : -((ph >> 3) & 1));
+        else dy = -((ph >> 3) & 1);
+      } else {
+        var slow = (ph >> 5) & 7;
+        if (drinker && (slow === 2 || slow === 3)) fr = 'cup';
+        if (slow === 5) dy = -1;
+      }
+      ctx.drawImage(m[4 + FR_I[fr]] || (m[4 + FR_I[fr]] = crowdSprite(m[2], fr, stage)), m[0] - 10, CROWD_TOP + m[1] + dy);
     }
   }
 
@@ -1014,33 +1072,35 @@
     R(c, x + (w >> 1), y, 1, h, lit ? 'orange' : 'black'); R(c, x, y + (h >> 1), w, 1, lit ? 'orange' : 'black');
     R(c, x - 2, y + h + 1, w + 4, 2, frame || 'lgray');
   }
-  function treeBlob(c, cx, cy, r, base, hi, dark) {
-    disc(c, cx, cy, r, base);
-    // highlight upper-left dithered
-    for (var y = -r; y < 0; y++) for (var x = -r; x < 0; x++) if (x * x + y * y < r * r * 0.8 && ((x + y + cx + cy) & 1) && (x + y) < -r * 0.6) P1(c, cx + x, cy + y, hi);
-    // leafy edge bumps
-    for (var a = 0; a < 12; a++) { var an = a / 12 * Math.PI * 2, px = Math.round(cx + Math.cos(an) * r), py = Math.round(cy + Math.sin(an) * r); disc(c, px, py, 2, base); }
-    if (dark) for (var b = 0; b < r; b += 3) P1(c, cx + ((b * 7) % r) - (r >> 1), cy + (r >> 2) + (b % 5), dark);
+  // foliage: overlapping round lobes, each with a crisp light crescent on its upper-left (no dither noise)
+  function lobe(c, cx, cy, r, base, hi) { disc(c, cx, cy, r, base); if (hi && r > 3) { disc(c, cx - 1, cy - 1, r - 2, hi); disc(c, cx + 1, cy + 1, r - 2, base); } }
+  function canopy(c, lobes, base, hi) {
+    var L = lobes.slice().sort(function (a, b) { return a[1] - b[1]; });
+    L.forEach(function (l) { // silhouette with leafy bumps round the rim
+      disc(c, l[0], l[1], l[2], base);
+      for (var a = 0; a < 9; a++) { var an = (a / 9 + l[0] * 0.013) * 6.283; disc(c, Math.round(l[0] + Math.cos(an) * l[2]), Math.round(l[1] + Math.sin(an) * l[2]), 2, base); }
+    });
+    if (hi) L.forEach(function (l) { if (l[2] > 4) { disc(c, l[0] - 1, l[1] - 1, l[2] - 3, hi); disc(c, l[0] + 1, l[1] + 1, l[2] - 3, base); } });
   }
-  function bush(c, x, y, w, h, base, hi) {
-    for (var i = 0; i < w; i += 7) disc(c, x + i + 3, y + (h >> 1) + ((i * 3) % 4) - 1, (h >> 1) + ((i * 5) % 3), base);
-    for (var j = 0; j < w; j += 7) { P1(c, x + j + 2, y + 3 + (j % 3), hi); P1(c, x + j + 4, y + 2 + (j % 2), hi); P1(c, x + j + 1, y + 5, hi); }
-  }
-  function grassBand(c, y0, y1, base, tuft, seed) {
-    R(c, 0, y0, 256, y1 - y0, base);
-    var r = rng(seed);
-    for (var i = 0; i < 260; i++) { var x = (r() * 256) | 0, y = (y0 + 2 + r() * (y1 - y0 - 3)) | 0; P1(c, x, y, tuft); P1(c, x + 1, y - 1, tuft); P1(c, x + 2, y, tuft); }
+  function hedge(c, x0, x1, y, r, base, hi) { var L = [], k = 0; for (var x = x0 + r; x <= x1 - r; x += r + 3, k++) L.push([x, y + [0, -2, 1, -1][k & 3], r]); canopy(c, L, base, hi); }
+  var TUFTS = [[3, 2], [21, 4], [12, 7], [28, 10], [6, 13], [17, 14]];
+  function grassBand(c, y0, y1, base, tuft, tuft2) { // 32x16 metatile of grass tufts, tiled like NES BG tiles
+    R(c, 0, y0, W, y1 - y0, base);
+    for (var ty = y0; ty < y1; ty += 16) for (var tx = 0; tx < W; tx += 32) for (var i = 0; i < TUFTS.length; i++) {
+      var x = tx + TUFTS[i][0], y = ty + TUFTS[i][1], col = (i % 3 === 1) && tuft2 ? tuft2 : tuft; if (y + 1 >= y1) continue;
+      P1(c, x, y + 1, col); P1(c, x + 1, y, col); P1(c, x + 2, y + 1, col);
+    }
   }
   function lyingCup(c, x, y) { paint(c, ['.WRRRRD', 'WWRLRRD', 'WWRRRRD', '.WRRRD.'], { W: 'white', R: 'red', L: 'white', D: 'dred' }, x, y); }
 
   function bgBackyard() {
     var cv = mk(W, H), c = cv._x, i;
     R(c, 0, 0, W, H, 'navy');
-    dith(c, 0, 0, W, 34, 'black'); R(c, 0, 0, W, 26, 'black'); dith4(c, 0, 34, W, 10, 'black');
+    R(c, 0, 0, W, 30, 'black'); dith(c, 0, 30, W, 4, 'black');
     STAR_SETS[0] = stars(c, 11, 120, 26, 120, function (x, y) { return (x > 52 && x < 204 && y > 24) || (x < 66 && y > 30) || (x > 196 && y > 52); });
     moonCrescent(c, 226, 40, 8, 'navy');
     // far trees right
-    treeBlob(c, 214, 82, 16, 'forest', 'dgreen', 'black'); treeBlob(c, 244, 70, 16, 'forest', 'dgreen', 'black'); treeBlob(c, 232, 100, 18, 'forest', 'dgreen');
+    canopy(c, [[212, 80, 10], [228, 68, 11], [246, 66, 11], [222, 92, 11], [242, 86, 12], [256, 96, 10]], 'forest', 'dgreen');
     // neighbor house (right)
     c.fillStyle = C('dgray');
     for (i = 0; i < 26; i++) c.fillRect(226 - i * 2, 74 + i, 4 + i * 4, 1);
@@ -1049,8 +1109,9 @@
     c.fillStyle = C('lgray'); for (i = 0; i < 26; i++) { c.fillRect(226 - i * 2, 74 + i, 2, 1); c.fillRect(228 + i * 2, 74 + i, 2, 1); }
     window4(c, 222, 108, 10, 14, true, 'gray'); window4(c, 240, 108, 10, 14, false, 'gray');
     // left trees (big dark clump)
-    treeBlob(c, 18, 66, 20, 'forest', 'dgreen', 'black'); treeBlob(c, 44, 52, 16, 'forest', 'dgreen', 'black');
-    treeBlob(c, 8, 104, 22, 'forest', 'dgreen', 'black'); treeBlob(c, 40, 90, 18, 'forest', 'dgreen', 'black'); treeBlob(c, 30, 128, 20, 'forest', 'dgreen', 'black');
+    disc(c, 22, 90, 34, 'forest'); disc(c, 30, 124, 26, 'forest');
+    canopy(c, [[12, 46, 11], [32, 40, 10], [50, 52, 9], [2, 66, 11], [22, 62, 11], [44, 72, 10], [8, 86, 11], [30, 84, 11], [52, 94, 9],
+      [14, 106, 11], [38, 104, 10], [4, 124, 10], [26, 124, 11], [50, 118, 9], [16, 140, 10], [40, 138, 10]], 'forest', 'dgreen');
     // ---- main house
     var hx0 = 66, hx1 = 190, eave = 56, peak = 28;
     // roof (gable) dark shingles
@@ -1094,20 +1155,18 @@
     // steps
     R(c, 148, 146, 26, 2, 'lgray'); R(c, 146, 148, 30, 2, 'gray'); R(c, 144, 150, 34, 2, 'lgray'); R(c, 144, 152, 34, 1, 'dgray');
     // ground/lawn
-    grassBand(c, 150, 232, 'dgreen', 'green', 5);
-    dith4(c, 0, 150, 256, 6, 'forest');
-    // hedges in front of house
-    bush(c, 44, 128, 98, 26, 'forest', 'dgreen');
-    bush(c, 186, 130, 30, 24, 'forest', 'dgreen');
-    bush(c, 66, 138, 72, 18, 'forest', 'green');
+    grassBand(c, 150, 230, 'dgreen', 'forest', 'green');
+    R(c, 0, 150, W, 2, 'forest');
+    // hedges in front of house (back row dark, front row a step lighter)
+    hedge(c, 40, 148, 138, 8, 'forest', 'dgreen'); hedge(c, 184, 222, 140, 8, 'forest', 'dgreen');
+    hedge(c, 64, 140, 148, 6, 'dgreen', null);
     // walkway to steps
-    R(c, 150, 153, 22, 8, 'gray'); dith4(c, 150, 153, 22, 8, 'lgray');
+    R(c, 150, 153, 22, 8, 'gray'); R(c, 150, 153, 22, 1, 'lgray'); R(c, 160, 154, 1, 7, 'dgray');
     // dropped cups in lawn under the table
     lyingCup(c, 70, 214); lyingCup(c, 150, 218); lyingCup(c, 196, 212);
     // sidewalk
     R(c, 0, 230, W, 10, 'gray'); R(c, 0, 230, W, 1, 'lgray'); R(c, 0, 231, W, 1, 'xlgray');
     for (i = 0; i < W; i += 32) R(c, i + 12, 232, 1, 8, 'dgray');
-    dith4(c, 0, 233, W, 7, 'dgray', 2);
     return cv;
   }
 
@@ -1122,18 +1181,13 @@
     R(c, 0, 33, W, 3, 'lgray'); R(c, 0, 35, W, 1, 'gray');
     for (x = 30; x < W; x += 64) R(c, x, 32, 3, 5, 'gray');
     // brick wall
-    for (y = 39; y < 170; y += 5) {
-      var off = ((y / 5) | 0) % 2 ? 6 : 0;
-      for (x = -off; x < W; x += 12) {
-        R(c, x, y, 11, 4, 'maroon');
-        var hsh = (x * 7 + y * 13) & 15;
-        if (hsh === 3) R(c, x, y, 10, 1, 'dred');
-        else if (hsh === 9 || hsh === 12) R(c, x, y, 11, 4, 'dbrown');
-        else if (hsh === 5) dith(c, x, y, 11, 4, 'dbrown');
-      }
+    // brick wall: one clean 16x8 brick tile (2 courses, half-brick offset), dbrown mortar, lit top edge
+    R(c, 0, 39, W, 131, 'dbrown');
+    for (y = 40; y < 170; y += 4) {
+      var off = ((y - 40) >> 2) & 1 ? 8 : 0;
+      for (x = -off, i = 0; x < W; x += 16, i++) { var dk = ((i + (y >> 2) * 3) % 7) === 0; R(c, x, y, 15, 3, dk ? 'dbrown' : 'maroon'); R(c, x, y, 3, 1, dk ? 'maroon' : 'dred'); }
     }
-    dith(c, 0, 39, W, 22, 'black'); dith4(c, 0, 61, W, 109, 'black', 1);
-    dith(c, 0, 39, 16, 131, 'black'); dith(c, 240, 39, 16, 131, 'black');
+    R(c, 0, 39, W, 2, 'black');
     // small high window showing night + moon
     R(c, 108, 44, 40, 20, 'lgray'); R(c, 110, 46, 36, 16, 'navy'); dith(c, 110, 46, 36, 4, 'black');
     P1(c, 116, 50, 'white'); P1(c, 132, 48, 'lgray'); P1(c, 140, 53, 'white');
@@ -1149,11 +1203,11 @@
     R(c, 176, 64, 2, 18, 'sky'); R(c, 174, 60, 2, 28, 'lgray'); P1(c, 174, 59, 'gold');
     text(c, 'PONG', 182, 66, 'white');
     // poster
-    R(c, 64, 60, 26, 34, 'cream'); R(c, 66, 62, 22, 30, 'magenta'); disc(c, 77, 74, 6, 'yellow'); R(c, 68, 84, 18, 2, 'white'); R(c, 70, 88, 14, 1, 'white');
+    R(c, 64, 60, 26, 34, 'lgray'); R(c, 66, 62, 22, 30, 'navy'); R(c, 70, 70, 12, 16, 'black'); R(c, 71, 71, 10, 14, 'gold'); R(c, 71, 71, 10, 3, 'white'); R(c, 73, 75, 1, 9, 'olive');
+    R(c, 81, 74, 3, 1, 'black'); R(c, 83, 74, 1, 8, 'black'); R(c, 81, 81, 3, 1, 'black'); R(c, 70, 68, 12, 3, 'white'); P1(c, 69, 70, 'white'); P1(c, 75, 67, 'white'); R(c, 68, 88, 18, 2, 'red');
     // couch (behind crowd)
     R(c, 39, 137, 80, 1, 'black'); R(c, 38, 138, 82, 34, 'black'); R(c, 39, 138, 80, 22, 'olive'); R(c, 40, 138, 78, 1, 'gold');
     for (x = 65; x < 119; x += 26) R(c, x, 139, 1, 20, 'dbrown');
-    dith4(c, 39, 141, 80, 18, 'dbrown');
     R(c, 39, 160, 80, 10, 'olive'); R(c, 39, 160, 80, 1, 'gold'); R(c, 65, 160, 1, 10, 'dbrown'); R(c, 92, 160, 1, 10, 'dbrown');
     R(c, 31, 148, 11, 24, 'black'); R(c, 32, 149, 9, 22, 'olive'); R(c, 32, 149, 9, 1, 'gold'); R(c, 40, 150, 1, 21, 'dbrown');
     R(c, 116, 148, 11, 24, 'black'); R(c, 117, 149, 9, 22, 'olive'); R(c, 117, 149, 9, 1, 'gold'); R(c, 117, 150, 1, 21, 'dbrown');
@@ -1167,12 +1221,12 @@
     R(c, 205, 120, 4, 5, 'black'); R(c, 206, 118, 2, 3, 'red');
     // concrete floor
     R(c, 0, 170, W, 70, 'dgray');
-    dith4(c, 0, 170, W, 70, 'gray', 0);
-    R(c, 0, 170, W, 1, 'gray');
-    for (x = 0; x < W; x += 64) R(c, x, 171, 1, 69, 'black');
-    R(c, 0, 205, W, 1, 'black');
-    // rug under table
-    R(c, 26, 212, 204, 16, 'dred'); R(c, 28, 214, 200, 12, 'red'); dith4(c, 28, 214, 200, 12, 'dred'); R(c, 26, 212, 204, 1, 'gold'); R(c, 26, 227, 204, 1, 'gold');
+    R(c, 0, 170, W, 1, 'gray'); R(c, 0, 171, W, 1, 'black');
+    for (x = 0; x < W; x += 64) { R(c, x, 172, 1, 68, 'black'); R(c, x + 1, 172, 1, 68, 'gray'); }
+    R(c, 0, 204, W, 1, 'black'); R(c, 0, 205, W, 1, 'gray');
+    // rug under table: red field, dred border, gold trim + diamond row
+    R(c, 26, 211, 204, 18, 'gold'); R(c, 27, 212, 202, 16, 'dred'); R(c, 29, 214, 198, 12, 'red');
+    for (x = 36; x < 222; x += 12) { R(c, x, 219, 3, 1, 'gold'); P1(c, x + 1, 218, 'gold'); P1(c, x + 1, 220, 'gold'); }
     lyingCup(c, 90, 214); lyingCup(c, 172, 220);
     // string light wire
     for (x = 0; x < W; x++) P1(c, x, 44 + Math.round(Math.sin((x % 64) / 64 * Math.PI) * 8), 'black');
@@ -1200,7 +1254,7 @@
       var b = B[i]; R(c, b[0], 160 - b[2], b[1], b[2], 'black');
       R(c, b[0], 160 - b[2], b[1], 1, 'dgray');
       for (y = 160 - b[2] + 4; y < 156; y += 5) for (x = b[0] + 2; x < b[0] + b[1] - 2; x += 4) {
-        var q = r(); if (q < 0.38) R(c, x, y, 2, 2, q < 0.1 ? 'cream' : 'yellow'); else if (q < 0.45) R(c, x, y, 2, 2, 'slate');
+        var q = r(); if (q < 0.26) R(c, x, y, 2, 2, q < 0.05 ? 'cream' : 'gold'); else if (q < 0.4) R(c, x, y, 2, 2, 'slate');
       }
     }
     // radio tower on tallest building (x 92..122)
@@ -1216,8 +1270,9 @@
     // roof parapet + floor
     R(c, 0, 160, W, 14, 'gray'); R(c, 0, 160, W, 2, 'lgray'); R(c, 0, 172, W, 2, 'dgray');
     for (x = 0; x < W; x += 16) R(c, x, 162, 1, 10, 'dgray');
-    R(c, 0, 174, W, 66, 'dgray'); dith4(c, 0, 174, W, 66, 'black');
-    for (y = 186; y < 240; y += 14) R(c, 0, y, W, 1, 'black');
+    R(c, 0, 174, W, 66, 'dgray');
+    for (y = 186, i = 0; y < 240; y += 14, i++) { R(c, 0, y, W, 1, 'black'); for (x = (i & 1) * 24; x < W; x += 48) R(c, x, y - 13, 1, 13, 'black'); }
+    R(c, 0, 174, W, 1, 'black');
     // AC unit + vent
     R(c, 6, 140, 26, 20, 'lgray'); R(c, 8, 142, 22, 16, 'gray'); disc(c, 19, 150, 6, 'dgray'); for (i = -5; i <= 5; i += 2) R(c, 14, 150 + i, 11, 1, 'black');
     R(c, 222, 146, 8, 14, 'gray'); R(c, 220, 144, 12, 3, 'lgray');
@@ -1245,27 +1300,29 @@
     for (y = 112; y < 156; y += 4) for (x = (y * 7) % 16; x < W; x += 16) R(c, x, y, 6, 1, 'blue');
     // sand
     R(c, 0, 154, W, 86, 'olive'); R(c, 0, 154, W, 2, 'white'); dith(c, 0, 156, W, 2, 'lgray');
-    dith4(c, 0, 158, W, 82, 'orange', 0);
-    // fire glow on sand around bonfire (left)
-    for (y = 160; y < 240; y++) for (x = 0; x < 120; x++) { var dx = (x - 48) / 60, dy = (y - 186) / 34; var d = dx * dx + dy * dy; if (d < 1 && ((x + y) & 1)) P1(c, x, y, d < 0.35 ? 'gold' : 'orange'); }
+    R(c, 0, 158, W, 1, 'dbrown');
+    // sand: one 32x16 speck tile repeated (no noise), then a crisp 2-step firelight pool round the bonfire
+    for (y = 160; y < 240; y += 8) for (x = ((y >> 3) & 1) * 16; x < W; x += 32) { P1(c, x + 3, y + 2, 'dbrown'); P1(c, x + 11, y + 5, 'orange'); P1(c, x + 12, y + 5, 'dbrown'); }
+    for (y = 160; y < 214; y++) for (x = 16; x < 140; x++) { var dx = (x - 77) / 50, dy = (y - 175) / 18, d = dx * dx + dy * dy; if (d < 1 && (d < 0.12 || ((x + y) & 1))) P1(c, x, y, 'orange'); }
     // palms
-    function palm(px, py, h, dir) {
-      for (i = 0; i < h; i++) { var xx = px + Math.round(Math.sin(i / h * 1.6) * 8 * dir); R(c, xx, py - i, 4, 1, i % 4 === 0 ? 'black' : 'dbrown'); }
-      var tx = px + Math.round(Math.sin(1.6) * 8 * dir) + 2, ty = py - h;
-      var fr = [[-14, 4], [-10, -6], [0, -9], [10, -6], [15, 5], [6, 10], [-6, 10]];
-      for (var f = 0; f < fr.length; f++) {
-        for (var s = 0; s <= 10; s++) { var t2 = s / 10, fx = Math.round(tx + fr[f][0] * t2), fy = Math.round(ty + fr[f][1] * t2 + (Math.abs(fr[f][0]) > 8 ? t2 * t2 * 6 : 0)); R(c, fx - 1, fy, 3, 2, 'forest'); }
+    function palm(px, py, h, dir) { // dusk silhouette: ringed trunk, thick drooping fronds tapering to a point
+      for (i = 0; i < h; i++) { var xx = px + Math.round(Math.sin(i / h * 1.6) * 9 * dir); R(c, xx, py - i, 4, 1, i % 4 === 0 ? 'black' : 'dbrown'); P1(c, xx + (dir > 0 ? 3 : 0), py - i, 'black'); }
+      var tx = px + Math.round(Math.sin(1.6) * 9 * dir) + 2, ty = py - h;
+      var fr = [[-17, 5], [-12, -5], [-3, -9], [7, -8], [16, -3], [18, 7], [-9, 10], [6, 11]];
+      for (var f = 0; f < fr.length; f++) for (var s = 0; s <= 14; s++) {
+        var t2 = s / 14, fx = Math.round(tx + fr[f][0] * t2), fy = Math.round(ty + fr[f][1] * t2 + (Math.abs(fr[f][0]) > 8 ? t2 * t2 * 8 : t2 * t2 * 3)), wd = s < 6 ? 3 : s < 11 ? 2 : 1;
+        R(c, fx - (wd >> 1), fy, wd, 2, 'dbrown'); if (s > 3 && !(s & 1)) P1(c, fx, fy + 2, 'dbrown');
       }
-      disc(c, tx, ty + 1, 2, 'dbrown');
+      disc(c, tx, ty + 2, 2, 'black'); P1(c, tx - 1, ty + 1, 'dbrown');
     }
     palm(8, 176, 90, 1); palm(232, 178, 80, -1); palm(214, 178, 56, -1);
     // tiki torches
-    R(c, 196, 140, 2, 40, 'brown'); R(c, 194, 136, 6, 5, 'olive'); R(c, 120, 146, 2, 34, 'brown'); R(c, 118, 142, 6, 5, 'olive');
+
     // logs of bonfire
-    R(c, 36, 171, 26, 3, 'brown'); R(c, 34, 174, 30, 3, 'dbrown'); R(c, 37, 172, 2, 2, 'orange'); R(c, 58, 172, 2, 2, 'orange');
-    for (i = 0; i < 7; i++) { R(c, 32 + i * 5, 177, 4, 3, 'gray'); R(c, 32 + i * 5, 177, 4, 1, 'lgray'); }
+    R(c, 64, 168, 26, 3, 'brown'); R(c, 62, 171, 30, 3, 'dbrown'); R(c, 65, 169, 2, 2, 'orange'); R(c, 86, 169, 2, 2, 'orange');
+    for (i = 0; i < 7; i++) { R(c, 60 + i * 5, 174, 4, 3, 'gray'); R(c, 60 + i * 5, 174, 4, 1, 'lgray'); }
     // cooler
-    R(c, 146, 160, 22, 14, 'blue'); R(c, 146, 160, 22, 3, 'white'); R(c, 154, 158, 6, 2, 'lgray');
+    R(c, 223, 165, 20, 12, 'black'); R(c, 224, 166, 18, 10, 'blue'); R(c, 224, 166, 18, 3, 'white'); R(c, 224, 169, 18, 1, 'dblue'); R(c, 230, 164, 6, 2, 'lgray');
     lyingCup(c, 92, 212); lyingCup(c, 182, 218);
     // footprints / shells
     var r2 = rng(9); for (i = 0; i < 18; i++) P1(c, (r2() * 256) | 0, (200 + r2() * 38) | 0, 'cream');
@@ -1279,42 +1336,41 @@
     R(c, 0, 24, W, 10, 'dgray'); for (x = 0; x < W; x += 8) R(c, x, 24 + (x % 16 ? 2 : 0), 1, 8, 'black');
     for (x = 16; x < W; x += 32) { R(c, x, 34, 8, 3, 'gray'); R(c, x + 1, 37, 6, 1, 'cream'); }
     // stands handled as separate pre-rendered frames; floor + barrier here
-    R(c, 0, 150, W, 14, 'navy'); R(c, 0, 150, W, 2, 'gold'); R(c, 0, 162, W, 2, 'dblue');
+    R(c, 0, 140, W, 14, 'navy'); R(c, 0, 140, W, 1, 'gold'); R(c, 0, 141, W, 1, 'brown'); R(c, 0, 153, W, 1, 'black');
     // ad boards
     var ads = ['PONG', 'CUP', 'PARTY', 'SOFT'];
-    for (i = 0; i < 4; i++) { R(c, 4 + i * 64, 152, 56, 10, i % 2 ? 'red' : 'blue'); text(c, ads[i], 4 + i * 64 + 28 - ads[i].length * 4, 153, i % 2 ? 'white' : 'gold'); }
-    // floor: dark court with star
-    R(c, 0, 164, W, 76, 'dblue'); dith4(c, 0, 164, W, 76, 'navy');
-    for (y = 170; y < 240; y += 10) R(c, 0, y, W, 1, 'navy');
-    R(c, 0, 164, W, 1, 'lblue');
+    for (i = 0; i < 4; i++) { R(c, 4 + i * 64, 142, 56, 10, i % 2 ? 'red' : 'blue'); R(c, 4 + i * 64, 151, 56, 1, i % 2 ? 'dred' : 'dblue'); text(c, ads[i], 4 + i * 64 + 28 - ads[i].length * 4, 143, i % 2 ? 'white' : 'gold'); }
+    // floor: dark court, clean perspective plank seams (wider apart toward the viewer)
+    R(c, 0, 154, W, 86, 'dblue'); R(c, 0, 154, W, 1, 'blue');
+    [158, 163, 169, 176, 184, 193, 203, 214, 226].forEach(function (yy) { R(c, 0, yy, W, 1, 'navy'); });
     // big center circle (perspective ellipse) under table
     for (i = 0; i < 360; i += 2) { var a = i / 180 * Math.PI; P1(c, Math.round(128 + Math.cos(a) * 70), Math.round(212 + Math.sin(a) * 18), 'gold'); }
     return cv;
   }
   // arena stands frames (2): tiers of fans
   var standFrames = null;
-  function arenaStands() {
+  function arenaStands() { // tiled fans: 8x10 cells, 4-fan pattern per row, rows offset half a cell; frame 1 = arms up
     if (standFrames) return standFrames;
+    var SH = ['blue', 'dred', 'dblue', 'dgray', 'blue', 'red', 'dgray', 'dblue'], SK = ['skin', 'tan', 'brown', 'skin'], HR = ['black', 'brown', 'gold', 'black', 'dgray'];
     standFrames = withStage(4, function () { return [0, 1].map(function (fr) {
-      var cv = mk(W, 112), c = cv._x, r = rng(31), x, y;
-      R(c, 0, 0, W, 112, 'black');
-      for (var row = 0; row < 9; row++) {
-        var ty = 8 + row * 12; R(c, 0, ty + 9, W, 2, row % 2 ? 'dgray' : 'dpurple');
-        for (x = 2 + (row % 2) * 3; x < W - 3; x += 6) {
-          var q = r(), shirt = ['red', 'blue', 'gold', 'white', 'green', 'purple', 'orange', 'lgray'][(q * 8) | 0];
-          var skin = ['skin', 'skin2', 'skin3'][(r() * 3) | 0], hair = ['black', 'dbrown', 'yellow', 'maroon'][(r() * 4) | 0];
-          var up = fr && ((x >> 2) + row) % 3 === 0 ? 1 : 0;
-          var arms = fr && ((x >> 2) + row) % 5 === 1;
-          R(c, x, ty + 4 - up, 4, 5, shirt); R(c, x + 1, ty + 1 - up, 2, 3, skin); R(c, x + 1, ty + 0 - up, 2, 1, hair);
-          if (arms) { P1(c, x - 1, ty + 1 - up, skin); P1(c, x + 4, ty + 1 - up, skin); P1(c, x - 1, ty + 2 - up, shirt); P1(c, x + 4, ty + 2 - up, shirt); }
+      var cv = mk(W, 102), c = cv._x, x, k;
+      R(c, 0, 0, W, 102, 'black');
+      for (var row = 0; row < 10; row++) {
+        var ty = 2 + row * 10;
+        for (x = -4 + (row & 1) * 4, k = 0; x < W; x += 8, k++) {
+          var q = (k + row * 3) & 7, sh = SH[(q + row) & 7], sk = SK[(k * 3 + row) & 3], hr = HR[(k + row * 2) % 5];
+          var up = fr && ((k + row) % 3 === 0) ? 1 : 0;
+          R(c, x + 1, ty + 5 - up, 6, 4, sh); R(c, x + 2, ty + 4 - up, 4, 1, sh);
+          R(c, x + 2, ty + 1 - up, 4, 3, sk); R(c, x + 2, ty - up, 4, 1, hr); P1(c, x + 2, ty + 1 - up, hr); P1(c, x + 5, ty + 1 - up, hr);
+          if (fr && ((k + row) % 4 === 1)) { R(c, x, ty - 1, 1, 4, sk); R(c, x + 7, ty - 1, 1, 4, sk); }
         }
+        R(c, 0, ty + 9, W, 1, 'navy');
       }
-      dith4(c, 0, 0, W, 40, 'black', 1);
+      dith4(c, 0, 0, W, 20, 'black', 1);
       return cv;
     }); });
     return standFrames;
   }
-
   var BG_BUILDERS = [bgBackyard, bgBasement, bgRooftop, bgBeach, bgArena];
   function stageBG(s) { return stageCache[s] || (stageCache[s] = withStage(s, BG_BUILDERS[s])); }
   function clampStage(stage) { stage = stage | 0; return ((stage % 5) + 5) % 5; }
@@ -1381,9 +1437,9 @@
       // wave foam
       for (x = 0; x < W; x += 8) { var wv = ((x >> 3) + (t >> 4)) % 4; if (wv === 0) R(ctx, x, 152, 6, 1, 'white'); else if (wv === 1) R(ctx, x + 2, 150, 4, 1, 'pblue'); }
       // bonfire
-      flame(ctx, 41, 171, t, 5); flame(ctx, 56, 171, t + 11, 5); flame(ctx, 48, 171, t + 5, 9);
-      for (i = 0; i < 6; i++) { var sp = (t + i * 29) % 60; P1(ctx, 48 + Math.round(Math.sin((t + i * 30) / 9) * 3) + (i - 3) * 3, 156 - sp, sp < 25 ? 'yellow' : sp < 45 ? 'orange' : 'red'); }
-      flame(ctx, 197, 136, t + 3, 0); flame(ctx, 121, 142, t + 8, 0);
+      flame(ctx, 69, 168, t, 5); flame(ctx, 84, 168, t + 11, 5); flame(ctx, 76, 168, t + 5, 9);
+      for (i = 0; i < 6; i++) { var sp = (t + i * 29) % 60; P1(ctx, 76 + Math.round(Math.sin((t + i * 30) / 9) * 3) + (i - 3) * 3, 153 - sp, sp < 25 ? 'yellow' : sp < 45 ? 'orange' : 'red'); }
+
     } else if (stage === 4) {
       // banner
       drawBox(ctx, 40, 44, 176, 22, 'red');
@@ -1412,17 +1468,19 @@
 
   // ------------------------------------------------------------------ tables
   var TABLES = [
-    { top: 'red', top2: 'dred', trim: 'white', stripe: 'white', apron: 'red', apron2: 'dred', leg: 'dgray', leg2: 'black' },
-    { top: 'brown', top2: 'dbrown', trim: 'gold', stripe: 'dbrown', apron: 'dbrown', apron2: 'maroon', leg: 'dgray', leg2: 'black', wood: 1 },
-    { top: 'dgray', top2: 'black', trim: 'lgray', stripe: 'cyan', apron: 'gray', apron2: 'dgray', leg: 'lgray', leg2: 'gray' },
-    { top: 'gold', top2: 'orange', trim: 'cream', stripe: 'olive', apron: 'olive', apron2: 'dbrown', leg: 'olive', leg2: 'dbrown', wood: 2 },
-    { top: 'dblue', top2: 'navy', trim: 'gold', stripe: 'white', apron: 'blue', apron2: 'dblue', leg: 'gold', leg2: 'orange', star: 1 }
+    { top: 'red', top2: 'dred', trim: 'white', stripe: 'white', apron: 'red', apron2: 'dred', leg: 'dgray', leg2: 'black', shadow: 'forest' },
+    { top: 'brown', top2: 'dbrown', trim: 'gold', stripe: 'dbrown', apron: 'dbrown', apron2: 'maroon', leg: 'dgray', leg2: 'black', wood: 1, shadow: 'maroon' },
+    { top: 'slate', top2: 'navy', trim: 'lgray', stripe: 'cyan', apron: 'gray', apron2: 'dgray', leg: 'lgray', leg2: 'gray', shadow: 'black' },
+    { top: 'gold', top2: 'orange', trim: 'cream', stripe: 'olive', apron: 'olive', apron2: 'dbrown', leg: 'olive', leg2: 'dbrown', wood: 2, shadow: 'dbrown' },
+    { top: 'dblue', top2: 'navy', trim: 'gold', stripe: 'white', apron: 'blue', apron2: 'dblue', leg: 'gold', leg2: 'orange', star: 1, shadow: 'navy' }
   ];
   var tableCache = [];
   function buildTable(s) {
     var T = TABLES[s], cv = mk(W, 48), c = cv._x, oy = 180, x, y;
     function r(x, y, w, h, col) { R(c, x, y - oy, w, h, col); }
     var X0 = 32, X1 = 224, Wd = X1 - X0;
+    // floor shadow under the table (solid, NES style) grounds it against the backdrop
+    r(42, 218, 172, 1, T.shadow); r(36, 219, 184, 3, T.shadow); r(42, 222, 172, 1, T.shadow);
     // legs (folding) - back legs first
     function leg(lx, top, bot, col, col2) { r(lx - 1, top, 4, bot - top, 'black'); r(lx, top, 2, bot - top, col); r(lx + 1, top, 1, bot - top, col2); r(lx - 2, bot - 1, 6, 2, 'black'); r(lx - 1, bot - 1, 4, 1, col2); }
     leg(48, 200, 219, T.leg2, 'black'); leg(206, 200, 219, T.leg2, 'black');
@@ -1495,23 +1553,28 @@
     if (fire) { R(ctx, x - 1, y - 1, 2, 2, ((x + y) & 2) ? 'orange' : 'yellow'); P1(ctx, x - 1, y - 1, 'red'); }
     else { R(ctx, x, y, 1, 1, 'white'); P1(ctx, x + 1, y, 'lgray'); }
   }
-  var SPL_DIRS = [[0, -1], [0.7, -0.7], [1, -0.2], [-0.7, -0.7], [-1, -0.2], [0.4, -0.9], [-0.4, -0.9]];
+  // sink splash: 6 snappy NES-style frames (3-5 ticks each) built from stamps: sparkle stars + beer droplets
+  var SPARK = [['.W.', 'WWW', '.W.'], ['..W..', '..W..', 'WWYWW', '..W..', '..W..'],
+    ['...W...', '...W...', '..WYW..', 'WWYWYWW', '..WYW..', '...W...', '...W...']];
+  var SPL_T = [0, 3, 6, 10, 14, 19, 25];
+  var SPL_F = [ // [kind, dx, dy]  kind: 0..2 sparkle size, 'D' 2x2 droplet w/ white glint, 'd' 2x2 droplet, 'p' 1px, 'w' foam
+    [[2, 0, -9], ['D', -4, -3], ['D', 3, -3], ['D', -1, -5], ['w', -2, -1], ['w', 0, -2], ['w', 2, -1]],
+    [[2, 0, -15], ['D', -6, -6], ['D', 5, -6], ['D', -3, -10], ['D', 2, -10], ['d', -8, -2], ['d', 7, -2], ['w', -4, -1], ['w', 4, -1], ['w', 0, -3]],
+    [[1, 0, -18], ['d', -9, -9], ['d', 8, -9], ['d', -4, -14], ['d', 3, -14], ['p', -11, -4], ['p', 11, -4], ['w', -6, -5], ['w', 6, -5]],
+    [[0, -7, -18], [0, 7, -16], ['d', -11, -8], ['d', 10, -8], ['p', -5, -15], ['p', 5, -15], ['p', -13, -2], ['p', 13, -2]],
+    [[0, 0, -19], ['p', -12, -3], ['p', 12, -3], ['p', -7, -8], ['p', 7, -8], ['p', -14, 2], ['p', 14, 2]],
+    [['p', -13, 3], ['p', 13, 3], ['p', -8, 1], ['p', 8, 1]]
+  ];
   function drawSplash(ctx, x, y, t) {
     if (!ctx) return; t = t | 0; if (t < 0 || t > 24) return; x = Math.round(x); y = Math.round(y);
-    var i;
-    if (t < 16) { // starburst lines (white core, amber tips) like a comic "plink"
-      var d0 = 2 + Math.round(t * 0.6), len = t < 10 ? 4 : 2;
-      for (i = 0; i < SPL_DIRS.length; i++) {
-        var dx = SPL_DIRS[i][0], dy = SPL_DIRS[i][1];
-        for (var s = 0; s < len; s++) P1(ctx, x + Math.round(dx * (d0 + s)), y + Math.round(dy * (d0 + s)), t < 6 || s < len - 1 ? 'white' : 'beer');
-      }
-      if (t < 5) { R(ctx, x - 2, y - 1, 5, 2, 'white'); R(ctx, x - 1, y - 3, 3, 2, 'beer'); P1(ctx, x, y - 4, 'white'); }
-    }
-    // droplets arcing out and falling
-    for (i = 0; i < 6; i++) {
-      var vx = [-1.1, 1.1, -0.6, 0.6, -1.6, 1.6][i], vy = [-2.2, -2.2, -2.8, -2.8, -1.6, -1.6][i];
-      var px = Math.round(x + vx * t * 0.7), py = Math.round(y + vy * t * 0.7 + 0.09 * t * t);
-      if (t > 3) { R(ctx, px, py, i < 2 && t < 14 ? 2 : 1, 1, i & 1 ? 'beer' : 'yellow'); if (t < 12) P1(ctx, px, py - 1, 'white'); }
+    var f = 0; while (f < 5 && t >= SPL_T[f + 1]) f++;
+    var L = SPL_F[f];
+    for (var i = 0; i < L.length; i++) {
+      var k = L[i][0], px = x + L[i][1], py = y + L[i][2];
+      if (k === 'd' || k === 'D') { R(ctx, px, py, 2, 2, 'beer'); P1(ctx, px, py, k === 'D' ? 'white' : 'gold'); }
+      else if (k === 'p') P1(ctx, px, py, 'beer');
+      else if (k === 'w') P1(ctx, px, py, 'white');
+      else { var sp = SPARK[k], h = sp.length >> 1; paint(ctx, sp, { W: 'white', Y: 'gold' }, px - h, py - h); }
     }
   }
   function drawCrosshair(ctx, x, y, t) {
@@ -1539,7 +1602,7 @@
       var gl = GL[ch];
       for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl[y] && gl[y].charAt(x) === '#') {
         for (var sy = 0; sy < sc; sy++) for (var sx = 0; sx < sc; sx++) {
-          var py = oy + y * sc + sy, px = cx + x * sc + sx + Math.round((20 - y * sc - sy) / 5);
+          var py = oy + y * sc + sy, px = cx + x * sc + sx + (6 - y);
           if (px >= 0 && px < LW && py < LH) { g[py * LW + px] = 1; band[py * LW + px] = y * sc + sy; }
         }
       }
@@ -1550,7 +1613,7 @@
     for (i = 0; i < str2.length; i++) {
       var gl2 = GL[str2.charAt(i)];
       for (y = 0; y < 7; y++) for (x = 0; x < 7; x++) if (gl2[y].charAt(x) === '#') {
-        for (sy = 0; sy < sc2; sy++) for (sx = 0; sx < sc2; sx++) { var qy = oy2 + y * sc2 + sy, qx = cx + x * sc2 + sx + Math.round((14 - y * sc2 - sy) / 5); g[qy * LW + qx] = 2; }
+        for (sy = 0; sy < sc2; sy++) for (sx = 0; sx < sc2; sx++) { var qy = oy2 + y * sc2 + sy, qx = cx + x * sc2 + sx + ((6 - y) >> 1); g[qy * LW + qx] = 2; }
       }
       cx += 17;
     }
@@ -1616,7 +1679,7 @@
     if (inited) return; inited = true;
     try {
       S.cup = spr(CUPMAP.full, CUPMAP.pal);
-      S.cupDim = spr(CUPMAP.full, { W: 'lgray', g: 'gray', R: 'dred', L: 'red', D: 'maroon' });
+      S.cupDim = spr(CUPMAP.full, { W: 'lgray', g: 'gray', R: 'dred', L: 'red', D: 'maroon', K: 'black' });
       S.ball = spr(BALL, { W: 'white', g: 'lgray' });
       S.fire = FIRE.map(function (f) { return spr(f, { R: 'red', Y: 'gold', W: 'white', O: 'orange' }); });
       S.flame = FLAME.map(function (f) { return spr(f, { R: 'red', Y: 'gold', O: 'orange' }); });
