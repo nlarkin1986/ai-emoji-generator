@@ -2979,6 +2979,8 @@ BP.Scores = (function () {
     get makes() { return run ? run.makes : 0 },
     get ticks() { return ticks },
     get cpuAcc() { return run && run.cpuShots ? Math.round(100 * run.cpuMakes / run.cpuShots) : 0 },
+    get cpuShotsN() { return run ? run.cpuShots : 0 },
+    get cpuMakesN() { return run ? run.cpuMakes : 0 },
     get runTick0() { return run ? run.tick0 : -1 },
     get fps() { return fps },
     get wind() { return m ? m.wind.s : 0 },
@@ -2986,6 +2988,11 @@ BP.Scores = (function () {
     get ball() { return m && m.ball ? { x: +m.ball.x.toFixed(1), y: +m.ball.y.toFixed(1), z: +m.ball.z.toFixed(1) } : null },
     step: function (n) { for (var i = 0; i < (n || 1); i++) tick() },
     press: function (b) { virt[b] = true },
+    // QA: jump straight into a match (stage 0-4, loop 0+, starting buzz)
+    startAt: function (stg, loop, buzz) {
+      fade = null; newRun(); run.stage = stg || 0; run.loop = loop || 0; run.buzz = buzz || 0
+      startStage()
+    },
   }
 
   BP.Game = { start: start, debug: debug, STAGES: STAGES }
