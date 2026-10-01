@@ -2572,7 +2572,7 @@ body.m-landscape #dpad .plate{display:block}
     lose: { p: 6, p1: J(M('A5:10 G#5:10 G5:10', 'cba9', 2), VB(P(40, nf('F#5'), nf('E5'), 11, 0, 2), 40, 8)), p2: M('F5:10 E5:10 Eb5:10 D5:40', '98877', 1), tr: M('D3:10 C#3:10 C3:10 B2:40', 'f', 0) },
     tick: { p: 1, p2: [[nf('C7'), 8, 0], [nf('C7'), 4, 0]], no: [[0, 6, 1], [0, 3, 1]] },
     whoosh: { p: 2, no: J(NS(10, 9, 2, 2, 12), NS(16, 2, 7, 12, 0)) },
-    letter: { p: 1, p2: J(T(nf('E6'), 'b', 1), T(nf('B6'), 'a8642', 1)) },
+    letter: { p: 1, p2: J(T(nf('C6'), 'c', 2), T(nf('C7'), 'b964', 0)) },
     error: function () { var b = []; for (var k = 0; k < 10; k++) b.push([110, 12 - (k >> 2), k % 2 ? 0 : 3]); return { p: 2, p2: J(b, Z(4), b) } },
     // extras (not in the contract, harmless): swish, go, start
     swish: { p: 4, p2: J(P(6, 800, 2400, 6, 12, 1), M('C7:3 E7:3 G7:3 C8:9', 'c', 0)), no: NS(10, 2, 1, 6, 0) },
@@ -3875,7 +3875,7 @@ BP.Scores = (function () {
       for (var k = 0; k < 16; k++) {
         var along = rnd() < 0.65
         var dd = rr(minD, 12)
-        var sgn = rnd() < 0.5 ? -1 : 1
+        var sgn = along ? (rnd() < 0.72 ? 1 : -1) * dirX : rnd() < 0.5 ? -1 : 1 // misses are mostly long
         var cx = c.x + (along ? sgn * dd : gauss() * 2), cz = c.z + (along ? gauss() * 2 : sgn * dd)
         var ok = true
         for (var j = 0; j < cs.length; j++) if (Math.hypot(cs[j].x - cx, cs[j].z - cz) < minD) { ok = false; break }
@@ -3897,10 +3897,11 @@ BP.Scores = (function () {
     if (shotLog.length) shotLog[shotLog.length - 1].res = 'sink r' + b.rim + ' b' + b.bounces
     var island = !hasNeighbor(c, vic) && alive(vic) > 1
     var bounced = b.bounces > 0
+    var declared = bounced && b.bshot // a called BOUNCE shot (B) takes 2 cups; accidental bounces only 1
     var clean = b.rim === 0 && !bounced
     c.alive = false; c.hitT = 0
     var removed = 1, extra = null
-    if (bounced) { extra = nearestAlive(c, vic); if (extra) { extra.alive = false; extra.hitT = -8; removed = 2 } }
+    if (declared) { extra = nearestAlive(c, vic); if (extra) { extra.alive = false; extra.hitT = -8; removed = 2 } }
     var cx = c.x, cyy = sy(0, c.z)
     m.ball = null
     m.lastSank = true
@@ -3921,7 +3922,8 @@ BP.Scores = (function () {
       var rm = roundMult()
       var pts = 100 * mult * removed
       if (clean) { pts += 50; calls.push(['SWISH!', 'white']); sfx('swish') }
-      else if (bounced) { pts += 200; calls.push(['BOUNCE!', 'gold']) }
+      else if (declared) { pts += 200; calls.push(['BOUNCE!', 'gold']); if (removed > 1) calls.push(['2 CUPS!', 'gold']) }
+      else if (bounced) { pts += 25; calls.push(['LUCKY BOUNCE!', 'yellow']) }
       else { pts += 25; calls.push(['RATTLED IN!', 'yellow']) }
       if (island) { pts += 250; calls.push(['ISLAND!', 'cyan']) }
       pts *= rm
@@ -3936,7 +3938,8 @@ BP.Scores = (function () {
       void before
     } else {
       if (clean) calls.push(['SWISH!', 'white'])
-      else if (bounced) calls.push(['BOUNCE!', 'gold'])
+      else if (declared) calls.push(['BOUNCE!', 'gold'])
+      else if (bounced) calls.push(['LUCKY BOUNCE!', 'yellow'])
       else calls.push(['RATTLED IN!', 'yellow'])
       if (vic === 0 && !m.demo) {
         run.cpuMakes++
