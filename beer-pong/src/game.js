@@ -1365,37 +1365,71 @@
   }
   function doPause() {
     if (paused) return
-    paused = true; pauseSel = 0
+    paused = true; pauseSel = 0; pauseT = 0; pauseConfirm = null
     sfx('pause')
     try { BP.Audio.pause() } catch (e) {}
   }
+  var pauseT = 0, pauseConfirm = null
   function unpause() {
     paused = false
     try { BP.Audio.resume() } catch (e) {}
     sfx('pause')
   }
+  // NES-style YES/NO prompt (state object {sel, t}); returns 'yes' | 'no' | null
+  function yesNo(st, x, y) {
+    st.t++
+    if (st.t < 12) return null
+    if (pr('left') || pr('right') || pr('up') || pr('down') || pr('select')) { st.sel = 1 - st.sel; sfx('select') }
+    var p = tap()
+    if (p) {
+      var mt = menuTap(p, [[x, y - 4, 52, 16], [x + 56, y - 4, 52, 16]], st.sel)
+      if (mt.move != null) { st.sel = mt.move; sfx('select'); return null }
+      return st.sel === 0 ? 'yes' : 'no'
+    }
+    if (pr('a')) return st.sel === 0 ? 'yes' : 'no'
+    if (pr('b')) return 'no'
+    return null
+  }
+  function drawYesNo(st, x, y) {
+    T('YES', x + 18, y, st.sel === 0 ? 'white' : 'gray')
+    T('NO', x + 74, y, st.sel === 1 ? 'white' : 'gray')
+    if (blink(frame, 16)) T('▶', x + 6 + st.sel * 56, y, 'red')
+  }
   function updatePause() {
+    pauseT++
+    if (pauseConfirm) {
+      var r = yesNo(pauseConfirm, 76, 124)
+      if (r === 'no') { pauseConfirm = null; sfx('cancel') }
+      else if (r === 'yes') {
+        pauseConfirm = null
+        paused = false
+        try { BP.Audio.resume() } catch (e) {}
+        sfx('cancel')
+        music(null)
+        go('gameover', { quit: true })
+      }
+      return
+    }
+    if (pauseT < 10) return
     var p = tap()
     if (pr('start')) { unpause(); return }
     if (pr('up') || pr('down') || pr('select')) { pauseSel = 1 - pauseSel; sfx('select') }
     var choose = -1
     if (p) {
-      if (inR(p, 80, 110, 96, 12)) choose = 0
-      else if (inR(p, 80, 124, 96, 12)) choose = 1
-      else choose = -2
+      var mt = menuTap(p, [[72, 108, 112, 14], [72, 122, 112, 14]], pauseSel)
+      if (mt.move != null) { pauseSel = mt.move; sfx('select') } else choose = pauseSel
     } else if (pr('a')) choose = pauseSel
-    if (choose === -2) return
     if (choose === 0) unpause()
-    else if (choose === 1) {
-      paused = false
-      try { BP.Audio.resume() } catch (e) {}
-      sfx('cancel')
-      music(null)
-      go('gameover', { quit: true })
-    }
+    else if (choose === 1) { pauseConfirm = { sel: 1, t: 0 }; sfx('select') } // default NO
   }
   function drawPause() {
-    box(72, 84, 112, 60, 'default')
+    box(64, 84, 128, 62, 'default')
+    if (pauseConfirm) {
+      BIG('QUIT?', 128, 92, 'red', 2)
+      T('GAME OVER IF', 80, 110, 'lgray')
+      drawYesNo(pauseConfirm, 76, 128)
+      return
+    }
     BIG('PAUSE', 128, 92, 'white', 2)
     T('RESUME', 104, 112, pauseSel === 0 ? 'white' : 'lgray')
     T('QUIT', 104, 126, pauseSel === 1 ? 'white' : 'lgray')
