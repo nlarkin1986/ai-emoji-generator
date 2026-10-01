@@ -17,15 +17,15 @@
 
   // acc = Round 1 CPU make chance, acc2 = Round 2 (remixed: 10-cup racks, wind on rooftop + beach, faster meters)
   var STAGES = [
-    { name: 'BACKYARD BASH', who: 'chad', cpu: 'CHAD', acc: 0.22, acc2: 0.48, aim: 22, pow: 10, bounce: 0, wind: false, band: 'dblue', stars: 1,
+    { name: 'BACKYARD BASH', who: 'chad', cpu: 'CHAD', acc: 0.22, acc2: 0.5, aim: 12, pow: 6, bounce: 0, wind: false, band: 'dblue', stars: 1,
       taunt: ['NICE HAT, ROOKIE.', 'THIS IS MY YARD!'], taunt2: ['I PRACTICED, BRO.', 'REMATCH TIME!'] },
-    { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.33, acc2: 0.54, aim: 28, pow: 12, bounce: 0.05, wind: false, band: 'dred', stars: 2,
+    { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.33, acc2: 0.57, aim: 16, pow: 8, bounce: 0.05, wind: false, band: 'dred', stars: 2,
       taunt: ['TANK NO MISS.', 'TANK ONLY DRINK.'], taunt2: ['TANK ANGRY NOW.', 'TANK SMASH CUPS.'] },
-    { name: 'ROOFTOP', who: 'sky', cpu: 'SKY', acc: 0.42, acc2: 0.6, aim: 18, pow: 8, bounce: 0.08, wind: true, band: 'purple', stars: 3,
+    { name: 'ROOFTOP', who: 'sky', cpu: 'SKY', acc: 0.42, acc2: 0.64, aim: 10, pow: 6, bounce: 0.08, wind: true, band: 'purple', stars: 3,
       taunt: ['FEEL THAT BREEZE?', 'THE WIND IS MINE.'], taunt2: ['STORM IS COMING.', 'HOLD ON TIGHT!'] },
-    { name: 'BEACH BONFIRE', who: 'brody', cpu: 'BRO-DY', acc: 0.5, acc2: 0.65, aim: 22, pow: 10, bounce: 0.1, wind: false, band: 'dgreen', stars: 4,
+    { name: 'BEACH BONFIRE', who: 'brody', cpu: 'BRO-DY', acc: 0.5, acc2: 0.7, aim: 12, pow: 6, bounce: 0.1, wind: false, band: 'dgreen', stars: 4,
       taunt: ["SURF'S UP, BRO.", 'CUPS GOING DOWN.'], taunt2: ['SEA BREEZE, BRO.', 'GOOD LUCK, HA!'] },
-    { name: 'CHAMPIONSHIP', who: 'kegmaster', cpu: 'KEGMASTER', acc: 0.58, acc2: 0.71, aim: 26, pow: 12, bounce: 0.18, wind: false, band: 'dred', stars: 5,
+    { name: 'CHAMPIONSHIP', who: 'kegmaster', cpu: 'KEGMASTER', acc: 0.58, acc2: 0.77, aim: 16, pow: 8, bounce: 0.18, wind: false, band: 'dred', stars: 5,
       taunt: ['KNEEL BEFORE THE', 'KEGMASTER, PEON!'], taunt2: ['NO ONE BEATS ME', 'TWICE. NO ONE!'] },
   ]
 
@@ -229,7 +229,7 @@
   function solveLaunch(side, tx, tz, bounce, wind, fastArc) {
     var p0 = HAND[side], dist = Math.abs(tx - p0.x)
     if (!bounce) {
-      var n = clamp(Math.round((fastArc ? 26 : 30) + dist * (fastArc ? 0.15 : 0.18)), 30, 80)
+      var n = clamp(Math.round((fastArc ? 22 : 30) + dist * (fastArc ? 0.14 : 0.18)), 30, 80)
       var ax = tx, az = tz, v = directV(p0, ax, RIM_H, az, n)
       if (wind && (wind.ax || wind.az)) {
         for (var it = 0; it < 6; it++) {
@@ -320,7 +320,7 @@
           sfx('bounce')
           if (b.bshot && b.bounces === 1) { b.vz += gauss() * 0.07; b.vx += gauss() * 0.06 }
           puff(b.x, sy(0, b.z), 'white', 3)
-        } else { b.vy = 0; b.rolling = true }
+        } else { b.vy = 0; if (!b.rolling) b.rollT = b.t; b.rolling = true }
       }
       // ---- floor
       if (b.y < FLOOR_H + BALL_R && b.vy < 0) {
@@ -345,8 +345,10 @@
       for (var q = 0; q < tc.length; q++) if (tc[q].alive && Math.hypot(b.x - tc[q].x, b.z - tc[q].z) < CUP_R && b.y > 0 && b.y < RIM_H + 3) { resolveSink(tc[q]); return }
       resolveMiss(); return
     }
-    if ((b.floor && b.t - b.floorT > 16) || b.floor >= 3 || b.x < -10 || b.x > 266 ||
-        (b.rolling && speed < 0.08)) resolveMiss()
+    // a ball that has dropped below the table edge is a miss: resolve now, let a visual-only "dead ball" keep falling
+    if (b.y < -6 && !onTable(b.x, b.z) && b.vy < 0) { m.dead = { x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz, t: 0, fire: b.fire }; resolveMiss(); return }
+    if ((b.floor && b.t - b.floorT > (b.side === 1 ? 8 : 16)) || b.floor >= 3 || b.x < -10 || b.x > 266 ||
+        (b.rolling && (speed < 0.08 || b.t - b.rollT > 24))) resolveMiss()
   }
 
   // ======================================================================== FX
@@ -367,7 +369,7 @@
       hints: 0, best: 0, cpuShots: 0, cpuMakes: 0, t0: Date.now(), tick0: ticks }
   }
   function roundMult() { return run && run.loop > 0 ? 2 : 1 }
-  function cpuAcc(stg, loop) { return Math.min(0.75, loop > 0 ? STAGES[stg].acc2 : STAGES[stg].acc) }
+  function cpuAcc(stg, loop) { return Math.min(0.78, loop > 0 ? STAGES[stg].acc2 : STAGES[stg].acc) }
   function windOn() { return !!(m && (m.st.wind || (m.loop > 0 && m.stage === 3))) }
 
   function newMatch(demo, stg, loop) {
@@ -510,7 +512,7 @@
     var pv = m.pow.sc + (make ? rr(-0.6, 0.6) * m.pow.bw : longShort > 0 ? m.pow.bw + rr(0.05, 0.2) : longShort < 0 ? -m.pow.bw - rr(0.05, 0.25) : rr(-0.8, 0.8) * m.pow.bw)
     // crosshair shows the point the CPU aims at (upwind compensation visible)
     var ax = tx - m.wind.ax * 1600, az = tz - m.wind.az * 1600
-    var at = st.aim + ri(10)
+    var at = st.aim + ri(8)
     if (side === 0) at = 30 + ri(10)
     var start = aimPos(0)
     return { tx: tx, tz: tz, ax: ax, az: az, sx: start.x, sz: start.z, pv: clamp(pv, 0.04, 0.98), bounce: bounce, aimT: at, powT: (side === 0 ? 14 : st.pow) }
@@ -644,7 +646,7 @@
   }
 
   function finishResolve(calls, dur) {
-    if (m.ctrl[m.turn] === 'cpu' && !m.over && !m.pendingRed && !m.pendingOT && !m.demo) dur = Math.round(dur * 0.7)
+    if (m.ctrl[m.turn] === 'cpu' && !m.over && !m.pendingRed && !m.pendingOT && !m.demo) dur = Math.round(dur * 0.6)
     callouts(calls)
     m.phase = 'result'; m.pt = 0; m.resT = FAST ? Math.min(dur, 40) : dur
   }
@@ -706,6 +708,12 @@
       wp.x += M.wind.ax * 1400 + (M.wind.ax === 0 ? 0 : 0); wp.y += M.wind.az * 500 + Math.sin((frame + wi * 9) * 0.1) * 0.2; wp.life--
       if (wp.life <= 0 || wp.x < -8 || wp.x > 264) M.windParts.splice(wi, 1)
     }
+    if (M.dead) {
+      var db = M.dead
+      db.t++; db.vy -= GRAV; db.x += db.vx; db.y += db.vy; db.z += db.vz
+      if (db.y < FLOOR_H + BALL_R && db.vy < 0) { db.y = FLOOR_H + BALL_R; if (db.vy < -0.6) sfx('floor'); db.vy = -db.vy * 0.5; db.vx *= 0.8; db.vz *= 0.8 }
+      if (db.t > 50 || db.x < -10 || db.x > 266) M.dead = null
+    }
     // score roll-up
     if (run && !M.demo && run.disp < run.score) run.disp = Math.min(run.score, run.disp + Math.max(5, Math.ceil((run.score - run.disp) / 6)))
 
@@ -724,7 +732,7 @@
         if (M.pt >= (FAST ? 10 : 50)) { startTurn(0) }
         break
       case 'banner':
-        if (M.pt >= (FAST ? 14 : side === 1 ? 30 : 40) || (M.ff && M.pt > 4) || (!M.demo && M.pt > 10 && okPr() && side === 0)) { M.banner = ''; beginThrow() }
+        if (M.pt >= (FAST ? 14 : side === 1 ? 24 : 40) || (M.ff && M.pt > 4) || (!M.demo && M.pt > 10 && okPr() && side === 0)) { M.banner = ''; beginThrow() }
         break
       case 'aim':
         if (human) {
@@ -837,6 +845,10 @@
     var fire = b && b.fire
     for (var i = 0; i < M.trail.length; i++) {
       A.drawTrailDot(ctx, R(M.trail[i].x), R(M.trail[i].y), !!fire)
+    }
+    if (M.dead) {
+      A.drawShadow(ctx, R(M.dead.x), R(sy(FLOOR_H, M.dead.z)))
+      A.drawBall(ctx, R(M.dead.x), R(sy(M.dead.y, M.dead.z)), !!M.dead.fire, frame)
     }
     // painter: cups + ball by z
     var list = []
@@ -1147,6 +1159,7 @@
 
   function startRun() {
     newRun()
+    try { if (BP.Scores && BP.Scores.startRun) Promise.resolve(BP.Scores.startRun()).then(null, function () {}) } catch (e) {}
     sfx('start')
     go('vs', { stage: 0 })
   }
@@ -1325,7 +1338,7 @@
       music('vs', true)
     },
     update: function () {
-      if (S.t > 8 && (okPr() || tap())) { if (S.t < S.dur - 50) { S.t = S.dur - 50; sfx('confirm') } else S.t = S.dur }
+      if (S.t > (FAST ? 8 : 90) && (okPr() || tap())) { if (S.t < S.dur - 50) { S.t = S.dur - 50; sfx('confirm') } else S.t = S.dur }
       if (S.t === S.dur - 50 && !FAST) sfx('go')
       if (S.t >= S.dur) startStage()
     },
@@ -1712,7 +1725,7 @@
         if (!hl) for (var j = 0; j < rows.length && j < 10; j++) if (rows[j].name === entry.name && +rows[j].score === entry.score) { hl = j + 1; break }
       }
       if (!rank) rank = hl
-      var label = !res ? 'LOCAL RANKING' : res.queued ? 'SAVED - SENDING...' : res.rejected || res.mode === 'local' ? 'LOCAL RANKING' : 'GLOBAL RANKING'
+      var label = !res ? 'LOCAL RANKING' : res.queued ? 'SAVED - SENDING...' : res.rejected ? 'LOCAL ONLY' : res.mode === 'global' ? 'GLOBAL RANKING' : 'LOCAL RANKING'
       if (entry.score > hi) hi = entry.score
       refreshHi()
       go('scores', { board: true, hlRank: hl, myRank: rank, myName: entry.name, myScore: entry.score, myStage: entry.stage, myRound: entry.round, preRows: rows, label: label })
@@ -1750,7 +1763,7 @@
       if (!S.phase && (t > 420 || skip)) { S.phase = 1; S.t0 = t; music('title', true); return }
       if (S.phase === 1) {
         S.scroll += 0.5
-        if (skip || S.scroll > CREDITS.length * 14 + 240) { S.phase = 2; S.t0 = t; sfx('win'); return }
+        if (skip || S.scroll > CREDITS.length * 14 + 180) { S.phase = 2; S.t0 = t; sfx('win'); return }
       }
       if (S.phase === 2 && ((t - S.t0 > 40 && skip) || t - S.t0 > 600)) { sfx('confirm'); go('entry') }
     },
@@ -1764,11 +1777,11 @@
         A.drawPlayer(ctx, 'hero', 'cheer', 128, FEET, frame)
         A.drawIcon(ctx, 'trophy', 124, 166 - bob * 2)
         S.conf.forEach(function (c) { rect(c.x, c.y, 2, 2, c.c) })
-        box(8, 28, 240, 90, 'gold')
-        BIG('CONGRATULATIONS!', 128, 36, blink(frame, 8) ? 'gold' : 'yellow', 2)
-        if (t > 60) TC('YOU ARE THE', 62, 'white')
-        if (t > 90) BIG('PONG CHAMPION!', 128, 74, 'gold', 2)
-        if (t > 150) TC('CHAMPION BONUS +' + S.bonus, 100, 'cyan')
+        box(8, 28, 240, 86, 'gold')
+        TC('CONGRATULATIONS!', 38, blink(frame, 8) ? 'gold' : 'yellow')
+        if (t > 60) TC('YOU ARE THE', 54, 'white')
+        if (t > 90) BIG('PONG CHAMPION!', 128, 68, 'gold', 2)
+        if (t > 150) TC('CHAMPION BONUS +' + S.bonus, 96, 'cyan')
         return
       }
       rect(0, 0, W, H, 'black')
@@ -1776,9 +1789,11 @@
       if (S.phase === 1) {
         for (var k = 0; k < CREDITS.length; k++) {
           var y = 240 - S.scroll + k * 14
-          if (y > -10 && y < 240) TC(CREDITS[k][0], y, CREDITS[k][1] || 'white')
+          if (y > -10 && y < 176) TC(CREDITS[k][0], y, CREDITS[k][1] || 'white')
         }
-        A.drawPlayer(ctx, 'hero', 'walk', 20 + ((frame / 2) | 0) % 230, 238, frame)
+        rect(0, 186, W, 54, 'black')
+        rect(0, 232, W, 8, 'dgreen')
+        A.drawPlayer(ctx, 'hero', 'walk', 20 + ((frame / 2) | 0) % 230, 232, frame)
         return
       }
       BIG('THE END', 128, 60, 'gold', 3)
@@ -2027,9 +2042,9 @@
     var skill = typeof ap === 'number' ? clamp(ap, 0, 1) : 0.97
     var n = S.name
     if (n === 'title') { if (S.t % 60 === 30) { titleCursor = 0; virt.a = true } return }
-    if (n === 'vs' || n === 'clear' || n === 'gameover') { if (S.t % 40 === 39) virt.a = true; return }
-    if (n === 'entry') { if (S.t === 40) virt.start = true; return }
-    if (n === 'scores' || n === 'howto') { if (S.t === 70) virt.start = true; if (S.t === 72) virt.a = true; return }
+    if (n === 'vs' || n === 'clear' || n === 'gameover' || n === 'ending') { if (S.t % 40 === 39) virt.a = true; return }
+    if (n === 'entry') { if (S.t === 35) virt.a = true; if (S.t === 40) virt.start = true; if (S.t === 70) virt.a = true; return }
+    if (n === 'scores' || n === 'howto') { if (S.t === 130) virt.start = true; if (S.t === 132) virt.a = true; return }
     if (n !== 'match' || !m || paused) return
     if (m.ctrl[m.turn] !== 'human') return
     if (m.phase === 'aim') {
@@ -2214,7 +2229,7 @@
     render: function () { render() },
     // QA: leave only n cups alive on a side (0 = hero, 1 = cpu)
     setCups: function (side, n) { if (!m) return; m.sides[side].cups.forEach(function (c, i) { c.alive = i < n; c.hitT = 99 }) },
-    go: function (name, data) { fade = null; setState(name, data || {}) },
+    go: function (name, data) { fade = null; pendingGo = null; setState(name, data || {}) },
     // QA: jump straight into a match (stage 0-4, loop 0+, starting buzz)
     startAt: function (stg, loop, buzz) {
       fade = null; newRun(); run.stage = stg || 0; run.loop = loop || 0; run.buzz = buzz || 0

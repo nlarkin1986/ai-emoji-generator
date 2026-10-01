@@ -53,7 +53,7 @@ function trackErrors(p) { const e = []; p.on("pageerror", (x) => e.push(x.messag
   await page.keyboard.press("ArrowDown"); await page.keyboard.press("z"); await page.waitForTimeout(400)
   await page.keyboard.press("z"); await page.waitForTimeout(300)
   ok((await dbg(page)).state === "match" && (await dbg(page)).paused, "QUIT confirm defaults to NO (mash-safe)")
-  await page.keyboard.press("ArrowDown"); await page.keyboard.press("z"); await page.waitForTimeout(400)
+  await page.keyboard.press("z"); await page.waitForTimeout(400)
   await page.keyboard.press("ArrowLeft"); await page.keyboard.press("z")
   ok(await waitFor(page, () => BP.Game.debug.state === "gameover", 3000), "pause QUIT -> YES -> game over")
   // mash A from GAME OVER at ~10 Hz for 4 s: must never submit

@@ -34,13 +34,13 @@ while (t < totalTicks) {
   lastKey = key
   if (d.r0 >= 0 && (!cur || cur.start !== d.r0)) { cur = { start: d.r0, stages: [] }; runs.push(cur) }
   if (cur && d.state === "match") cur.lastStage = d.stage + (d.round - 1) * 5, cur.score = d.score, cur.shots = d.shots, cur.makes = d.makes, cur.cpuAcc = d.cpuAcc
-  if (cur && d.state === "gameover" && prevState !== "gameover") { cur.end = d.ticks; cur.score = d.score }
+  if (cur && (d.state === "gameover" || d.state === "ending") && !cur.end) { cur.end = d.ticks; cur.score = d.score; cur.how = d.state }
   prevState = d.state
   if (d.errors.length) { errors.push(...d.errors); break }
 }
 for (const r of runs) {
   const dur = r.end ? ((r.end - r.start) / 60).toFixed(0) + "s" : "(unfinished)"
-  console.log(`run: reached stage ${r.lastStage + 1}  score ${r.score}  acc ${r.shots ? Math.round(100 * r.makes / r.shots) : 0}% (${r.makes}/${r.shots})  time ${dur}  cpuAcc ${r.cpuAcc}%`)
+  console.log(`run: reached stage ${r.lastStage + 1}  score ${r.score}  acc ${r.shots ? Math.round(100 * r.makes / r.shots) : 0}% (${r.makes}/${r.shots})  time ${dur} ${r.how || ''}  cpuAcc ${r.cpuAcc}%`)
 }
 console.log(`max stall: ${(maxStall / 60).toFixed(1)}s at ${stallAt}`)
 console.log(errors.length ? "ERRORS:\n" + [...new Set(errors)].join("\n") : "no errors")
