@@ -32,6 +32,8 @@
   var Q
   try { Q = new URLSearchParams(location.search) } catch (e) { Q = { has: function () { return false }, get: function () { return null } } }
   var FAST = Q.has('fast'), TVMODE = Q.has('tv')
+  // QA hooks (autoplay / step / startAt ...) only exist with ?debug, ?test or ?seed
+  var DEBUG = Q.has('debug') || Q.has('test') || Q.has('seed')
   var SEEDP = Q.get('seed')
 
   // ---------------------------------------------------------------- rng
@@ -72,8 +74,9 @@
     for (var k in virt) if (virt[k]) return true
     try { return !!BP.Input.anyPressed() } catch (e) { return false }
   }
-  function tap() {
-    try { var p = BP.Input.pointer(); return p && p.tapped ? p : null } catch (e) { return null }
+  function tap() { return curTap }
+  function readTap() {
+    try { var p = BP.Input.pointer(); return p && p.tapped ? { x: p.x, y: p.y } : null } catch (e) { return null }
   }
   function inR(p, x, y, w, h) { return p && p.x >= x && p.x < x + w && p.y >= y && p.y < y + h }
   function okPr() { return pr('a') || pr('start') }
@@ -113,10 +116,47 @@
     var st = STATES[name]
     if (st && st.enter) st.enter()
   }
+  // Screen transitions never get dropped: during a fade-out the newest target wins, during a fade-in the
+  // request is queued and starts as soon as the fade-in ends.
+  var pendingGo = null
   function go(name, data) {
-    if (fade) return
-    fade = { phase: 'out', t: 0, fn: function () { setState(name, data) } }
+    var fn = function () { setState(name, data) }
+    if (fade) {
+      if (fade.phase === 'out') fade.fn = fn
+      else pendingGo = { name: name, data: data }
+      return
+    }
+    fade = { phase: 'out', t: 0, fn: fn }
   }
+  // Watchdog: maximum idle time (no input) per non-gameplay screen before it escapes on its own.
+  var lastInput = 0, lastTapTick = -999, curTap = null
+  var WATCHDOG = { vs: 20, clear: 45, gameover: 40, scores: 90, howto: 120, ending: 150 }
+  function watchdog() {
+    if (!S || fade) return
+    var lim = WATCHDOG[S.name]
+    if (lim && S.t > 60 * lim && ticks - lastInput > 60 * lim) {
+      logNote('watchdog: ' + S.name)
+      if (S.name === 'vs') startStage()
+      else if (S.name === 'clear') nextStage()
+      else if (S.name === 'gameover' || S.name === 'ending') go('entry')
+      else go('title')
+    }
+    // name entry: a submit that never answers falls back to the local board
+    if (S.name === 'entry' && S.sent && S.t - S.sentT > 60 * 7 && S.finish) S.finish(null)
+  }
+  function logNote(n) { notes.push(n); if (notes.length > 20) notes.shift() }
+  var notes = []
+  // Shared NES menu tap semantics: tap a non-selected row = move the cursor there; tap the selected row
+  // (or anywhere else) = confirm. Returns {move:i} | {confirm:true} | null.
+  function menuTap(p, rows, cur) {
+    if (!p) return null
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i]
+      if (inR(p, r[0], r[1], r[2], r[3])) return i === cur ? { confirm: true } : { move: i }
+    }
+    return { confirm: true }
+  }
+  function isTouch() { try { return BP.Input.device && BP.Input.device() === 'touch' } catch (e) { return false } }
 
   function refreshHi() {
     try {
@@ -1035,9 +1075,9 @@
       if (pr('up')) { titleCursor = (titleCursor + 2) % 3; sfx('select') }
       if (pr('down') || pr('select')) { titleCursor = (titleCursor + 1) % 3; sfx('select') }
       var choose = -1
-      if (p) {
-        for (var i = 0; i < 3; i++) if (inR(p, 64, 108 + i * 14 - 4, 128, 14)) choose = i
-        if (choose < 0 && S.t > 10) choose = titleCursor
+      if (p && S.t > 10) {
+        var mt = menuTap(p, [[64, 104, 128, 14], [64, 118, 128, 14], [64, 132, 128, 14]], titleCursor)
+        if (mt.move != null) { titleCursor = mt.move; sfx('select') } else choose = titleCursor
       } else if (okPr() && S.t > 10) choose = titleCursor
       if (choose >= 0) {
         titleCursor = choose
@@ -1085,7 +1125,8 @@
         T(MENU[i], 88, yy, i === titleCursor ? 'white' : 'lgray')
         if (i === titleCursor && blink(frame, 16)) T('▶', 74, yy, 'red')
       }
-      if (blink(frame, 30)) TC('PUSH START', 155, 'white', true)
+      rect(64, 152, 128, 12, 'black')
+      if (blink(frame, 30)) TC(isTouch() ? 'TAP TO START' : 'PUSH START', 154, 'white')
       T('HI ' + pad(hi, 6), 8, 4, 'white', true)
       TC('© 1989 PARTY SOFT', 231, 'white', true)
     },
@@ -1114,20 +1155,21 @@
         if (S.t > (FAST ? 240 : 480)) startDemo()
         return
       }
-      var lim = S.board ? 40 : 10
+      var lim = S.board ? 120 : 10 // board: 2 s input lock so mashing can't fall through to a new game
+      if (S.board && S.t === 2) { if (S.myRank === 1) { sfx('win'); music('clear', true) } else sfx('confirm') }
       if (S.t > lim && (okPr() || pr('b') || tap())) { sfx('cancel'); go('title') }
-      if (S.board && S.t > 900) go('title')
+      if (S.board && S.t > 1200) go('title')
       if (!S.board && S.t > 1800) go('title')
     },
     draw: function () {
       rect(0, 0, W, H, 'black')
-      drawScoreTable(S.rows, S.hlRank, S.t)
+      drawScoreTable(S.rows, S.hlRank, S.t, S.board ? S.label : null, S.board ? S.myRank : 0)
       if (S.board && S.myRank > 10) {
         box(16, 196, 224, 16, 'gold')
         if (blink(frame, 8)) drawScoreRow(S.myRank, { name: S.myName, score: S.myScore, stage: S.myStage, round: S.myRound }, 200, 'gold')
       }
       if (S.attract) { if (blink(frame, 30)) TC('PUSH START', 220, 'white') }
-      else if (S.t > 40 && blink(frame, 30)) TC('PUSH A', 222, 'lgray')
+      else if (S.t > (S.board ? 120 : 40) && blink(frame, 30)) TC(isTouch() ? 'TAP TO CONTINUE' : 'PUSH A', 222, 'lgray')
     },
   }
   function drawScoreRow(rank, r, y, c) {
@@ -1139,11 +1181,13 @@
     var rd = +r.round || 1
     T((rd > 1 ? rd + '-' : '') + ((+r.stage || 0) + 1), 200, y, c)
   }
-  function drawScoreTable(rows, hl, t) {
-    BIG('HIGH SCORES', 128, 12, 'gold', 2)
-    var mode = 'LOCAL'
-    try { mode = BP.Scores.mode() === 'global' ? 'GLOBAL' : 'LOCAL' } catch (e) {}
-    TC(mode + ' RANKING', 34, mode === 'GLOBAL' ? 'cyan' : 'lgray')
+  function scoresMode() { try { return BP.Scores.mode() === 'global' ? 'GLOBAL' : 'LOCAL' } catch (e) { return 'LOCAL' } }
+  function drawScoreTable(rows, hl, t, label, myRank) {
+    if (myRank === 1) BIG('NEW HIGH SCORE!', 128, 12, blink(frame, 6) ? 'gold' : 'white', 2)
+    else if (myRank > 1) BIG("YOU'RE #" + myRank + '!', 128, 12, 'cyan', 2)
+    else BIG('HIGH SCORES', 128, 12, 'gold', 2)
+    var mode = label || scoresMode() + ' RANKING'
+    TC(mode, 34, mode.indexOf('GLOBAL') >= 0 ? 'cyan' : mode.indexOf('SENDING') >= 0 ? 'yellow' : 'lgray')
     box(8, 46, 240, 146, 'default')
     T('RK', 18, 54, 'red'); T('NAME', 46, 54, 'red'); TR('SCORE', 184, 54, 'red'); T('STG', 200, 54, 'red')
     if (!rows) { if (blink(frame, 10)) TC('LOADING...', 110, 'white'); return }
@@ -1675,12 +1719,19 @@
   function tick() {
     ticks++
     frame++
-    botTick()
+    if (DEBUG) botTick()
+    curTap = readTap()
+    if (curTap) lastTapTick = ticks
+    if (curTap || anyPr()) lastInput = ticks
     if (fade) {
       fade.t++
-      if (fade.phase === 'out' && fade.t >= FADE_T) { fade.fn(); fade.phase = 'in'; fade.t = 0 }
-      else if (fade.phase === 'in' && fade.t >= FADE_T) fade = null
+      if (fade.phase === 'out' && fade.t >= FADE_T) { var fn = fade.fn; fade.phase = 'in'; fade.t = 0; fn() }
+      else if (fade.phase === 'in' && fade.t >= FADE_T) {
+        fade = null
+        if (pendingGo) { var pg = pendingGo; pendingGo = null; go(pg.name, pg.data) }
+      }
     }
+    watchdog()
     if (!fade || fade.phase === 'in') {
       if (S) {
         S.t++
@@ -1765,7 +1816,6 @@
 
   // ======================================================================== DEBUG
   var debug = {
-    autoplay: false,
     get state() { return S ? S.name : 'boot' },
     get phase() { return m ? m.phase : null },
     get score() { return run ? run.score : 0 },
@@ -1796,6 +1846,10 @@
     get wind() { return m ? m.wind.s : 0 },
     get errors() { return errors.slice() },
     get ball() { return m && m.ball ? { x: +m.ball.x.toFixed(1), y: +m.ball.y.toFixed(1), z: +m.ball.z.toFixed(1) } : null },
+    get notes() { return notes.slice() },
+  }
+  var debugTools = {
+    autoplay: false,
     step: function (n) { for (var i = 0; i < (n || 1); i++) tick() },
     press: function (b) { virt[b] = true },
     render: function () { render() },
@@ -1808,8 +1862,10 @@
       startStage()
     },
   }
+  if (DEBUG) { for (var dk in debugTools) debug[dk] = debugTools[dk] }
+  else { try { Object.freeze(debug) } catch (e) {} }
 
-  BP.Game = { start: start, debug: debug, STAGES: STAGES }
+  BP.Game = { start: start, debug: debug }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { start(document.getElementById('screen')) })
   else setTimeout(function () { start(document.getElementById('screen')) }, 0)

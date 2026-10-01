@@ -1,6 +1,6 @@
 // Local dev server for SUPER BEER PONG with a working GLOBAL leaderboard.
 //   node beer-pong/build.mjs && node beer-pong/tools/devserver.mjs   ->  http://localhost:8787/beerpong/
-// Serves public/ and runs the REAL Next route (src/app/api/beerpong/scores/route.ts) against an
+// Serves public/ and runs the REAL Next routes (src/app/api/beerpong/{scores,run}/route.ts) against an
 // in-memory fake KV, so validation / anti-cheat / ranking behave exactly as in production.
 // Options:
 //   --port N          (default 8787, or $PORT)
@@ -9,6 +9,7 @@
 // Dev-only control endpoints (for QA scripts):
 //   POST /__dev/kv?fail=1|0        make the fake KV throw (API -> 500, client queues & retries)
 //   POST /__dev/net?down=1|0       drop API connections (simulates flaky wifi; header x-dev-bypass skips it)
+//   POST /__dev/clock?advance=MS   move the server clock forward (run-token age checks)
 //   POST /__dev/reset              clear all scores and rate limits
 // Admin key for DELETE is $BEERPONG_ADMIN_KEY or "dev".
 import http from "node:http"
@@ -30,15 +31,18 @@ let netDown = false
 globalThis.__BEERPONG_STORE__ = args.includes("--unconfigured") ? null : kv
 process.env.BEERPONG_ADMIN_KEY ||= "dev"
 
-process.removeAllListeners("warning")
-process.on("warning", (w) => { if (w.code !== "MODULE_TYPELESS_PACKAGE_JSON") console.warn(w.message) })
-let route
+let routes
 try {
-  route = await import(join(root, "src/app/api/beerpong/scores/route.ts"))
+  routes = await (await import("./scores-tshooks.mjs")).loadRoutes()
 } catch (e) {
-  console.error("Could not load route.ts (needs Node >= 22.18 for TS type stripping, and `bun install` for zod/@vercel/kv):\n", e.message)
+  console.error("Could not load the API routes (needs Node >= 22.18 for TS type stripping, and `bun install` for zod/@vercel/kv):\n", e.message)
   process.exit(1)
 }
+const API = { "/api/beerpong/scores": routes.scores, "/api/beerpong/run": routes.run }
+// Server clock offset (QA: /__dev/clock?advance=ms lets tests "wait" for run-token age checks).
+let skew = 0
+const realNow = Date.now
+Date.now = () => realNow() + skew
 
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".txt": "text/plain" }
 const body = (req) => new Promise((res) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => res(Buffer.concat(c))) })
@@ -50,14 +54,15 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith("/__dev/") && req.method === "POST") {
       if (p === "/__dev/kv") kv.fail = url.searchParams.get("fail") === "1"
       if (p === "/__dev/net") netDown = url.searchParams.get("down") === "1"
+      if (p === "/__dev/clock") skew += +(url.searchParams.get("advance") || 0)
       if (p === "/__dev/reset") { kv = createFakeKv(); if (globalThis.__BEERPONG_STORE__) globalThis.__BEERPONG_STORE__ = kv }
-      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true, fail: kv.fail, netDown }))
+      res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ ok: true, fail: kv.fail, netDown, skew }))
       return
     }
-    if (p === "/api/beerpong/scores") {
+    if (API[p]) {
       if (netDown && !req.headers["x-dev-bypass"]) { req.socket.destroy(); return }
       if (latency) await new Promise((r) => setTimeout(r, latency))
-      const handler = route[req.method]
+      const handler = API[p][req.method]
       if (!handler) { res.writeHead(405).end(); return }
       const hasBody = !["GET", "HEAD"].includes(req.method)
       const headers = { ...req.headers, "x-forwarded-for": req.headers["x-forwarded-for"] || req.socket.remoteAddress || "local" }

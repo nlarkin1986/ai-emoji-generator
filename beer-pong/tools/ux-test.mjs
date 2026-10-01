@@ -137,6 +137,41 @@ window.__prevented={};['keydown','touchmove','touchstart'].forEach(function(t){d
   }
 }
 
+// ------------------------------------------------------------------ layout audit (every preset, both orientations)
+// Toolbar icons must not overlap any pad control or the canvas; controls must not overlap each other or the
+// canvas; nothing may leave the viewport; report device-pixels-per-NES-pixel (integer = uniform pixels).
+if (runTests || has("--audit")) {
+  const file = join(root, "..", "public", "beerpong", "index.html")
+  const url = pathToFileURL(file).href
+  const names = ["iPhone SE", "iPhone SE (3rd gen)", "iPhone 13 Mini", "iPhone 13", "iPhone 15 Pro Max", "Pixel 5", "Pixel 7", "Galaxy S9+", "Galaxy S5", "Galaxy S8", "iPad Mini", "iPad (gen 7)"]
+  console.log("\n[audit] toolbar/pad/canvas overlap + pixel uniformity")
+  for (const base of names) for (const dev of [base, base + " landscape"]) {
+    if (!devices[dev]) continue
+    const ctx = await browser.newContext({ ...devices[dev], hasTouch: true })
+    const page = await ctx.newPage()
+    await page.goto(url); await page.waitForTimeout(150)
+    const r = await page.evaluate(() => {
+      const box = (el) => { const b = el.getBoundingClientRect(); return { id: el.id || el.className, l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height } }
+      const vis = (el) => { const cs = getComputedStyle(el); return cs.display !== "none" && cs.visibility !== "hidden" && el.offsetParent !== null && el.getBoundingClientRect().width > 0 }
+      const icons = [...document.querySelectorAll("#top .ui")].filter(vis).map(box)
+      const ctl = ["dpad", "sA", "sB", "pSel", "pSt"].map((i) => document.getElementById(i)).filter(vis).map(box)
+      // the D-pad's round plate (landscape) overhangs its box by 7%
+      ctl.forEach((c) => { if (c.id === "dpad" && document.body.classList.contains("m-landscape")) { const o = c.w * 0.07; c.l -= o; c.t -= o; c.r += o; c.b += o } })
+      const cv = box(document.getElementById("screen"))
+      const hit = (a, b, m = 0) => a.l < b.r + m && b.l < a.r + m && a.t < b.b + m && b.t < a.b + m
+      const bad = []
+      for (const i of icons) { for (const c of ctl) if (hit(i, c, 4)) bad.push(`icon ${i.id}~${c.id}`); if (hit(i, cv)) bad.push(`icon ${i.id}~canvas`) }
+      for (let i = 0; i < ctl.length; i++) { if (hit(ctl[i], cv)) bad.push(`${ctl[i].id}~canvas`); for (let j = i + 1; j < ctl.length; j++) if (hit(ctl[i], ctl[j])) bad.push(`${ctl[i].id}~${ctl[j].id}`) }
+      for (const e of [...icons, ...ctl, cv]) if (e.l < -0.5 || e.t < -0.5 || e.r > innerWidth + 0.5 || e.b > innerHeight + 0.5) bad.push(`${e.id} offscreen`)
+      const s = BP.Shell.state.s, dpp = s * devicePixelRatio
+      const A = ctl.find((c) => c.id === "sA")
+      return { bad, mode: BP.Shell.state.mode, dpp: +dpp.toFixed(3), uniform: Math.abs(dpp - Math.round(dpp)) < 0.01, cv: `${Math.round(cv.w)}x${Math.round(cv.h)}`, A: A ? Math.round(A.w) : 0, n: icons.length }
+    })
+    ok(r.bad.length === 0, `${dev.padEnd(30)} ${r.mode.padEnd(9)} screen ${r.cv.padEnd(8)} ${r.dpp} dev-px/px ${r.uniform ? "UNIFORM" : "fit    "} A ${r.A}px icons ${r.n}`, r.bad)
+    await ctx.close()
+  }
+}
+
 // ------------------------------------------------------------------ screenshots
 if (runShots) {
   const file = join(root, "..", "public", "beerpong", "index.html")
@@ -150,6 +185,9 @@ if (runShots) {
     ["iphoneSE3-portrait", D("iPhone SE (3rd gen)")],
     ["iphoneSE3-landscape", D("iPhone SE (3rd gen) landscape")],
     ["iphoneSE1-portrait", D("iPhone SE")],
+    ["iphoneSE1-landscape", D("iPhone SE landscape")],
+    ["galaxyS9-landscape", D("Galaxy S9+ landscape")],
+    ["pixel5-landscape", D("Pixel 5 landscape")],
     ["iphone15promax-portrait", D("iPhone 15 Pro Max")],
     ["pixel7-portrait", D("Pixel 7")],
     ["pixel7-landscape", D("Pixel 7 landscape")],

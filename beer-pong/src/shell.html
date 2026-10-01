@@ -57,7 +57,7 @@ body.crt #scr::after{content:"";position:absolute;left:0;top:0;right:0;bottom:0;
   box-shadow:0 30px 70px rgba(0,0,0,.85),0 0 0 1px #000,inset 0 1px 0 rgba(255,255,255,.16),inset 0 -3px 0 rgba(0,0,0,.6)}
 #tv::before{content:"";position:absolute;left:var(--bz,16px);right:var(--bz,16px);top:var(--bz,16px);bottom:var(--chin,44px);
   border-radius:12px;background:#050505;box-shadow:inset 0 0 0 2px #000,0 1px 0 rgba(255,255,255,.08),0 -1px 0 rgba(0,0,0,.8)}
-body.m-desktop #tv{display:block}
+#tv.show{display:block}
 body.m-desktop #scr{box-shadow:0 0 0 2px #000}
 #brand{position:absolute;left:22px;bottom:13px;font:italic 900 13px/1 var(--lbl);letter-spacing:.18em;color:#8d8d93;
   text-shadow:0 1px 0 #000,0 -1px 0 rgba(255,255,255,.12)}
@@ -73,7 +73,7 @@ body.m-desktop #scr{box-shadow:0 0 0 2px #000}
 #top .tl svg{width:20px;height:20px}
 #top .tl span{color:#fcfcfc}
 body.m-landscape #top .tl,body.m-desktop #top .tl,body.tvmode #top .tl{display:none}
-.ui{appearance:none;-webkit-appearance:none;width:40px;height:38px;display:flex;align-items:center;justify-content:center;
+.ui{appearance:none;-webkit-appearance:none;width:var(--uiw,40px);height:38px;display:flex;align-items:center;justify-content:center;
   margin:0;padding:0;border:0;border-radius:8px;background:transparent;color:#8a8a8a;cursor:pointer;touch-action:manipulation;outline:none}
 .ui svg{display:block;fill:currentColor;shape-rendering:crispEdges}
 .ui:hover{color:#d8d8d8;background:rgba(255,255,255,.06)}
@@ -94,6 +94,9 @@ body.tvmode #top:hover{opacity:1}
 #hint{display:none;text-align:center;white-space:nowrap;color:#6b6b78;font-size:11px;line-height:22px;letter-spacing:.04em}
 body.m-desktop #hint{display:block}
 body.tvmode #hint{display:none}
+#thint{position:absolute;display:none;text-align:center;white-space:nowrap;color:#5f5f6c;font-size:11px;line-height:16px;letter-spacing:.12em;pointer-events:none}
+#thint b{color:var(--red);font-weight:900}
+body.m-portrait #thint.show{display:block}
 #hint kbd{display:inline-block;min-width:18px;padding:0 4px;margin:0 1px;border:1px solid #3c3c46;border-bottom-width:2px;border-radius:4px;
   font:inherit;line-height:15px;color:#c9c9d2;background:#121218;text-align:center}
 #hint i{font-style:normal;color:#9b9ba8;margin-right:10px}
@@ -179,6 +182,7 @@ body.m-landscape #dpad .plate{display:block}
     <button id="bMute" class="ui" type="button" tabindex="-1" data-ui title="Sound on/off (M)" aria-label="Toggle sound"></button>
     <button id="bFs" class="ui" type="button" tabindex="-1" data-ui title="Fullscreen (F)" aria-label="Toggle fullscreen"></button>
   </div>
+  <div id="thint" aria-hidden="true">TAP SCREEN = <b>A</b></div>
   <div id="hint"><i><kbd>&larr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd> MOVE</i><i><kbd>Z</kbd>/<kbd>SPACE</kbd> A</i><i><kbd>X</kbd> B</i><i><kbd>ENTER</kbd> START</i><i><kbd>SHIFT</kbd> SELECT</i><i><kbd>P</kbd> PAUSE</i><i><kbd>M</kbd> MUTE</i><i>CLICK = A</i></div>
 </div>
 <script>
@@ -284,14 +288,14 @@ body.m-landscape #dpad .plate{display:block}
     if (h != null) st.height = R(h) + 'px'
   }
   function posC(el, cx, cy, w, h) { pos(el, cx - w / 2, cy - h / 2, w, h) }
-  // best crisp scale: whole-number CSS scale if it costs little, else whole device pixels per NES pixel, else exact fit
-  function snap(sMax, desk) {
-    var i = Math.floor(sMax + 1e-6)
-    if (i >= 1 && i / sMax >= (desk ? 0.86 : 0.9)) return i
-    var d = Math.floor(sMax * dpr + 1e-6) / dpr
-    if (d >= 1 && d / sMax >= 0.95) return d
+  // crisp scale: a whole number of DEVICE pixels per NES pixel (uniform pixel widths) when that costs <= 15% of
+  // the size, otherwise an exact fit (pixelated, slightly uneven).
+  function snap(sMax) {
+    var k = Math.floor(sMax * dpr + 1e-6)
+    if (k >= 1 && k / dpr / sMax >= 0.85) return k / dpr
     return sMax
   }
+  function nIcons() { return 2 + (fsOK ? 1 : 0) + (S.coarse || S.tv ? 0 : 1) }
 
   function planPortrait(ax, ay, aw, ah) {
     var topH = 40, gap = 10, bot = 8
@@ -330,13 +334,16 @@ body.m-landscape #dpad .plate{display:block}
       var chin = tvOn ? 40 : 0, hintH = tvOn && aw >= 640 ? 26 : 0, m = tvOn ? Math.min(16, Math.round(ah * 0.02)) : 0
       if (!hintH) hint.style.display = 'none'; else hint.style.display = ''
       var sMax = Math.min((aw - 2 * m - 2 * bz) / 256, (ah - 2 * m - bz - chin - hintH) / 240)
-      s = tvOn ? snap(sMax, true) : sMax
+      s = tvOn ? snap(sMax) : sMax
       sw = R(256 * s); sh = R(240 * s)
       var tw = sw + 2 * bz, th = sh + bz + chin, blockH = th + hintH
       var tx = ax + (aw - tw) / 2, ty = ay + Math.max(m, (ah - blockH) / 2)
       sx = tx + bz; sy = ty + bz
+      tv.classList.toggle('show', tvOn)
       if (tvOn) {
         pos(tv, tx, ty, tw, th)
+        $('brand').style.fontSize = '13px'; $('brand').style.bottom = '13px'; $('brand').style.left = '22px'
+        $('led').style.bottom = '17px'; $('led').style.right = '20px'
         tv.style.setProperty('--bz', bz - 3 + 'px'); tv.style.setProperty('--chin', chin - 3 + 'px')
         tv.style.borderRadius = Math.round(bz * 1.3 + 6) + 'px'
         $('brand').style.display = tw > 420 ? '' : 'none'
@@ -349,28 +356,49 @@ body.m-landscape #dpad .plate{display:block}
         pos(top, ax + aw - 34 * 4 - 8, ay + 4, 34 * 4, 30)
       }
     } else if (plan.mode === 'portrait') {
-      s = snap(plan.sMax, false)
+      s = snap(plan.sMax)
       sw = R(256 * s); sh = R(240 * s)
-      sx = ax + (aw - sw) / 2; sy = ay + plan.topH
       pos(top, ax + 2, ay, aw - 4, plan.topH)
-      // controller fills what's left below the screen
-      var remain = ay + ah - plan.bot - (sy + sh + plan.gap)
-      var padH = Math.min(plan.padH, remain), padW = padH * PW / PH
-      var free = remain - padH
-      var px0 = ax + (aw - padW) / 2, py0 = sy + sh + plan.gap + free * 0.55
-      placePortraitPad(px0, py0, padW / PW)
+      // controller anchored at the bottom (thumb reach); the screen, in a little TV, centred in the space above
+      var regionTop = ay + plan.topH
+      var padH = Math.min(plan.padH, ay + ah - plan.bot - plan.gap - regionTop - sh), padW = padH * PW / PH
+      var py0 = ay + ah - plan.bot - padH
+      var regionH = py0 - plan.gap - regionTop
+      var side = (aw - sw) / 2
+      var bz = side >= 6 ? Math.min(14, Math.floor(side - 2)) : 0, chin = bz ? 24 : 0
+      if (sh + bz + chin > regionH) { bz = 0; chin = 0 }
+      var th = sh + bz + chin
+      var hintH = regionH - th >= 40 ? 22 : 0
+      var ty = regionTop + Math.max(0, (regionH - th - hintH) * 0.4)
+      sx = ax + (aw - sw) / 2; sy = ty + bz
+      tv.classList.toggle('show', bz > 0)
+      if (bz > 0) {
+        pos(tv, sx - bz, ty, sw + 2 * bz, th)
+        tv.style.setProperty('--bz', bz - 3 + 'px'); tv.style.setProperty('--chin', chin - 3 + 'px')
+        tv.style.borderRadius = Math.round(bz + 6) + 'px'
+        var br = $('brand'); br.style.display = ''; br.style.fontSize = '10px'; br.style.bottom = (chin - 10) / 2 + 'px'; br.style.left = bz + 4 + 'px'
+        var led = $('led'); led.style.bottom = (chin - 8) / 2 + 'px'; led.style.right = bz + 4 + 'px'
+      }
+      var thint = $('thint')
+      thint.classList.toggle('show', hintH > 0)
+      if (hintH) pos(thint, ax, ty + th + (regionTop + regionH - (ty + th) - 16) / 2, aw, 16)
+      placePortraitPad(ax + (aw - padW) / 2, py0, padW / PW)
     } else { // landscape
-      s = snap(plan.sMax, false)
+      s = snap(plan.sMax)
       sw = R(256 * s); sh = R(240 * s)
       sx = ax + (aw - sw) / 2; sy = ay + (ah - sh) / 2
       var lw = sx - ax, rw = ax + aw - (sx + sw)
-      placeLandscapePad(ax, ay, lw, sx + sw, rw, ah)
-      var tb = 40 * (S.coarse ? 3 : 4)
-      if (tb > lw - 4) { top.style.flexWrap = 'wrap'; tb = 80 }
-      pos(top, ax + (lw - tb) / 2, ay + 4, tb, 40 * Math.ceil((S.coarse ? 3 : 4) * 40 / tb))
+      tv.classList.remove('show')
+      // toolbar: ONE row across the top of the left column; the D-pad band starts below it
+      var n = nIcons(), iw = Math.max(30, Math.min(40, Math.floor((lw - 6) / n))), rowH = 38
+      top.style.setProperty('--uiw', iw + 'px')
+      pos(top, ax + (lw - iw * n) / 2, ay + 2, iw * n, rowH)
       top.style.justifyContent = 'center'
+      ipx = iw >= 36 ? 3 : 2
+      placeLandscapePad(ax, ay, lw, sx + sw, rw, ah, ay + 2 + rowH + 8)
     }
-    if (plan.mode !== 'landscape') top.style.justifyContent = ''
+    if (plan.mode !== 'landscape') { top.style.justifyContent = ''; top.style.removeProperty('--uiw') }
+    if (plan.mode !== 'portrait') $('thint').classList.remove('show')
     pos(scr, sx, sy, sw, sh)
     scr.style.setProperty('--px', s + 'px')
     S.s = s
@@ -400,7 +428,7 @@ body.m-landscape #dpad .plate{display:block}
     $('lB').style.textAlign = $('lA').style.textAlign = 'right'
   }
 
-  function placeLandscapePad(lx, y0, lw, rx, rw, ah) {
+  function placeLandscapePad(lx, y0, lw, rx, rw, ah, leftTop) {
     var lcx = lx + lw / 2, rcx = rx + rw / 2
     // SELECT / START at the bottom of each side, labels above them
     var pw = Math.max(40, Math.min(lw * 0.42, rw * 0.42, 62)), ph = pw * 0.38, bottomY = y0 + ah - Math.max(12, ah * 0.045) - ph / 2 - 6
@@ -410,10 +438,12 @@ body.m-landscape #dpad .plate{display:block}
     $('well1').style.borderRadius = $('well2').style.borderRadius = (ph + 12) / 2 + 'px'
     $('lSel').style.fontSize = $('lSt').style.fontSize = lfs + 'px'
     PCx($('lSel'), lcx, lblY, pw * 1.6, lfs); PCx($('lSt'), rcx, lblY, pw * 1.6, lfs)
-    var bandTop = y0 + 48, bandBot = lblY - lfs - 8, cy = (bandTop + bandBot) / 2 + ah * 0.02
-    // D-pad: as big as the column / band allows
-    var dz = Math.max(90, Math.min(lw * 0.84, (bandBot - bandTop) * 1.0, 190))
-    PCx($('dpad'), lcx, Math.min(cy, bandBot - dz / 2 + dz * 0.04), dz, dz)
+    var bandTop = leftTop, bandBot = lblY - lfs - 8, cy = (bandTop + bandBot) / 2 + ah * 0.02
+    // D-pad: as big as the column / band allows, never under the toolbar row
+    var dz = Math.max(72, Math.min(lw * 0.84, (bandBot - bandTop) / 1.07, 190))
+    var dcy = Math.max(bandTop + dz * 0.57, Math.min(cy, bandBot - dz / 2)) // 0.57: the round plate overhangs 7%
+    PCx($('dpad'), lcx, dcy, dz, dz)
+    cy = Math.max(cy, y0 + 48)
     // A / B: level like the NES pad when there is room, otherwise a thumb-friendly diagonal
     var d = Math.max(52, Math.min(rw * 0.44, ah * 0.22, 96)), sk, gap, bx, by, axx, ayy, diag = false
     sk = d * 1.14; gap = Math.max(8, d * 0.12)

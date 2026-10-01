@@ -1,6 +1,6 @@
 // In-memory stand-in for the subset of @vercel/kv (Upstash Redis) used by
 // src/app/api/beerpong/scores/route.ts. Used by the devserver and the route tests.
-// Mimics Upstash's automatic JSON deserialisation of returned members.
+// zrange mimics Upstash's automatic JSON deserialisation (the route copes with both forms).
 export function createFakeKv({ fail = false } = {}) {
   const zsets = new Map() // key -> Map(member -> score)
   const kv = new Map() // key -> number
@@ -52,6 +52,12 @@ export function createFakeKv({ fail = false } = {}) {
       for (const [m] of a.slice(s, e + 1)) { z.delete(m); n++ }
       return n
     },
+    async set(key, value, opts = {}) {
+      guard()
+      if (opts.nx && kv.has(key)) return null
+      kv.set(key, String(value)); return "OK"
+    },
+    async get(key) { guard(); return kv.has(key) ? kv.get(key) : null },
     async incr(key) { guard(); const v = (kv.get(key) || 0) + 1; kv.set(key, v); return v },
     async expire() { guard(); return 1 },
     async del(...keys) { guard(); let n = 0; for (const k of keys) { if (zsets.delete(k)) n++; if (kv.delete(k)) n++ } return n },

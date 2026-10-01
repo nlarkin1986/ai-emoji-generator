@@ -208,7 +208,7 @@ BP.Input = (function () {
   }
   function onKeyUp(e) {
     var ki = keyInfo(e)
-    if (ki.btn || ki.mute || ki.fs) e.preventDefault()
+    if (ki.btn || ki.mute || ki.fs) { e.preventDefault(); unlock() }
     if (keys[ki.id]) { delete keys[ki.id]; recompute() }
     else if (ki.btn && (e.key === 'Shift')) { // Shift keyup can report the other side's code
       for (var k in keys) if (keys[k] === 'select' && /^Shift/.test(k)) delete keys[k]
@@ -276,16 +276,18 @@ BP.Input = (function () {
         } else if (e.pointerType === 'mouse' && !isUI(e.target)) { if (e.cancelable) e.preventDefault() }
       }, opt)
       W.addEventListener('pointermove', function (e) { if (move(e.pointerId, e.clientX, e.clientY) && e.cancelable) e.preventDefault() }, opt)
-      var end = function (e) { up(e.pointerId) }
+      // pointerup/touchend are the user-activation events iOS/Chrome honour for audio; unlock on every one
+      var end = function (e) { if (e.type === 'pointerup') unlock(); up(e.pointerId) }
       W.addEventListener('pointerup', end, true)
       W.addEventListener('pointercancel', end, true)
       // Touch events still need cancelling: no iOS magnifier/callout, no double-tap zoom, no scroll/bounce.
-      W.addEventListener('touchstart', function (e) { if (!isUI(e.target) && e.cancelable) e.preventDefault() }, opt)
+      W.addEventListener('touchstart', function (e) { unlock(); if (!isUI(e.target) && e.cancelable) e.preventDefault() }, opt)
       W.addEventListener('touchmove', function (e) { if (e.cancelable) e.preventDefault() }, opt)
-      W.addEventListener('touchend', function (e) { if (!isUI(e.target) && e.cancelable) e.preventDefault() }, opt)
+      W.addEventListener('touchend', function (e) { unlock(); if (!isUI(e.target) && e.cancelable) e.preventDefault() }, opt)
     } else {
       // Touch Events fallback (old iOS) + mouse
       var tdown = function (e) {
+        unlock()
         if (isUI(e.target)) { unlock(); return }
         var any = false
         for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; if (down('t' + t.identifier, t.clientX, t.clientY, true, e.target)) any = true }
@@ -293,7 +295,7 @@ BP.Input = (function () {
         return any
       }
       var tmove = function (e) { for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; move('t' + t.identifier, t.clientX, t.clientY) } if (e.cancelable) e.preventDefault() }
-      var tend = function (e) { for (var i = 0; i < e.changedTouches.length; i++) up('t' + e.changedTouches[i].identifier); if (!isUI(e.target) && e.cancelable) e.preventDefault() }
+      var tend = function (e) { unlock(); for (var i = 0; i < e.changedTouches.length; i++) up('t' + e.changedTouches[i].identifier); if (!isUI(e.target) && e.cancelable) e.preventDefault() }
       W.addEventListener('touchstart', tdown, opt)
       W.addEventListener('touchmove', tmove, opt)
       W.addEventListener('touchend', tend, opt)
