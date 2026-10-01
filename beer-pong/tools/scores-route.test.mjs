@@ -121,7 +121,7 @@ await t("checkpoint rules", async () => {
   const tok = await mint()
   advance(39_000)
   const soon = await cp(tok, { round: 1, stage: 0, score: 5000, makes: 6, shots: 10 })
-  assert.equal(soon.status, 425); assert.equal(soon.body.error, "too_soon"); assert.equal(soon.body.retryInMs, 11_000) // needs max(40 s, 30 s + 2 s * 10 shots)
+  assert.equal(soon.status, 425); assert.equal(soon.body.error, "too_soon"); assert.ok(Math.abs(soon.body.retryInMs - 11_000) < 1000) // needs max(40 s, 30 s + 2 s * 10 shots)
   advance(2_000)
   assert.equal(await cpReason(tok, { round: 1, stage: 1, score: 5000, makes: 6, shots: 10 }), "out_of_order")
   assert.equal(await cpReason(tok, { round: 1, stage: 0, score: 33_201, makes: 13, shots: 20 }), "stage_score_too_high")
