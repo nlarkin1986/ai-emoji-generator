@@ -59,7 +59,7 @@
   var CH = {};
 
   CH.hero = {
-    pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', C: 'red', c: 'dred', P: 'salmon', T: 'red', t: 'dred', L: 'white' },
+    pal: { S: 'skin', s: 'salmon', H: 'maroon', h: 'dbrown', C: 'red', c: 'dred', P: 'salmon', T: 'red', t: 'dred', L: 'white' },
     bg: ['blue', 'dblue'],
     p64: {
       shade: [24, 47, 3],
@@ -185,7 +185,7 @@
   };
 
   CH.chad = {
-    pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', C: 'white', c: 'lgray', T: 'white', t: 'lgray', L: 'red' },
+    pal: { S: 'skin', s: 'salmon', H: 'maroon', h: 'dbrown', C: 'white', c: 'lgray', T: 'white', t: 'lgray', L: 'red' },
     bg: ['red', 'dred'],
     p64: {
       shade: [24, 47, 3],
