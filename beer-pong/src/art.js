@@ -1012,9 +1012,9 @@
   // per stage: [centerX, dy, [style, hair, skin, shirt, print, pants, cap, flags], role]  role: 0 plain, 1 drinker
   // 5-6 per stage between the racks (10-cup racks reach x 72 / 184) so cups and splashes always read against the backdrop
   var CROWDS = [
-    [[78, 0, ['cap', 'brown', 'skin', 'red', 'white', 'navy', 'white'], 1], [98, 1, ['long', 'gold', 'tan', 'white', 'red', 'slate'], 0],
+    [[78, 0, ['cap', 'brown', 'skin', 'gold', 'navy', 'navy', 'navy'], 1], [98, 1, ['long', 'gold', 'tan', 'white', 'red', 'slate'], 0],
       [118, -1, ['afro', 'black', 'brown', 'red', 'white', 'dgray'], 0], [138, 1, ['bun', 'black', 'tan', 'lgray', 'red', 'navy'], 1],
-      [158, 0, ['spiky', 'gold', 'skin', 'white', 'red', 'navy'], 1], [178, -1, ['beanie', 'brown', 'tan', 'slate', 'white', 'dgray', 'red'], 0]],
+      [158, 0, ['spiky', 'gold', 'skin', 'white', 'red', 'navy'], 1], [178, -1, ['beanie', 'black', 'tan', 'green', 'white', 'dgray', 'slate'], 0]],
     [[78, 0, ['short', 'dbrown', 'skin', 'blue', 'white', 'navy'], 1], [98, 1, ['long', 'gold', 'skin', 'red', 'white', 'navy'], 0],
       [118, -1, ['cap', 'black', 'brown', 'white', 'blue', 'dgray', 'green'], 1], [138, 0, ['bald', 'dbrown', 'tan', 'green', 'white', 'navy', null, 's'], 0],
       [158, 1, ['bun', 'maroon', 'skin', 'gold', 'red', 'navy'], 0], [178, -1, ['afro', 'dbrown', 'brown', 'red', 'white', 'navy'], 1]],
@@ -1442,8 +1442,8 @@
 
     } else if (stage === 4) {
       // banner
-      drawBox(ctx, 40, 44, 176, 22, 'red');
-      textCenter(ctx, 'WORLD CUP OF PONG', 51, 'gold', true);
+      drawBox(ctx, 56, 24, 144, 11, 'red'); // hung in the rafters, clear of the aim windows (y 35..119)
+      text(ctx, 'WORLD CUP OF PONG', 60, 26, 'gold');
       // spotlights sweeping (dithered beams)
       beam(ctx, 24, 36, 128 + Math.round(Math.sin(t / 70) * 90), t);
       beam(ctx, 232, 36, 128 + Math.round(Math.sin(t / 55 + 2) * 90), t);
@@ -1458,7 +1458,7 @@
     if (!beamPat) { var p = mk(4, 4); P1(p._x, 0, 0, 'cream'); P1(p._x, 2, 2, 'cream'); P1(p._x, 1, 3, 'yellow'); P1(p._x, 3, 1, 'yellow'); beamPat = ctx.createPattern(p, 'repeat'); }
     ctx.fillStyle = beamPat;
     var ty = 210, n = ty - sy;
-    for (var y = sy; y < ty; y += 2) {
+    for (var y = sy; y < ty; y += 2) { if (y < 136) continue; // never dither over the stands' faces
       var k = (y - sy) / n, cx = sx + (tx - sx) * k, hw = 2 + k * 16;
       ctx.fillRect(Math.round(cx - hw), y, Math.round(hw * 2), 2);
     }

@@ -113,7 +113,7 @@
   // bottom message line (prompts, skip, chirps): one centered window, text on row y 208
   function msgLine(s, c, st, hide) { if (hide) return; s = String(s); var x = gridX(s); box(x - 8, 203, s.length * 8 + 16, 18, st || 'default'); T(s, x, 208, c || UC.hi) }
   // big message window (banners + callouts) centered on x 128; scale-2 text on a tile row
-  var BIG_Y = 123
+  var BIG_Y = 131
   function bigWin(s, y, c, st, h) {
     s = String(s)
     var bw = Math.min(248, Math.max(96, s.length * 16 + 32))
@@ -1024,8 +1024,8 @@
     // the stage-1 rival heckles from his side of the table
     if (M.chirp && !paused && humanTurn && (ph === 'aim' || ph === 'power')) {
       var cw = M.chirp.text.length * 8 + 16
-      box(W - 8 - cw, 147, cw, 18, 'red')
-      T(M.chirp.text, W - cw, 152, UC.info)
+      box(W - 8 - cw, 139, cw, 18, 'red')
+      T(M.chirp.text, W - cw, 144, UC.info)
     }
     if (showHud !== false) drawHUD()
     // bottom message line: first-throw hints / CPU skip / attract prompt
@@ -1038,10 +1038,10 @@
 
   function drawSpeech(sp) {
     // portrait window | text window with the speaker's name knocked into its border
-    box(8, 35, 48, 48, 'red')
-    if (BP.Art.drawPortrait) BP.Art.drawPortrait(ctx, sp.who, 16, 43)
-    win(56, 35, 192, 48, 'red', sp.name, UC.foe)
-    T(sp.text.slice(0, Math.max(0, sp.t)), 64, 56, UC.info)
+    box(8, 43, 48, 48, 'red')
+    if (BP.Art.drawPortrait) BP.Art.drawPortrait(ctx, sp.who, 16, 51)
+    win(56, 43, 192, 48, 'red', sp.name, UC.foe)
+    T(sp.text.slice(0, Math.max(0, sp.t)), 64, 64, UC.info)
   }
 
   function drawCallouts() {
@@ -1063,14 +1063,14 @@
 
   // ---- SHOT WINDOW: the rack seen from behind the shooter + the power meter in ONE frame with a title tab.
   // It hangs on the shooter's side of the screen so the stage's centerpiece stays visible, and never reaches
-  // below y 120 (the ball's arc never climbs above y 128). Rack scale is unchanged: 2 px per table unit.
-  var SWW = 112, SWH = 84, SWY = 35
+  // below y 128 (the ball's arc never climbs above it) nor above y 39 (stage 4 rafter banner). 2 px per table unit.
+  var SWW = 112, SWH = 84, SWY = 43
   var IW = 90, IH = 82 // legacy inset size: BRO-DY's smoke drift range (updateMatch)
   function shotWin(side) {
     var x = side === 1 ? W - 8 - SWW : 8
     return { x: x, y: SWY, vx: x + 4, vy: SWY + 4, vw: 84, vh: 76, dx: x + 90, fx: x + 96, fy: SWY + 6, fw: 8, fh: 72 }
   }
-  // chips (h 14, slim frame) put their text on the tile row below the window: y 128
+  // chips (h 14, slim frame) put their text on the tile row below the window: y 136
   function bounceChip(side) { return { x: shotWin(side).x, y: SWY + SWH + 6, w: 80, h: 14 } }
   function chipHit(p, side) { var c = bounceChip(side); return inR(p, c.x, c.y - 2, c.w, c.h + 4) } // 18-px tap target
   function insetXY(side, x, z) {
@@ -1142,7 +1142,7 @@
     ctx.restore()
     // title tab: what to do now (you) / who is shooting (CPU)
     var tt, tc
-    if (!human) { tt = M.demo && side === 0 ? 'HERO' : M.sides[side].name.slice(0, 9); tc = side === 0 ? UC.info : UC.foe }
+    if (!human) { tt = M.sides[side].name.slice(0, 9); tc = side === 0 ? UC.info : UC.foe }
     else if (M.phase === 'aim' || M.phase === 'power') { tt = M.phase === 'aim' ? 'AIM' : 'POWER'; tc = UC.hi }
     else { tt = M.sides[side].name; tc = UC.info }
     tab(g.x + 8, g.y - 3, tt, tc)
@@ -1309,9 +1309,9 @@
         if (i === titleCursor && blink(frame, 16)) T('▶', 72, yy, UC.hi)
       }
       var ps = isTouch() ? 'TAP TO START' : 'PUSH START'
-      if (blink(frame, 30)) tab(gridX(ps), 200, ps, UC.info)
+      if (blink(frame, 30)) { box(gridX(ps) - 8, 179, ps.length * 8 + 16, 18, 'default'); T(ps, gridX(ps), 184, UC.info) }
       tab(88, 8, 'HI ' + pad(hi, 6), UC.info); T('HI', 88, 8, UC.hi)
-      tab(gridX('© 1989 PARTY SOFT'), 216, '© 1989 PARTY SOFT', UC.info)
+      msgLine('© 1989 PARTY SOFT', UC.info)
     },
   }
 
@@ -1552,7 +1552,7 @@
         if (t > 60 && blink(frame, 12)) TC('READY?', 96, UC.info)
       }
       // name plates flush with the portraits (you: left edge, rival: right edge), one stat row on tile y 136
-      var cpn = st.cpu.slice(0, 8)
+      var cpn = st.cpu
       T('SAL', 16, 120, UC.info); T(cpn, 240 - cpn.length * 8, 120, UC.foe)
       T('BUZZ', 16, 136, 'beer')
       for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 56 + k * 8, 136)
@@ -1858,7 +1858,7 @@
         drawYesNo(S.confirm, 88, 144)
       }
       if (S.sent) { box(64, 115, 128, 32, 'gold'); if (blink(frame, 8)) TC('SENDING...', 128, UC.info) }
-      TC('A:ADD  B:DEL  START:GO TO END', 208, UC.label)
+      TC('A:ADD  B:DEL  START:GO TO END', 204, UC.label)
       TC('OR TAP THE LETTERS', 216, UC.off)
     },
   }
