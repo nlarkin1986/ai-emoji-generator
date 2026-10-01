@@ -12,8 +12,8 @@ const OUT = process.argv[2] || "/tmp/ad"; fs.mkdirSync(OUT, { recursive: true })
 const FILE = pathToFileURL(join(here, "..", "..", "public", "beerpong", "index.html")).href
 const b = await chromium.launch(); const p = await b.newPage()
 await p.goto(FILE + "?debug&fast&seed=4"); await p.waitForTimeout(600)
-const d = await p.evaluate(() => {
-  const A = BP.Art, K = 16, list = [["hero", "idle", 0], ["hero", "sad", 0], ["hero", "drink", 0], ["chad", "idle", 0], ["chad", "sad", 0], ["kegmaster", "idle", 0]]
+const d = await p.evaluate((LIST) => {
+  const A = BP.Art, K = 16, list = JSON.parse(LIST)
   const W = 34, H = 26, o = document.createElement("canvas"); o.width = list.length * (W * K + 8); o.height = H * K + 20
   const ox = o.getContext("2d"); ox.imageSmoothingEnabled = false; ox.fillStyle = "#222"; ox.fillRect(0, 0, o.width, o.height)
   list.forEach(([w, pose, t], i) => {
@@ -26,5 +26,5 @@ const d = await p.evaluate(() => {
     ox.fillStyle = "#fff"; ox.font = "14px monospace"; ox.fillText(w + " " + pose, X0 + 4, 14)
   })
   return o.toDataURL()
-})
-fs.writeFileSync(join(OUT, "heads16.png"), Buffer.from(d.split(",")[1], "base64")); console.log("ok"); await b.close()
+}, process.env.LIST || JSON.stringify([["hero","idle",0],["chad","idle",0]]))
+fs.writeFileSync(join(OUT, (process.env.NAME || "heads16") + ".png"), Buffer.from(d.split(",")[1], "base64")); console.log("ok"); await b.close()
