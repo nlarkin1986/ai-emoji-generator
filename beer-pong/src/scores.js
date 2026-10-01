@@ -20,7 +20,7 @@
  *   top(n=10)         Promise<[{id,name,score,stage,round,ts}]>
  *   best()            Promise<number>
  *   submit(entry)     entry = {name, score, stage, round, cups, accuracy, shots, makes, durationMs}
- *                       stage = 0-based stage reached (0..4), round = 1 or 2,
+ *                       stage = 0-based stage reached (0..4), round = 1..30 (3+ = GAUNTLET),
  *                       shots/makes = whole-run player totals, durationMs = real play time (ms).
  *                     -> {rank, top, mode, id, queued?, rejected?}. mode is 'global' only when the
  *                       score is on the shared board; queued/rejected results are 'local' with the
@@ -88,12 +88,12 @@ BP.Scores = (function () {
   }
 
   // Plausibility ceiling — identical to _lib.ts. Returns null when OK, else a reason.
-  //   round in {1,2}, stage in 0..4, S = (round-1)*5 + stage + 1
+  //   round in 1..30 (multiplier = round), stage in 0..4, S = (round-1)*5 + stage + 1
   //   makes <= shots; (S-1)*3 <= makes <= S*10+10; score <= (makes*1500 + S*15000)*round + 10000
   //   S*20000 <= durationMs <= 3 h; shots <= durationMs/700 + 20
   function plausible(p) {
     if (p.makes == null || p.shots == null || p.durationMs == null) return 'missing_stats'
-    if (p.round !== 1 && p.round !== 2) return 'bad_round'
+    if (!(p.round % 1 === 0 && p.round >= 1 && p.round <= 30)) return 'bad_round'
     if (!(p.stage >= 0 && p.stage <= 4)) return 'bad_stage'
     var S = (p.round - 1) * 5 + p.stage + 1
     if (p.makes > p.shots) return 'makes_gt_shots'

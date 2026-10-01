@@ -95,6 +95,8 @@ await t("lead's console forgery is rejected", async () => {
   const r = await J(await post(forged)); assert.equal(r.status, 400) // round 9 out of range
   const f2 = await run({ score: 9_999_999, round: 2, stage: 4, makes: 110, shots: 120, durationMs: 3 * 3_600_000 })
   assert.equal(await reason(f2), "score_too_high")
+  const f3 = await run({ score: 9_999_999, round: 4, stage: 4, makes: 200, shots: 220, durationMs: 3_000_000 })
+  assert.equal(await reason(f3), "score_too_high") // (200*1500 + 20*15000)*4 + 10000 = 2,410,000
 })
 await t("name sanitising", async () => {
   const cases = [["  héllo wörld <script>", "HLLO WRL"], ["", "PLAYER"], ["@@@", "PLAYER"], ["a♥b", "A♥B"], ["fuckface", "PLAYER"], ["  x   y  ", "X Y"], ["ABCDEFGHIJ", "ABCDEFGH"]]
@@ -105,7 +107,7 @@ await t("name sanitising", async () => {
 })
 await t("validation errors", async () => {
   assert.equal((await post("not json")).status, 400)
-  for (const o of [{ score: -1 }, { score: 10_000_000 }, { score: 12.5 }, { id: "x" }, { round: 3 }, { round: 0 }, { stage: 5 }, { makes: undefined }, { shots: undefined }, { durationMs: undefined }])
+  for (const o of [{ score: -1 }, { score: 10_000_000 }, { score: 12.5 }, { id: "x" }, { round: 31 }, { round: 0 }, { stage: 5 }, { makes: undefined }, { shots: undefined }, { durationMs: undefined }])
     assert.equal((await post(await run(o))).status, 400, JSON.stringify(o))
   assert.equal((await post(resign({ ...(await run()), v: 2 }))).status, 400)
   assert.equal((await post("x".repeat(5000))).status, 413)
@@ -133,6 +135,8 @@ await t("plausibility accepts legit maxima (<=1500/make, <=15000/stage, Round 2 
     { stage: 4, round: 1, makes: 60, shots: 60, durationMs: 100_000, score: 60 * 1500 + 5 * 15000 },
     { stage: 0, round: 2, makes: 70, shots: 80, durationMs: 300_000, score: 2 * (70 * 1500 + 6 * 15000) },
     { stage: 4, round: 2, makes: 110, shots: 110, durationMs: 200_000, score: 2 * (110 * 1500 + 10 * 15000) }, // the ENDING
+    { stage: 2, round: 4, makes: 180, shots: 220, durationMs: 1_800_000, score: 4 * (180 * 1500 + 18 * 15000) + 10000 }, // GAUNTLET round 4
+    { stage: 4, round: 30, makes: 1510, shots: 1600, durationMs: 3 * 3_600_000, score: 9_999_999 },
     { stage: 4, round: 2, makes: 27, shots: 300, durationMs: 3 * 3_600_000, score: 2 * (27 * 1500 + 10 * 15000) + 10000 },
   ]
   for (const o of ok) { const r = await J(await post(await run(o))); assert.equal(r.status, 200, JSON.stringify(o) + " " + JSON.stringify(r.body)) }
