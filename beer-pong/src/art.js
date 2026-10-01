@@ -39,7 +39,7 @@
        Shared sprite palettes (all stages):  SP0 hero/cups  black red dred white  | SP1 skin  skin tan gold
                                              SP2 ball/fx    white lgray gold      | SP3 = CPU character (below)
        0 BACKYARD   BG0 sky  navy slate white | BG1 house gray lgray dgray | BG2 lawn forest dgreen green
-                    BG3 lights cream gold brown        SP3 CHAD  white lgray gold
+                    BG3 lights cream gold brown        SP3 NATE  white lgray brown
        1 BASEMENT   BG0 brick maroon dred dbrown | BG1 olive gold dgray | BG2 kegs gray lgray white
                     BG3 navy blue green                SP3 TANK  brown green dgreen (+dbrown hair)
        2 ROOFTOP    BG0 navy slate dgray | BG1 windows cream gold gray | BG2 lgray white red
@@ -52,14 +52,14 @@
   var STAGE_COLS = [
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'forest', 'dgreen', 'green', 'brown'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'maroon', 'dbrown', 'olive', 'gray', 'dgray', 'navy', 'blue', 'brown', 'green', 'dgreen'],
-    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'magenta', 'purple', 'dpurple', 'cyan'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'magenta', 'purple', 'dpurple', 'cyan', 'brown'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'dpurple', 'dmagenta', 'rose', 'cream', 'dblue', 'blue', 'olive', 'orange', 'dbrown', 'cyan'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'dgray', 'gray', 'cream', 'navy', 'dblue', 'blue', 'brown']
   ];
   var STAGE_OVR = [
     { maroon: 'dred', olive: 'dgray', orange: 'gold', salmon: 'red', xlgray: 'lgray', lime2: 'gold', yellow: 'gold', blue: 'slate', dbrown: 'dgray', skin2: 'tan', skin3: 'brown', sky: 'white' },
     { orange: 'gold', salmon: 'red', purple: 'blue', magenta: 'blue', sky: 'white', cream: 'white', forest: 'dgreen', slate: 'navy', skin2: 'tan', skin3: 'brown', cyan: 'white', lgreen: 'green' },
-    { orange: 'gold', salmon: 'red', teal: 'slate', blue: 'slate', green: 'cyan', dbrown: 'dgray', brown: 'dred', olive: 'dgray', dmagenta: 'dpurple', skin2: 'tan', skin3: 'dred', sky: 'cyan', maroon: 'dred' },
+    { orange: 'gold', salmon: 'red', teal: 'slate', blue: 'slate', green: 'cyan', dbrown: 'dgray', olive: 'dgray', dmagenta: 'dpurple', skin2: 'tan', skin3: 'dred', sky: 'cyan', maroon: 'dred' },
     { salmon: 'rose', pblue: 'white', forest: 'dbrown', brown: 'dbrown', gray: 'dbrown', teal: 'blue', pink: 'rose', lgreen: 'cyan', green: 'cyan', yellow: 'gold', skin2: 'orange', skin3: 'dbrown', maroon: 'dred' },
     { lblue: 'blue', purple: 'navy', dpurple: 'navy', orange: 'gold', salmon: 'red', green: 'blue', maroon: 'dred', dbrown: 'brown', skin2: 'tan', skin3: 'brown', slate: 'navy', yellow: 'gold' }
   ];
@@ -529,8 +529,8 @@
   var HELDCUP = ['rrrr', 'RRRR', 'RRRR', '.RR.', '.RR.'];
   var HELDBALL = ['.BB.', 'BBBb', 'BBbb', '.bb.'];
   var CHARS = {
-    hero: { name: 'YOU', head: 'hero', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'dred', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', L: 'white', P: 'tan', p: 'gold', O: 'white', W: 'white', w2: 'red' }, bg: 'blue' },
-    chad: { name: 'CHAD', head: 'chad', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'gold', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', L: 'red', P: 'red', p: 'dred', O: 'white', W: 'white', w2: 'red' }, bg: 'red' },
+    hero: { name: 'SAL', head: 'hero', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'brown', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', L: 'white', P: 'tan', p: 'gold', O: 'white', W: 'white', w2: 'red' }, bg: 'blue' },
+    chad: { name: 'NATE', head: 'chad', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'brown', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', L: 'red', P: 'red', p: 'dred', O: 'white', W: 'white', w2: 'red' }, bg: 'red' },
     tank: { name: 'TANK', head: 'tank', logo: 'N8', wide: 3, armR: 1.4, pal: { S: 'brown', s: 'dred', H: 'dbrown', T: 'green', t: 'dgreen', V: 'green', L: 'white', P: 'lgray', p: 'gray', O: 'white', W: 'gray', w2: 'dgray' }, bg: 'orange' },
     sky: { name: 'SKY', head: 'sky', logo: 'bolt', wide: 0, pal: { S: 'skin', s: 'tan', H: 'navy', G: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', L: 'gold', P: 'dgray', p: 'black', O: 'white', W: 'white', w2: 'purple' }, bg: 'slate' },
     brody: { name: 'BRO-DY', head: 'brody', logo: null, wide: 1, pal: { S: 'orange', s: 'red', H: 'cream', G: 'black', g: 'white', T: 'cyan', t: 'blue', V: 'orange', L: 'white', P: 'rose', p: 'dmagenta', O: 'orange', W: 'gold', w2: 'red' }, bg: 'rose' },
@@ -864,7 +864,7 @@
     var map = { K: 'black', E: 'black', M: 'dred', w: 'white', G: 'black', g: 'white', h: ch.pal.H === 'gold' || ch.pal.H === 'cream' ? 'olive' : 'dgray' };
     for (var key in ch.pal) map[key] = ch.pal[key];
     map.w = 'white'; map.c = ch.pal.c || 'dred'; map.D = ch.pal.D || 'brown';
-    if (hd === 'hero') map.h = 'dred';
+    if (hd === 'hero' || hd === 'chad') map.h = 'dbrown';
     c.drawImage(gCanvas(g, map), 0, 0);
     R(c, 0, 0, 64, 1, 'black'); R(c, 0, 63, 64, 1, 'black'); R(c, 0, 0, 1, 64, 'black'); R(c, 63, 0, 1, 64, 'black');
     return cv;
@@ -1648,7 +1648,7 @@
   BP.Art = {
     W: W, H: H, PAL: PAL, NES: NES, G: G,
     TABLE_BACK: 182, TABLE_FRONT: 196, TABLE_X0: 32, TABLE_X1: 224, TABLE_MID: 189, FLOOR_Y: 222, FEET_Y: 228,
-    CHARS: { hero: 'YOU', chad: 'CHAD', tank: 'TANK', sky: 'SKY', brody: 'BRO-DY', kegmaster: 'THE KEGMASTER' },
+    CHARS: { hero: 'SAL', chad: 'NATE', tank: 'TANK', sky: 'SKY', brody: 'BRO-DY', kegmaster: 'THE KEGMASTER' },
     STAGES: ['BACKYARD BASH', 'FRAT BASEMENT', 'ROOFTOP', 'BEACH BONFIRE', 'CHAMPIONSHIP'],
     init: init,
     text: wrap(text), textCenter: wrap(textCenter), measure: measure,

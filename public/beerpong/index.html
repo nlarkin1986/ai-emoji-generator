@@ -560,7 +560,7 @@ body.m-landscape #dpad .plate{display:block}
        Shared sprite palettes (all stages):  SP0 hero/cups  black red dred white  | SP1 skin  skin tan gold
                                              SP2 ball/fx    white lgray gold      | SP3 = CPU character (below)
        0 BACKYARD   BG0 sky  navy slate white | BG1 house gray lgray dgray | BG2 lawn forest dgreen green
-                    BG3 lights cream gold brown        SP3 CHAD  white lgray gold
+                    BG3 lights cream gold brown        SP3 NATE  white lgray brown
        1 BASEMENT   BG0 brick maroon dred dbrown | BG1 olive gold dgray | BG2 kegs gray lgray white
                     BG3 navy blue green                SP3 TANK  brown green dgreen (+dbrown hair)
        2 ROOFTOP    BG0 navy slate dgray | BG1 windows cream gold gray | BG2 lgray white red
@@ -573,14 +573,14 @@ body.m-landscape #dpad .plate{display:block}
   var STAGE_COLS = [
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'forest', 'dgreen', 'green', 'brown'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'maroon', 'dbrown', 'olive', 'gray', 'dgray', 'navy', 'blue', 'brown', 'green', 'dgreen'],
-    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'magenta', 'purple', 'dpurple', 'cyan'],
+    ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'slate', 'gray', 'dgray', 'cream', 'magenta', 'purple', 'dpurple', 'cyan', 'brown'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'navy', 'dpurple', 'dmagenta', 'rose', 'cream', 'dblue', 'blue', 'olive', 'orange', 'dbrown', 'cyan'],
     ['black', 'white', 'lgray', 'red', 'dred', 'skin', 'tan', 'gold', 'dgray', 'gray', 'cream', 'navy', 'dblue', 'blue', 'brown']
   ];
   var STAGE_OVR = [
     { maroon: 'dred', olive: 'dgray', orange: 'gold', salmon: 'red', xlgray: 'lgray', lime2: 'gold', yellow: 'gold', blue: 'slate', dbrown: 'dgray', skin2: 'tan', skin3: 'brown', sky: 'white' },
     { orange: 'gold', salmon: 'red', purple: 'blue', magenta: 'blue', sky: 'white', cream: 'white', forest: 'dgreen', slate: 'navy', skin2: 'tan', skin3: 'brown', cyan: 'white', lgreen: 'green' },
-    { orange: 'gold', salmon: 'red', teal: 'slate', blue: 'slate', green: 'cyan', dbrown: 'dgray', brown: 'dred', olive: 'dgray', dmagenta: 'dpurple', skin2: 'tan', skin3: 'dred', sky: 'cyan', maroon: 'dred' },
+    { orange: 'gold', salmon: 'red', teal: 'slate', blue: 'slate', green: 'cyan', dbrown: 'dgray', olive: 'dgray', dmagenta: 'dpurple', skin2: 'tan', skin3: 'dred', sky: 'cyan', maroon: 'dred' },
     { salmon: 'rose', pblue: 'white', forest: 'dbrown', brown: 'dbrown', gray: 'dbrown', teal: 'blue', pink: 'rose', lgreen: 'cyan', green: 'cyan', yellow: 'gold', skin2: 'orange', skin3: 'dbrown', maroon: 'dred' },
     { lblue: 'blue', purple: 'navy', dpurple: 'navy', orange: 'gold', salmon: 'red', green: 'blue', maroon: 'dred', dbrown: 'brown', skin2: 'tan', skin3: 'brown', slate: 'navy', yellow: 'gold' }
   ];
@@ -1050,8 +1050,8 @@ body.m-landscape #dpad .plate{display:block}
   var HELDCUP = ['rrrr', 'RRRR', 'RRRR', '.RR.', '.RR.'];
   var HELDBALL = ['.BB.', 'BBBb', 'BBbb', '.bb.'];
   var CHARS = {
-    hero: { name: 'YOU', head: 'hero', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'dred', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', L: 'white', P: 'tan', p: 'gold', O: 'white', W: 'white', w2: 'red' }, bg: 'blue' },
-    chad: { name: 'CHAD', head: 'chad', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'gold', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', L: 'red', P: 'red', p: 'dred', O: 'white', W: 'white', w2: 'red' }, bg: 'red' },
+    hero: { name: 'SAL', head: 'hero', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'brown', C: 'red', c: 'dred', w: 'white', T: 'red', t: 'dred', V: 'red', L: 'white', P: 'tan', p: 'gold', O: 'white', W: 'white', w2: 'red' }, bg: 'blue' },
+    chad: { name: 'NATE', head: 'chad', logo: 'W', wide: 0, pal: { S: 'skin', s: 'tan', H: 'brown', C: 'white', c: 'lgray', T: 'white', t: 'lgray', V: 'white', L: 'red', P: 'red', p: 'dred', O: 'white', W: 'white', w2: 'red' }, bg: 'red' },
     tank: { name: 'TANK', head: 'tank', logo: 'N8', wide: 3, armR: 1.4, pal: { S: 'brown', s: 'dred', H: 'dbrown', T: 'green', t: 'dgreen', V: 'green', L: 'white', P: 'lgray', p: 'gray', O: 'white', W: 'gray', w2: 'dgray' }, bg: 'orange' },
     sky: { name: 'SKY', head: 'sky', logo: 'bolt', wide: 0, pal: { S: 'skin', s: 'tan', H: 'navy', G: 'black', g: 'white', T: 'purple', t: 'dpurple', V: 'purple', L: 'gold', P: 'dgray', p: 'black', O: 'white', W: 'white', w2: 'purple' }, bg: 'slate' },
     brody: { name: 'BRO-DY', head: 'brody', logo: null, wide: 1, pal: { S: 'orange', s: 'red', H: 'cream', G: 'black', g: 'white', T: 'cyan', t: 'blue', V: 'orange', L: 'white', P: 'rose', p: 'dmagenta', O: 'orange', W: 'gold', w2: 'red' }, bg: 'rose' },
@@ -1385,7 +1385,7 @@ body.m-landscape #dpad .plate{display:block}
     var map = { K: 'black', E: 'black', M: 'dred', w: 'white', G: 'black', g: 'white', h: ch.pal.H === 'gold' || ch.pal.H === 'cream' ? 'olive' : 'dgray' };
     for (var key in ch.pal) map[key] = ch.pal[key];
     map.w = 'white'; map.c = ch.pal.c || 'dred'; map.D = ch.pal.D || 'brown';
-    if (hd === 'hero') map.h = 'dred';
+    if (hd === 'hero' || hd === 'chad') map.h = 'dbrown';
     c.drawImage(gCanvas(g, map), 0, 0);
     R(c, 0, 0, 64, 1, 'black'); R(c, 0, 63, 64, 1, 'black'); R(c, 0, 0, 1, 64, 'black'); R(c, 63, 0, 1, 64, 'black');
     return cv;
@@ -2169,7 +2169,7 @@ body.m-landscape #dpad .plate{display:block}
   BP.Art = {
     W: W, H: H, PAL: PAL, NES: NES, G: G,
     TABLE_BACK: 182, TABLE_FRONT: 196, TABLE_X0: 32, TABLE_X1: 224, TABLE_MID: 189, FLOOR_Y: 222, FEET_Y: 228,
-    CHARS: { hero: 'YOU', chad: 'CHAD', tank: 'TANK', sky: 'SKY', brody: 'BRO-DY', kegmaster: 'THE KEGMASTER' },
+    CHARS: { hero: 'SAL', chad: 'NATE', tank: 'TANK', sky: 'SKY', brody: 'BRO-DY', kegmaster: 'THE KEGMASTER' },
     STAGES: ['BACKYARD BASH', 'FRAT BASEMENT', 'ROOFTOP', 'BEACH BONFIRE', 'CHAMPIONSHIP'],
     init: init,
     text: wrap(text), textCenter: wrap(textCenter), measure: measure,
@@ -3998,7 +3998,7 @@ BP.Scores = (function () {
 
   // acc = Round 1 CPU make chance, acc2 = Round 2 (remixed: 10-cup racks, wind on rooftop + beach, faster meters)
   var STAGES = [
-    { name: 'BACKYARD BASH', who: 'chad', cpu: 'CHAD', acc: 0.22, acc2: 0.5, aim: 12, pow: 6, bounce: 0, wind: false, band: 'dblue', stars: 1,
+    { name: 'BACKYARD BASH', who: 'chad', cpu: 'NATE', acc: 0.22, acc2: 0.5, aim: 12, pow: 6, bounce: 0, wind: false, band: 'dblue', stars: 1,
       taunt: ['NICE HAT, ROOKIE.', 'THIS IS MY YARD!'], taunt2: ['I PRACTICED, BRO.', 'REMATCH TIME!'] },
     { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.33, acc2: 0.55, aim: 16, pow: 8, bounce: 0.05, wind: false, band: 'dred', stars: 2,
       taunt: ['TANK NO MISS.', 'TANK ONLY DRINK.'], taunt2: ['TANK ANGRY NOW.', 'TANK SMASH CUPS.'] },
@@ -4374,7 +4374,7 @@ BP.Scores = (function () {
     var rows = n === 10 ? 4 : 3
     m = {
       demo: demo, stage: stg, loop: loop, st: st,
-      sides: [{ who: 'hero', name: 'YOU', cups: buildRack(0, rows), form: n }, { who: st.who, name: st.cpu, cups: buildRack(1, rows), form: n }],
+      sides: [{ who: 'hero', name: 'SAL', cups: buildRack(0, rows), form: n }, { who: st.who, name: st.cpu, cups: buildRack(1, rows), form: n }],
       turn: 0, balls: 2, made: 0, phase: 'ready', pt: 0, ball: null, trail: [],
       aim: null, pow: null, plan: null, lockAim: null, lockPow: 0, bounce: false,
       wind: { ax: 0, az: 0, s: 0, ang: 0 }, overtime: false, redemption: false, redUsed: false,
@@ -4440,7 +4440,7 @@ BP.Scores = (function () {
     m.missX = null
     m.chirp = null
     var side = m.turn
-    if (m.ctrl[side] === 'human' && m.st.who === 'chad' && !m.demo && rnd() < 0.3) { var ch = LINES.chad.chirp; m.chirp = { text: 'CHAD: ' + ch[ri(ch.length)], t: 0 } }
+    if (m.ctrl[side] === 'human' && m.st.who === 'chad' && !m.demo && rnd() < 0.3) { var ch = LINES.chad.chirp; m.chirp = { text: 'NATE: ' + ch[ri(ch.length)], t: 0 } }
     setPose(side, 'aim', 0)
     setupAim(side)
     if (m.ctrl[side] === 'human' && m.tankJolt) { m.aim.wob += 2.5; m.tankJolt = false }
@@ -4495,7 +4495,7 @@ BP.Scores = (function () {
 
   // Opponent personality: one-line speech (Punch-Out style) + per-stage gimmicks
   var LINES = {
-    chad: { make: ['TOO EASY, BRO!', 'CHAD NEVER MISSES!', 'DRINK UP, ROOKIE!'], miss: ['WIND. TOTALLY WIND.', 'THAT WAS A WARMUP.', 'THE CUP MOVED!'],
+    chad: { make: ['TOO EASY, BRO!', 'NATE NEVER MISSES!', 'DRINK UP, ROOKIE!'], miss: ['WIND. TOTALLY WIND.', 'THAT WAS A WARMUP.', 'THE CUP MOVED!'],
       fire: ['DUDE... CHILL.'], chirp: ['AIRBALL!', 'CHOKE!', 'BRICK!', 'NO CHANCE!', 'YOU WISH!'] },
     tank: { make: ['TANK SMASH!', 'TABLE GO BOOM!'], miss: ['TANK... SAD.', 'BALL TOO SMALL.'], fire: ['TANK SCARED NOW.'] },
     sky: { make: ['RIDE THE BREEZE.', 'THE WIND SAYS HI.'], miss: ['GUST. NOT ME.', 'ROOKIE WIND.'], fire: ['NOT BAD... FOR YOU.'] },
@@ -5494,7 +5494,7 @@ BP.Scores = (function () {
         BIG('VS', 128, 60, blink(frame, 6) ? 'red' : 'white', 3)
         if (t > 60 && blink(frame, 12)) TC('READY?', 96, 'white')
       }
-      TR('YOU', 80, 116, 'white'); T(st.cpu, 176, 116, 'red')
+      TR('SAL', 80, 116, 'white'); T(st.cpu, 176, 116, 'red')
       T('BUZZ', 16, 128, 'beer')
       for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 16 + k * 9, 138)
       T('SKILL', 176, 128, 'lgray')
@@ -5892,7 +5892,7 @@ BP.Scores = (function () {
     ['GRAPHIC DESIGN', 'gold'], ['PIXEL PATTY', 'white'], ['', ''],
     ['SOUND COMPOSER', 'gold'], ['CHIPTUNE CHUCK', 'white'], ['', ''],
     ['PLAY TESTERS', 'gold'], ['THE WHOLE BACKYARD', 'white'], ['', ''],
-    ['- CAST -', 'red'], ['CHAD', 'white'], ['TANK', 'white'], ['SKY', 'white'], ['BRO-DY', 'white'], ['THE KEGMASTER', 'white'], ['AND YOU', 'gold'], ['', ''],
+    ['- CAST -', 'red'], ['SAL', 'white'], ['NATE', 'white'], ['TANK', 'white'], ['SKY', 'white'], ['BRO-DY', 'white'], ['THE KEGMASTER', 'white'], ['AND YOU', 'gold'], ['', ''],
     ['SPECIAL THANKS', 'gold'], ['ALL PARTY PEOPLE', 'white'], ['', ''],
     ['NO CUPS WERE HARMED', 'lgray'], ['IN THE MAKING OF', 'lgray'], ['THIS GAME.', 'lgray'], ['', ''],
     ['PRESENTED BY', 'gold'], ['PARTY SOFT', 'white'], ['', ''],

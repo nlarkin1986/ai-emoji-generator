@@ -17,7 +17,7 @@
 
   // acc = Round 1 CPU make chance, acc2 = Round 2 (remixed: 10-cup racks, wind on rooftop + beach, faster meters)
   var STAGES = [
-    { name: 'BACKYARD BASH', who: 'chad', cpu: 'CHAD', acc: 0.22, acc2: 0.5, aim: 12, pow: 6, bounce: 0, wind: false, band: 'dblue', stars: 1,
+    { name: 'BACKYARD BASH', who: 'chad', cpu: 'NATE', acc: 0.22, acc2: 0.5, aim: 12, pow: 6, bounce: 0, wind: false, band: 'dblue', stars: 1,
       taunt: ['NICE HAT, ROOKIE.', 'THIS IS MY YARD!'], taunt2: ['I PRACTICED, BRO.', 'REMATCH TIME!'] },
     { name: 'FRAT BASEMENT', who: 'tank', cpu: 'TANK', acc: 0.33, acc2: 0.55, aim: 16, pow: 8, bounce: 0.05, wind: false, band: 'dred', stars: 2,
       taunt: ['TANK NO MISS.', 'TANK ONLY DRINK.'], taunt2: ['TANK ANGRY NOW.', 'TANK SMASH CUPS.'] },
@@ -393,7 +393,7 @@
     var rows = n === 10 ? 4 : 3
     m = {
       demo: demo, stage: stg, loop: loop, st: st,
-      sides: [{ who: 'hero', name: 'YOU', cups: buildRack(0, rows), form: n }, { who: st.who, name: st.cpu, cups: buildRack(1, rows), form: n }],
+      sides: [{ who: 'hero', name: 'SAL', cups: buildRack(0, rows), form: n }, { who: st.who, name: st.cpu, cups: buildRack(1, rows), form: n }],
       turn: 0, balls: 2, made: 0, phase: 'ready', pt: 0, ball: null, trail: [],
       aim: null, pow: null, plan: null, lockAim: null, lockPow: 0, bounce: false,
       wind: { ax: 0, az: 0, s: 0, ang: 0 }, overtime: false, redemption: false, redUsed: false,
@@ -459,7 +459,7 @@
     m.missX = null
     m.chirp = null
     var side = m.turn
-    if (m.ctrl[side] === 'human' && m.st.who === 'chad' && !m.demo && rnd() < 0.3) { var ch = LINES.chad.chirp; m.chirp = { text: 'CHAD: ' + ch[ri(ch.length)], t: 0 } }
+    if (m.ctrl[side] === 'human' && m.st.who === 'chad' && !m.demo && rnd() < 0.3) { var ch = LINES.chad.chirp; m.chirp = { text: 'NATE: ' + ch[ri(ch.length)], t: 0 } }
     setPose(side, 'aim', 0)
     setupAim(side)
     if (m.ctrl[side] === 'human' && m.tankJolt) { m.aim.wob += 2.5; m.tankJolt = false }
@@ -514,7 +514,7 @@
 
   // Opponent personality: one-line speech (Punch-Out style) + per-stage gimmicks
   var LINES = {
-    chad: { make: ['TOO EASY, BRO!', 'CHAD NEVER MISSES!', 'DRINK UP, ROOKIE!'], miss: ['WIND. TOTALLY WIND.', 'THAT WAS A WARMUP.', 'THE CUP MOVED!'],
+    chad: { make: ['TOO EASY, BRO!', 'NATE NEVER MISSES!', 'DRINK UP, ROOKIE!'], miss: ['WIND. TOTALLY WIND.', 'THAT WAS A WARMUP.', 'THE CUP MOVED!'],
       fire: ['DUDE... CHILL.'], chirp: ['AIRBALL!', 'CHOKE!', 'BRICK!', 'NO CHANCE!', 'YOU WISH!'] },
     tank: { make: ['TANK SMASH!', 'TABLE GO BOOM!'], miss: ['TANK... SAD.', 'BALL TOO SMALL.'], fire: ['TANK SCARED NOW.'] },
     sky: { make: ['RIDE THE BREEZE.', 'THE WIND SAYS HI.'], miss: ['GUST. NOT ME.', 'ROOKIE WIND.'], fire: ['NOT BAD... FOR YOU.'] },
@@ -1513,7 +1513,7 @@
         BIG('VS', 128, 60, blink(frame, 6) ? 'red' : 'white', 3)
         if (t > 60 && blink(frame, 12)) TC('READY?', 96, 'white')
       }
-      TR('YOU', 80, 116, 'white'); T(st.cpu, 176, 116, 'red')
+      TR('SAL', 80, 116, 'white'); T(st.cpu, 176, 116, 'red')
       T('BUZZ', 16, 128, 'beer')
       for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < run.buzz ? 'mugFull' : 'mug', 16 + k * 9, 138)
       T('SKILL', 176, 128, 'lgray')
@@ -1911,7 +1911,7 @@
     ['GRAPHIC DESIGN', 'gold'], ['PIXEL PATTY', 'white'], ['', ''],
     ['SOUND COMPOSER', 'gold'], ['CHIPTUNE CHUCK', 'white'], ['', ''],
     ['PLAY TESTERS', 'gold'], ['THE WHOLE BACKYARD', 'white'], ['', ''],
-    ['- CAST -', 'red'], ['CHAD', 'white'], ['TANK', 'white'], ['SKY', 'white'], ['BRO-DY', 'white'], ['THE KEGMASTER', 'white'], ['AND YOU', 'gold'], ['', ''],
+    ['- CAST -', 'red'], ['SAL', 'white'], ['NATE', 'white'], ['TANK', 'white'], ['SKY', 'white'], ['BRO-DY', 'white'], ['THE KEGMASTER', 'white'], ['AND YOU', 'gold'], ['', ''],
     ['SPECIAL THANKS', 'gold'], ['ALL PARTY PEOPLE', 'white'], ['', ''],
     ['NO CUPS WERE HARMED', 'lgray'], ['IN THE MAKING OF', 'lgray'], ['THIS GAME.', 'lgray'], ['', ''],
     ['PRESENTED BY', 'gold'], ['PARTY SOFT', 'white'], ['', ''],
