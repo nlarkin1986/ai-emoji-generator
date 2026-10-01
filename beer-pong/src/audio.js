@@ -325,6 +325,7 @@
   function Engine(ctx, seed) {
     var E = this, c = (this.ctx = ctx), s = seed >>> 0 || 1
     this.tempo = 1; this.busy = {}; this.nb = {}
+    this.live = !(window.OfflineAudioContext && ctx instanceof window.OfflineAudioContext)
     this.rnd = function () {
       s = (s + 0x6d2b79f5) | 0
       var t = Math.imul(s ^ (s >>> 15), 1 | s)
@@ -427,8 +428,11 @@
         if (v > 0) { var rate = NPER[q.b] / NPER[f[0]]; if (rate !== q.r) { q.s.playbackRate.setValueAtTime(rate, tk); q.r = rate } }
       }
     }
-    res.forEach(function (g) { g.gain.setValueAtTime(0, end) })
+    res.forEach(function (g) { g.gain.setValueAtTime(0, end); drop(E, g, end) })
     return res
+  }
+  function drop(E, node, t) { // disconnect a finished node so long sessions don't accumulate dead nodes
+    if (E.live) setTimeout(function () { try { node.disconnect() } catch (e) {} }, Math.max(0, t - E.ctx.currentTime) * 1000 + 500)
   }
   function cut(gs, t) { if (gs) gs.forEach(function (g) { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(0, t) }) }
 
@@ -461,6 +465,7 @@
         pv.set(end, 0, 0, 0); pv.stop(end + 0.05)
       }
       E.busy[ch] = { until: end, pri: d.p, out: out }
+      drop(E, out, end + 0.1)
     })
     return true
   }
