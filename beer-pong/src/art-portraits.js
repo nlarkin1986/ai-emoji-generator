@@ -604,7 +604,7 @@
   };
 
   CH.brody = {
-    pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', o: 'olive', G: 'black', g: 'white', r: 'red', y: 'gold', T: 'cyan', t: 'teal' },
+    pal: { S: 'orange', s: 'brown', H: 'cream', h: 'gold', G: 'black', g: 'white', r: 'red', y: 'gold', T: 'cyan', t: 'teal' },
     bg: ['rose', 'dmagenta'],
     p64: {
       shade: [27, 47, 3],
@@ -658,17 +658,17 @@
         '.........................KsKKKKK',
         '......................KKKKssssss',
         '..................KKKKSSSKsssSSS', // 48 bare shoulders
-        '..............KKKKTTTTSSSssSSSSS',
-        '...........KKKSSTTTTSSSSSsSSSSSS', // 50
-        '........KKKSSSSSTTTTSSSSSSssSSSS',
-        '......KKSSSSSSSTTTTSSSSSSSSSSSSS',
-        '.....KSSSSSSSSsTTTTSSSSSSSSSSSSS',
-        '....KSSSSSSSSssTTTTSSSSSSSSSSSSS',
-        '...KSSSSSSSSsKTTTTTTSSSSSSSSSSSS', // 55 tank top
-        '..KSSSSSSSSsKtTTTTTTTTSSSSSSSSSS',
-        '..KSSSSSSSSsKtTTTTTTTTTTTSSSSSSS',
-        '..KSSSSSSSSsKtTTTTTTTTTTTTTTSSSS',
-        '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT',
+        '..............KKKKtTTtSSSssSSSSS',
+        '...........KKKSStTTtSSSSSsSSSSSS', // 50
+        '........KKKSSSSStTTtSSSSSSssSSSS',
+        '......KKSSSSSSStTTtSSSSSSSSSSSSS',
+        '.....KSSSSSSSSstTTtSSSSSSSSSSSSS',
+        '....KSSSSSSSSsstTTtSSSSSSSSSSSSS',
+        '...KSSSSSSSSsKtTTTTtSSSSSSSSSSSS', // 55 tank top
+        '..KSSSSSSSSsKtTTTTTTTtSSSSSSSSSS',
+        '..KSSSSSSSSsKtTTTTTTTTTtSSSSSSSS',
+        '..KSSSSSSSSsKtTTTTTTTTTTTTtSSSSS',
+        '..KSSSSSSSSsKtTTTTTTTTTTTTTTTttt',
         '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT', // 60
         '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT',
         '..KSSSSSSSSsKtTTTTTTTTTTTTTTTTTT',
@@ -694,8 +694,8 @@
           '.....KHKKK..KHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhhK..KKKhK.....',
           '......KHHHKKKKHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhhKKKKHhhK......',
           '.......KHHHHHKHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhhKHHHhhK.......',
-          '........KhHHhHHHHHHHoHoHoHoHoHoHoHoHoHoHoHoHoHHHHHHHHhhK........',
-          '.........KhhhhhHHHHoHohhHoHohhHoHohhHoHohhHoHoHHHhhhhhK.........',
+          '........KhHHhHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHhhK........',
+          '.........KhhhhhHHHHhHhhhHhHhhhHhHhhhHhHhhhHhHhHHHhhhhhK.........',
           '..........KKKKKHHHHHHhKKHHHhKKhHHhKKHHHhKKhHHHHhhKKKKK..........',
           '..............KHHHHhhK.KhHHhK.KhhK.KhHHhK.KhhHHhhK..............',
           '..............KHHHHKK...KhhK...KK...KhhK...KKHHhhK..............',
@@ -773,6 +773,128 @@
         [8, 14, ['g'], 0], [17, 14, ['g']],
         [16, 17, ['s']],
         [13, 20, ['w..w']]
+      ]
+    }
+  };
+
+  CH.kegmaster = {
+    pal: { S: 'skin', s: 'salmon', H: 'brown', h: 'maroon', D: 'brown', d: 'maroon', C: 'gold', c: 'orange', P: 'cream', J: 'red', T: 'blue', t: 'dblue', L: 'gold' },
+    bg: ['purple', 'dpurple'],
+    p64: {
+      shade: [15, 31, 3],
+      half: [
+        '...............................K', // 0 crown
+        '.......................K......KP',
+        '................K.....KPK.....KP',
+        '...............KPK...KPCcK...KPC',
+        '..............KPCcK..KPCcK...KPC',
+        '..............KPCcK.KPCCCcK.KPCC', // 5
+        '.............KPCCCcKKPCCCcK.KPCC',
+        '............KPCCCCCCCCCCCCcKPCCC',
+        '............KPCCCCCCCCCCCCcKPCCC',
+        '............KPPPPPPPPPPPPPPPPPPP',
+        '............KCCCCCCCCCCCCCCCCKJJ', // 10
+        '............KCCCCCCCJJCCCCCCCKJJ',
+        '............KCCPCCCCJJCCPCCCCKJJ',
+        '............KccccccccccccccccKJJ',
+        '.............KKKKKKKKKKKKKKKKKKK',
+        '.............KHHHHSSSSSSSSSSSSSS', // 15
+        '.............KHHHHSSSSSSSSSSSSSS',
+        '.............KHHHSSSSSSSSSSSSSSS',
+        '.............KHHHSSSSSSSSSSSSSss',
+        '.............KHHHSDDDSSSSSSSSSss', // 19 brows crash down
+        '.............KHHHSSDDDDDDSSSSSss', // 20
+        '.............KHHHSSSSSDDDDDDSSSS',
+        '..........KKKKHHSSSSSSSSddddSSSS',
+        '.........KSsssHSSSSSKKKKKKKKSSSS', // 23 lid
+        '.........KSsSsHSSSSSKWWWEEWWSSSS',
+        '.........KSsSsHSSSSSSsWWEEWsSSSS', // 25
+        '.........KSsSsHSSSSSSSsssssSSSSS',
+        '.........KSsSsDDSSSSSSSSSSSSSSSS',
+        '.........KSssDDDSSSSSSSSSSSSSsSS',
+        '..........KSsDDDDSSSSSSSSSSSsSSS',
+        '...........KKDDDDDSSSSSSSSSsSSSS', // 30
+        '............KDDDDDDSSSSSSSSSSSSS',
+        '............KDDDDDDDSSSSSSSSDDDD', // 32 mustache
+        '............KDDDDDDDDSSSDDDDDDDD',
+        '............KDDDDDDDDDDDDDDDDDDD',
+        '............KDDDDDDDDDDDDKKKKKKK', // 35 snarl
+        '............KDDDDDDDDDDDKWWWWWWW',
+        '............KDDDDDDDDDDDDKKKKKKK',
+        '............KDDDDDDDDDDDDDDDDDDD',
+        '............KDdDDDDdDDDDdDDDDdDD',
+        '..........KKKDDdDDDDdDDDDdDDDDdD', // 40
+        '.......KKKLLKDDdDDDDdDDDDdDDDDdD',
+        '.....KKTTTLLKDDDdDDDDdDDDDdDDDDd',
+        '....KTTTTTLLKDDDdDDDDdDDDDdDDDDd',
+        '...KTTTTTTTLLKDDDdDDDDdDDDDdDDDD',
+        '..KtTTTTTTTTLLKDDDdDDDDdDDDDdDDD', // 45
+        '..KtTTTTTTTTTLLKDDDdDDDDdDDDDdDD',
+        '..KtTTTTTTTTTTLLKDDDdDDDDdDDDDdD',
+        '..KtTTTTTTTTTTTLLKDDDdDDDDdDDDDd',
+        '..KtTTTTTTTTTTTTLLKKDDDdDDDDdDDD',
+        '..KtTTTTTTTTTTTTTLLLKKDDDdDDDDdD', // 50
+        '..KtTTTTTTTTTTTTTTTLLLKKKDDDDdDD',
+        '..KtTTTTTTTTTTTTTTTTTLLLLKKKKKKK',
+        '..KtTTTTTTTTTTTTTTTTTTTTLLLLLLLL',
+        '..KtTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTTTTTTTTTTTTTTTTTTTTTTT', // 55
+        '..KtTTTTTTTTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT', // 60
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT',
+        '..KtTTTTTTtTTTTTTTTTTTTTTTTTTTTT'
+      ],
+      patches: [
+        [30, 10, ['W', 'W']], [20, 11, ['W'], 0], [42, 11, ['W']],     // jewel glints
+        [21, 24, ['WEEWWW', 'sEEWWs']], [36, 24, ['WEEWWW', 'sEEWWs']], // glare at the hero
+        [29, 27, ['..ss', '.sSSs', 'sSSSSs', 'sKSSKs', '.ssss']],     // fat nose
+        [26, 36, ['.K..K..K..K.']],                                     // gritted teeth
+        [27, 55, ['LL.....LL', 'LL....LL.', 'LL...LL..', 'LLLLLL...', 'LL..LL...', 'LL...LL..', 'LL....LL.']] // gold K
+      ]
+    },
+    p32: {
+      shade: [10, 17, 2],
+      half: [
+        '................',
+        '...............K', // 1 crown
+        '..........K...KP',
+        '......K..KPK..KP',
+        '.....KPK.KPCK.KP',
+        '.....KPCKKPCCKKP', // 5
+        '.....KPPPPPPPPPP',
+        '.....KCCCCCCCCKJ',
+        '.....KccccccccKJ',
+        '......KKKKKKKKKK',
+        '.....KHHSSSSSSSS', // 10
+        '.....KHSDDSSSSss',
+        '....KKHSSDDDDSSS',
+        '...KSsHSSKKKKKSS', // 13 lid
+        '...KSsHSSSWEEWSS',
+        '...KSsDSSSssssSS', // 15
+        '....KDDSSSSSSSsS',
+        '....KDDDSSSSSsSS',
+        '....KDDDDSSDDDDD', // 18 mustache
+        '....KDDDDDDDDDDD',
+        '....KDDDDDDKKKKK', // 20 snarl
+        '....KDDDDDDKWWWW',
+        '....KDDDDDDDKKKK',
+        '....KDDDdDDDDdDD',
+        '.KKKKDDDdDDDDdDD',
+        'KTTLLKDDdDDDDdDD', // 25
+        'KTTTLLKDDdDDDdDD',
+        'KTTTTLLKDDDDdDDD',
+        'KtTTTTLLKKDDDDDD',
+        'KtTTTTTTLLKKKKKK',
+        'KtTTTTTTTLLLLLLL', // 30
+        'KtTTTTTTTTTTTTTT'
+      ],
+      patches: [
+        [15, 15, ['ss', 'KK']],
+        [13, 21, ['.K..K.']]
       ]
     }
   };
