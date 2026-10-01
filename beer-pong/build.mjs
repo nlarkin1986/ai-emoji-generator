@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const src = join(here, "src")
-const MODULES = ["art", "audio", "input", "scores", "game"] // load order matters
+const MODULES = ["art", "art-chars", "art-portraits", "audio", "input", "scores", "game"] // load order matters
+const OPTIONAL = new Set(["art-chars", "art-portraits"]) // art overrides; skipped when absent
 
 const pick = (m) => {
   const real = join(src, `${m}.js`)
@@ -19,7 +20,7 @@ const pick = (m) => {
 const shell = readFileSync(join(src, existsSync(join(src, "shell.html")) ? "shell.html" : "_stubs/shell.html"), "utf8")
 if (!shell.includes("<!-- @@SCRIPTS@@ -->")) throw new Error("shell.html must contain <!-- @@SCRIPTS@@ -->")
 
-const parts = MODULES.map((m) => {
+const parts = MODULES.filter((m) => !OPTIONAL.has(m) || existsSync(join(src, `${m}.js`))).map((m) => {
   const { file, stub } = pick(m)
   if (stub) console.warn(`[build] using STUB for ${m}`)
   const code = readFileSync(file, "utf8").replace(/<\/script/gi, "<\\/script")
