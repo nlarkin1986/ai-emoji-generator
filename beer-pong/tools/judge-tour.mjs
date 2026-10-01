@@ -1,0 +1,47 @@
+import { chromium, canvasShot, hookErrors, dbg, FILE, DEV, OUT } from "./judge-common.mjs"
+const browser = await chromium.launch({ args: ["--autoplay-policy=no-user-gesture-required"] })
+const ctx = await browser.newContext({ viewport: { width: 1024, height: 900 } })
+const page = await ctx.newPage()
+const errors = []; hookErrors(page, errors)
+await page.goto(DEV)
+await page.waitForTimeout(1200)
+await page.screenshot({ path: OUT + "/desk-title-full.png" })
+await canvasShot(page, "01-title")
+const key = async (k, w = 120) => { await page.keyboard.down(k); await page.waitForTimeout(50); await page.keyboard.up(k); await page.waitForTimeout(w) }
+// how to play
+await key("ArrowDown"); await key("ArrowDown"); await key("Enter", 600)
+for (let i = 0; i < 4; i++) { await canvasShot(page, "02-howto-" + i); await key("z", 400) }
+console.log("after howto", await dbg(page))
+await page.waitForTimeout(500)
+await key("ArrowUp"); await key("ArrowUp"); // back to 1 PLAYER? cursor at 2 -> up up -> 0
+await key("Enter", 1500)
+await canvasShot(page, "03-vs")
+console.log(await dbg(page))
+await page.waitForTimeout(2600)
+await canvasShot(page, "04-vs-late")
+await page.waitForTimeout(1500)
+await canvasShot(page, "05-match-ready")
+console.log(await dbg(page))
+// wait for aim
+for (let i = 0; i < 40; i++) { const d = await dbg(page); if (d.phase === "aim") break; await page.waitForTimeout(100) }
+await page.waitForTimeout(300)
+await canvasShot(page, "06-aim")
+await key("z", 200)
+await canvasShot(page, "07-power")
+await page.waitForTimeout(300)
+await key("z", 150)
+await canvasShot(page, "08-throw")
+await page.waitForTimeout(250)
+await canvasShot(page, "09-flight")
+await page.waitForTimeout(250)
+await canvasShot(page, "09b-flight")
+await page.waitForTimeout(700)
+await canvasShot(page, "10-result")
+console.log(await dbg(page))
+// pause
+await key("Enter", 300)
+await canvasShot(page, "11-pause")
+console.log("paused", await dbg(page))
+await key("Enter", 300)
+console.log("errors", errors)
+await browser.close()

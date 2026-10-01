@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "node beer-pong/build.mjs",
+  "outputDirectory": "public",
+  "headers": [
+    {
+      "source": "/((?!api/).*)",
+      "headers": [{ "key": "Set-Cookie", "value": "bp_api=1; Path=/; Max-Age=604800; SameSite=Lax" }]
+    }
+  ]
+}

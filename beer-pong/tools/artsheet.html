@@ -1,0 +1,98 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Art Sheet</title>
+<style>body{margin:0;background:#222}canvas{image-rendering:pixelated;display:block}</style></head>
+<body><canvas id="c" width="256" height="240"></canvas>
+<script>window.BP = {};</script>
+<script src="../src/art.js"></script>
+<script>
+// ?panel=s0..s4 (scene), chars, misc, all.   &t=frame &ex=excite &pose=...
+var q = new URLSearchParams(location.search), panel = q.get('panel') || 'all', T = +(q.get('t') || 40), EX = +(q.get('ex') || 0);
+var A = BP.Art; A.init();
+var cv = document.getElementById('c'), c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+var CPU = ['chad', 'tank', 'sky', 'brody', 'kegmaster'];
+function rack(cx, dir, n) { // 6 cup pyramid apex toward center
+  var out = [], rows = n === 10 ? [4, 3, 2, 1] : [3, 2, 1];
+  rows.forEach(function (cnt, r) { for (var i = 0; i < cnt; i++) out.push([cx + dir * r * 8, (i - (cnt - 1) / 2) * 9]); });
+  return out;
+}
+function scene(ctx, s, t, ex, poseL, poseR) {
+  A.drawBackground(ctx, s, t, ex); A.drawTable(ctx, s);
+  var L = rack(44, 1, 6).map(function (p) { return [p[0] + 0, p[1]]; }), Rr = rack(212, -1, 6);
+  var all = L.concat(Rr).sort(function (a, b) { return a[1] - b[1]; });
+  all.forEach(function (p, i) { A.drawCup(ctx, p[0], 189 + p[1] * 0.5 + 0, i === 3 && q.get('hit') ? 'hit' : 'full', t % 21); });
+  A.drawPlayer(ctx, 'hero', poseL || 'idle', 16, 228, t);
+  A.drawPlayer(ctx, CPU[s], poseR || 'idle', 240, 228, t);
+  // ball arc + trail
+  for (var i = 0; i < 14; i++) { var x = 40 + i * 9, y = 186 - Math.sin(i / 20 * Math.PI) * 70; if (s === 3 && i > 9) A.drawFlame(ctx, x, y, t + i); else A.drawTrailDot(ctx, x, y, s === 3); }
+  A.drawShadow(ctx, 166, 190); A.drawBall(ctx, 166, 140, s === 3, t);
+  // HUD
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 256, 24);
+  A.text(ctx, '1P 012300', 8, 4); A.text(ctx, 'HI 050000', 168, 4, 'yellow');
+  A.text(ctx, A.STAGES[s], 8, 14, 'sky');
+  for (var k = 0; k < 5; k++) A.drawIcon(ctx, k < 2 ? 'mugFull' : 'mug', 160 + k * 9, 14);
+  A.drawIcon(ctx, 'fire', 208, 14); A.drawIcon(ctx, 'wind', 220, 14); A.drawIcon(ctx, 'ball', 232, 14); A.drawIcon(ctx, 'ball', 242, 14);
+  if (q.get('splash')) A.drawSplash(ctx, 200, 180, +q.get('splash'));
+}
+function chars(ctx) {
+  ctx.fillStyle = '#183C5C'; ctx.fillRect(0, 0, cv.width, cv.height);
+  var who = ['hero'].concat(CPU), poses = [['idle', 0], ['idle', 32], ['aim', 0], ['throw', 0], ['cheer', 0], ['cheer', 8], ['drink', 0], ['sad', 0], ['walk', 0], ['walk', 8]];
+  who.forEach(function (w, r) {
+    A.text(ctx, w, 2, 8 + r * 58, 'white');
+    poses.forEach(function (p, i) { A.drawPlayer(ctx, w, p[0], 100 + i * 34, 60 + r * 58, p[1], w !== 'hero'); });
+  });
+}
+function misc(ctx) {
+  ctx.fillStyle = '#24188C'; ctx.fillRect(0, 0, cv.width, cv.height);
+  A.drawLogo(ctx, 128, 6, T);
+  A.text(ctx, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 4, 70);
+  A.text(ctx, '0123456789 .,!?-:\'"/()*#%&+=<>@$^', 4, 80, 'yellow');
+  A.text(ctx, '▶ ♥ ★ © × push start! © 1989 party soft', 4, 90, 'white', true);
+  A.bigText(ctx, 'SWISH!', 8, 102, 'yellow'); A.bigText(ctx, 'ON FIRE!', 116, 102, 'orange');
+  A.bigText(ctx, 'MISS', 8, 124, 'white'); A.bigText(ctx, 'RE-RACK!', 80, 124, 'sky'); A.bigText(ctx, 'GO!', 200, 124, 'lgreen');
+  A.drawBox(ctx, 4, 146, 60, 30); A.text(ctx, 'PAUSE', 14, 157); A.drawBox(ctx, 70, 160, 120, 12, 'gold'); A.text(ctx, 'BOUNCE ON', 72, 162, 'gold');
+  A.drawBox(ctx, 68, 146, 60, 30, 'red'); A.drawBox(ctx, 132, 146, 60, 30, 'gold'); A.drawBox(ctx, 196, 146, 56, 30, 'dim');
+  var names = ['hero', 'chad', 'tank', 'sky', 'brody', 'kegmaster'];
+  names.forEach(function (w, i) { A.drawPortrait(ctx, w, 4 + i * 42, 180); });
+  var icons = ['cup', 'cupEmpty', 'mug', 'mugFull', 'ball', 'fire', 'wind', 'heart', 'star', 'arrowL', 'arrowR', 'speaker', 'mute', 'crown', 'trophy', 'nope'];
+  icons.forEach(function (n, i) { A.drawIcon(ctx, n, 4 + i * 11, 218); });
+  // inset sample
+  A.drawBox(ctx, 180, 214, 74, 26);
+  [[196, 227, 'full'], [210, 227, 'gone'], [224, 227, 'hit'], [238, 227, 'full']].forEach(function (p) { A.drawCupTop(ctx, p[0], p[1], p[2]); });
+  A.drawCrosshair(ctx, 214, 226, T);
+  for (var s = 0; s < 6; s++) { A.drawCup(ctx, 190 + s * 10, 216, s ? 'hit' : 'full', s * 3); A.drawSplash(ctx, 190 + s * 12, 210, s * 4 + 2); }
+  A.drawBall(ctx, 120, 230, false, 0); A.drawBall(ctx, 132, 230, true, 0); A.drawBall(ctx, 144, 230, true, 4); A.drawShadow(ctx, 156, 232);
+}
+function fx(ctx) {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 256, 240); A.drawTable(ctx, 0);
+  ctx.fillStyle = '#A40000'; ctx.fillRect(0, 0, 256, 60);
+  for (var i = 0; i < 9; i++) { A.drawCup(ctx, 14 + i * 28, 40, 'full'); A.drawSplash(ctx, 14 + i * 28, 30, i * 3); A.text(ctx, String(i * 3), 8 + i * 28, 46, 'white'); }
+  for (i = 0; i < 9; i++) A.drawCup(ctx, 14 + i * 28, 80, 'hit', i * 2);
+  A.drawBall(ctx, 20, 100, false, 0); A.drawBall(ctx, 40, 100, true, 0); A.drawBall(ctx, 60, 100, true, 4); A.drawShadow(ctx, 80, 100);
+  for (i = 0; i < 8; i++) { A.drawTrailDot(ctx, 100 + i * 6, 100 - i, false); A.drawTrailDot(ctx, 160 + i * 6, 100 - i, true); }
+  A.drawBox(ctx, 4, 112, 80, 72, 'default'); ctx.fillStyle = '#A40000'; ctx.fillRect(8, 116, 72, 64);
+  [[30, 130], [46, 130], [62, 130], [38, 144], [54, 144], [46, 158]].forEach(function (p, i) { A.drawCupTop(ctx, p[0], p[1], i === 2 ? 'gone' : 'full'); });
+  A.drawCrosshair(ctx, 46, 145, 0); A.drawCrosshair(ctx, 70, 170, 8);
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(ctx.canvas, 4, 112, 80, 72, 96, 112, 160, 144); ctx.restore();
+  A.drawLogo(ctx, 128, 182, 0);
+}
+if (panel === 'one') { cv.width = 64; cv.height = 64; A.drawPortrait(c, q.get('who') || 'hero', 0, 0, 64); }
+else if (panel === 'p64') { cv.width = 204; cv.height = 136; c.fillStyle = '#000'; c.fillRect(0, 0, 204, 136); ['hero', 'chad', 'tank', 'sky', 'brody', 'kegmaster'].forEach(function (w, i) { A.drawPortrait(c, w, 2 + (i % 3) * 68, 2 + (i / 3 | 0) * 68, 64); }); }
+else if (panel === 'fade') { scene(c, 0, T, 0); A.fade(c, +(q.get('lv') || 1)); }
+else if (panel === 'por') { cv.width = 200; cv.height = 76; c.fillStyle = '#000'; c.fillRect(0, 0, 200, 76); ['hero', 'chad', 'tank', 'sky', 'brody', 'kegmaster'].forEach(function (w, i) { A.drawPortrait(c, w, 2 + (i % 3) * 66, 2 + (i / 3 | 0) * 38); A.drawPlayer(c, w, 'idle', 50 + (i % 3) * 66, 36 + (i / 3 | 0) * 38, 0); }); }
+else if (panel === 'crowd') { cv.width = 256; cv.height = 5 * 2 * 46; c.imageSmoothingEnabled = false;
+  var off2 = document.createElement('canvas'); off2.width = 256; off2.height = 240; var o2 = off2.getContext('2d'); o2.imageSmoothingEnabled = false;
+  for (var st = 0; st < 5; st++) for (var e = 0; e < 2; e++) { scene(o2, st, e ? T + 24 : T, e ? 1 : 0); c.drawImage(off2, 0, 150, 256, 46, 0, (st * 2 + e) * 46, 256, 46); }
+}
+else if (panel === 'crowdz') { var zs = +(q.get('st') || 0); cv.width = 184; cv.height = 3 * 40; c.imageSmoothingEnabled = false;
+  var off3 = document.createElement('canvas'); off3.width = 256; off3.height = 240; var o3 = off3.getContext('2d'); o3.imageSmoothingEnabled = false;
+  [[T, 0], [T + 24, 1], [T + 40, 1]].forEach(function (k, j) { scene(o3, zs, k[0], k[1]); c.drawImage(off3, 38, 152, 184, 40, 0, j * 40, 184, 40); });
+}
+else if (panel === 'fx') fx(c); else if (/^s\d$/.test(panel)) { var s = +panel[1]; scene(c, s, T, EX, q.get('pl'), q.get('pr')); }
+else if (panel === 'chars') { cv.width = 440; cv.height = 360; c.imageSmoothingEnabled = false; chars(c); }
+else if (panel === 'misc') { misc(c); }
+else { cv.width = 768; cv.height = 480; c.imageSmoothingEnabled = false;
+  var off = document.createElement('canvas'); off.width = 256; off.height = 240; var o = off.getContext('2d'); o.imageSmoothingEnabled = false;
+  for (var i = 0; i < 6; i++) { if (i < 5) scene(o, i, T, EX); else misc(o); c.drawImage(off, (i % 3) * 256, (i / 3 | 0) * 240); }
+}
+window.DONE = true;
+</script></body></html>

@@ -1,0 +1,15 @@
+// Real short run on a phone viewport (keyboard), quit after 25 s, enter name -> rank > 10 strip
+import { chromium, devices, DEV, cshot, pshot, hookErrors, dbg, sleep } from "./judge3-lib.mjs"
+const b = await chromium.launch()
+const page = await (await b.newContext({ ...devices["iPhone SE"] })).newPage(); const errs = []; hookErrors(page, errs)
+await page.goto(DEV + "?debug"); await sleep(1200)
+await page.keyboard.press("Enter"); await sleep(1500); await page.keyboard.press("z"); await sleep(25000)
+await page.keyboard.press("p"); await sleep(500); await cshot(page, "strip-pause")
+await page.keyboard.press("ArrowDown"); await sleep(150); await page.keyboard.press("z"); await sleep(400)
+await cshot(page, "strip-quitconfirm"); await page.keyboard.press("ArrowLeft"); await sleep(150); await page.keyboard.press("z"); await sleep(2500)
+console.log("after quit", (await dbg(page)).state)
+await page.keyboard.press("z"); await sleep(1500); console.log((await dbg(page)).state)
+await page.keyboard.press("ArrowRight"); await page.keyboard.press("z"); await sleep(1200); await page.keyboard.press("Enter"); await sleep(300); await page.keyboard.press("z"); await sleep(700); await page.keyboard.press("z"); await sleep(3500)
+await cshot(page, "strip-board"); await sleep(270); await cshot(page, "strip-board2"); await pshot(page, "strip-page")
+console.log(JSON.stringify(await dbg(page)), JSON.stringify(await page.evaluate(() => BP.Scores.status())), errs)
+await b.close()
